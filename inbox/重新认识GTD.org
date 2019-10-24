@@ -1,0 +1,28 @@
+* Getting things done
+** 重新认识GTD
+- 翻译为 : 把事情做好
+- 目的 : 
+  1. 清空大脑
+  2. 随时可以知道下一步做什么
+
+** GTD具体流程 
+1. 捕获(Capture) : 装到inbox中
+2. 明晰(Clarify) : 对inbox中的item审查
+   1. 可行么?
+      - 参考资料(Reference)
+      - 可能清单(Someday/Maybe)
+      - 回收箱(Trash)
+   2. 一步搞定？
+      - 搞不定 : 项目清单(Project)
+   3. 两分钟之内？
+   4. 必须得我做么？
+      - 等待清单(Waiting for)
+   5. 有特定执行时间么？
+      - 无 : 执行清单(@Context/TODO)
+      - 有 : Calendar
+3. 组织
+4. 回顾
+5. 执行(Engage) : 明确收获
+
+** Org-mode中的GTD工作流
+TODO
