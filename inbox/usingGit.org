@@ -1,0 +1,22 @@
+* git备忘录
+** 连接github
+- 本地生成ssh key
+#+BEGIN_SRC bash
+  ssh-keygen -t rsa -C "your_email@youremail.com"
+#+END_SRC
+- 添加sshkey for github
+Account Settings ->左侧 SSH Keys ->  Add SSH key
+- test connecting to github
+#+BEGIN_SRC bash
+  ssh -T git@github.com
+#+END_SRC
+- 修改本地ssh remote url
+上面虽然设置了免密 但是使用https方式还是会每次要求输入账户密码 可用如下密令查看url格式
+#+BEGIN_SRC sh
+  git remote -v
+#+END_SRC
+更改url为ssh方式
+#+BEGIN_SRC sh
+  git remote set-url origin git@github.com:someaccount/someproject.git
+#+END_SRC
+- enjoy git!
