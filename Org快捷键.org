@@ -53,14 +53,14 @@ C-x 5 0  : 关闭当前frame
 *** treemacs
 - [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
 
-C-c C-p :工作空间的管理操作
-可以拖拽文件使其在某个窗口打开
-C-t t : 选择treemacs窗口
-M-0 : treemacs 初始化 显示隐藏
-C-c C-w s :切换工作空间
-H : 折叠父目录
-b : 为当前选中设置书签
-C-x t B : 使用标签快速定位
+- C-c C-p :工作空间的管理操作
+- 可以拖拽文件使其在某个窗口打开
+- C-t t : 选择treemacs窗口
+- M-0 : treemacs 初始化 显示隐藏
+- C-c C-w s :切换工作空间
+- H : 折叠父目录
+- b : 为当前选中设置书签
+- C-x t B : 使用标签快速定位
 ** git 
 *** magit
 - untrack一个文件 : K
