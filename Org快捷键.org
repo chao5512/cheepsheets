@@ -2,19 +2,19 @@
 * 自带的
 ** <-SELECTOR-TAB
 
-S    #+begin_src ... #+end_src 
-e    #+begin_example ... #+end_example
-q    #+begin_quote ... #+end_quote 
-v    #+begin_verse ... #+end_verse 
-c    #+begin_center ... #+end_center 
-l    #+begin_latex ... #+end_latex 
-L    #+latex: 
-h    #+begin_html ... #+end_html 
-H    #+html: 
-a    #+begin_ascii ... #+end_ascii 
-A    #+ascii: 
-i    #+index: line 
-I    #+include: line 
+- S    #+begin_src ... #+end_src 
+- e    #+begin_example ... #+end_example
+- q    #+begin_quote ... #+end_quote 
+- v    #+begin_verse ... #+end_verse 
+- c    #+begin_center ... #+end_center 
+- l    #+begin_latex ... #+end_latex 
+- L    #+latex: 
+- h    #+begin_html ... #+end_html 
+- H    #+html: 
+- a    #+begin_ascii ... #+end_ascii 
+- A    #+ascii: 
+- i    #+index: line 
+- I    #+include: line
 ** #-+
 - #+TITLE:       the title to be shown (default is the buffer name)
 - #+AUTHOR:      the author (default taken from user-full-name)
@@ -51,7 +51,8 @@ C-x 5 2 : 打开一个新的frame
 C-x 5 0  : 关闭当前frame
 ** 项目管理
 *** treemacs
-[[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
+1. [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
+
 C-c C-p :工作空间的管理操作
 可以拖拽文件使其在某个窗口打开
 C-t t : 选择treemacs窗口
