@@ -51,7 +51,7 @@ C-x 5 2 : 打开一个新的frame
 C-x 5 0  : 关闭当前frame
 ** 项目管理
 *** treemacs
-1. [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
+- [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
 
 C-c C-p :工作空间的管理操作
 可以拖拽文件使其在某个窗口打开
