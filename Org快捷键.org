@@ -29,8 +29,9 @@
 *** ace-window
 - C-x o : 选择窗口
 - C-u C-x o : 加了C-u前缀，交换窗口
-- 当设置了(setq aw-dispatch-always 't)后
-- 在按下C-x o 选择窗口之前
+*** 中间操作
+当设置了(setq aw-dispatch-always 't)后 在按下C-x o 选择窗口之前
+
 - x - 关闭将要选择的窗口
 - m - 将当前窗口和选中窗口交换位置
 - M - move window
@@ -52,7 +53,7 @@
 - C-x 5 0  : 关闭当前frame
 ** 项目管理
 *** treemacs
-- [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
+[[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
 
 - C-c C-p :工作空间的管理操作
 - 可以拖拽文件使其在某个窗口打开
