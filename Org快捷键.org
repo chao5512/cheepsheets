@@ -1,0 +1,65 @@
+#+TITLE org-mode快捷键
+* 自带的
+** <-SELECTOR-TAB
+
+S    #+begin_src ... #+end_src 
+e    #+begin_example ... #+end_example
+q    #+begin_quote ... #+end_quote 
+v    #+begin_verse ... #+end_verse 
+c    #+begin_center ... #+end_center 
+l    #+begin_latex ... #+end_latex 
+L    #+latex: 
+h    #+begin_html ... #+end_html 
+H    #+html: 
+a    #+begin_ascii ... #+end_ascii 
+A    #+ascii: 
+i    #+index: line 
+I    #+include: line 
+** #-+
+- #+TITLE:       the title to be shown (default is the buffer name)
+- #+AUTHOR:      the author (default taken from user-full-name)
+- #+DATE:        a date, an Org timestamp120, or a format string for format-time-string
+- #+EMAIL:       his/her email address (default from user-mail-address)
+** 基本操作
+插入链接
+C-c C-l
+* 插件的
+** 窗口布局
+*** ace-window
+C-x o : 选择窗口
+C-u C-x o : 加了C-u前缀，交换窗口
+当设置了(setq aw-dispatch-always 't)后
+在按下C-x o 选择窗口之前
+x - 关闭将要选择的窗口
+m - 将当前窗口和选中窗口交换位置
+M - move window
+c - copy window
+j - select buffer
+n - select
+u - select buffer in the other window
+c - split window fairly, either vertically or horizontally
+v - split window vertically
+b - split window horizontally
+o - 关掉其他窗口
+? - show these command bindings
+*** 涉及到的local快捷键
+C-x 1 : 关掉其他窗口
+C-x 0 : 关掉当前窗口
+C-x 2 : 水平切分窗口
+C-x 3 : 垂直切分窗口
+C-x 5 2 : 打开一个新的frame
+C-x 5 0  : 关闭当前frame
+** 项目管理
+*** treemacs
+[[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
+C-c C-p :工作空间的管理操作
+可以拖拽文件使其在某个窗口打开
+C-t t : 选择treemacs窗口
+M-0 : treemacs 初始化 显示隐藏
+C-c C-w s :切换工作空间
+H : 折叠父目录
+b : 为当前选中设置书签
+C-x t B : 使用标签快速定位
+** git 
+*** magit
+untrack一个文件 : K
