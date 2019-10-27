@@ -63,4 +63,7 @@ b : 为当前选中设置书签
 C-x t B : 使用标签快速定位
 ** git 
 *** magit
-untrack一个文件 : K
+- untrack一个文件 : K
+- stage : s
+- comit : cc
+- push : Pp
