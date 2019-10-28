@@ -1,0 +1,22 @@
+* 飞行的B站
+** 关注的up
+*** 猿和媛
+- [[https://space.bilibili.com/21456897/][贴近生活的孙老师]]
+- [[https://space.bilibili.com/5841543/][培训视频某江鱼]]
+- [[https://space.bilibili.com/12440655/%E7%AE%97%E6%B3%95%E5%92%8C%E5%A4%A7%E6%95%B0%E6%8D%AE][算法和大数据]]
+- [[https://space.bilibili.com/44076852/][git-表严肃]] [[https://biaoyansu.com/27.cheatsheet][表严肃官网]] 好久不更了
+- [[https://space.bilibili.com/6773469/][emacs-小姐姐]] 好久不更了
+- [[https://space.bilibili.com/305669834/][算法及刷题]] 更新较慢 视角较高
+- [[https://space.bilibili.com/149965617/][西北工业大学ACM]] 算法 只有2017年的  可听 视角较高
+- [[https://space.bilibili.com/1491119/][科班的基本技能]] 找工作的基本技能 好久不更新了  可以看
+- [[https://space.bilibili.com/231946276/][培训视频-网络安全]]
+- [[https://space.bilibili.com/37422870/][Hacking]]
+- [[https://space.bilibili.com/24014925/][正月点灯笼]] 大佬  常看
+- [[https://space.bilibili.com/89269990/][算法数据结构 c++]]
+- [[https://space.bilibili.com/18048483/][NIO]]
+- [[https://space.bilibili.com/318371564/][jdk数据结构源码]]
+*** 杂七杂八
+- [[https://space.bilibili.com/20503549/][doyoudo]] 乐理和AE、PR等
+- [[https://space.bilibili.com/129802844/][张恒]] vlog 有干货
+- [[https://space.bilibili.com/88938041/][野路子]] 有趣软件推荐 for mac or windows
+- [[https://space.bilibili.com/29959830/][Topbook]] GTD
