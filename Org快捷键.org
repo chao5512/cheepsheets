@@ -24,6 +24,11 @@
 插入链接
 
 - C-c C-l
+** laTex
+- [[https://blog.csdn.net/csfreebird/article/details/43636615][Ref]]
+- M-x org-entities-help 查看帮助
+- S-6 : ^ 上标
+- \rArr : 右箭头
 * 插件的
 ** 窗口布局
 *** ace-window
