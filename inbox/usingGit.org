@@ -19,3 +19,14 @@
   5. enjoy git!
 #+END_SRC
 ** git工作流
+** git使用场景
+*** 版本回退
+与github相连，在某次提交（增加很多文件）后，想要回退到之前的版本，将文件用增量的方式慢慢加入git
+#+BEGIN_SRC sh
+  #1. 找到回退到哪次提交id
+  git log
+  #2. 本地回退
+  git reset -hard {id}
+  #3. 推送到远程
+  git push -f -u origin master
+#+END_SRC
