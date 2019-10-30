@@ -29,6 +29,34 @@
 - M-x org-entities-help 查看帮助
 - S-6 : ^ 上标
 - \rArr : 右箭头
+*** Greek
+
+   Symbol   Org entity        LaTeX code             HTML code
+   -----------------------------------------------------------  
+   α       \alpha            \alpha                 &alpha;
+   β       \beta             \beta                  &beta;
+   γ       \gamma            \gamma                 &gamma;      
+   Δ       \Delta            \Delta                 &Delta;      
+   δ       \delta            \delta                 &delta;
+   ε       \epsilon          \epsilon               &epsilon;    
+   ε       \varepsilon       \varepsilon            &epsilon;  
+   Θ       \Theta            \Theta                 &Theta;      
+   θ       \theta            \theta                 &theta; 
+   λ       \lambda           \lambda                &lambda;        
+   Ο       \Omicron          O                      &Omicron;    
+   ο       \omicron          \textit{o}             &omicron;       
+   π       \pi               \pi                    &pi;
+   ρ       \rho              \rho                   &rho;        
+   Σ       \Sigma            \Sigma                 &Sigma;      
+   σ       \sigma            \sigma                 &sigma; 
+   ϒ        \upsih            \Upsilon               &upsih;      
+   υ       \upsilon          \upsilon               &upsilon;    
+   Φ       \Phi              \Phi                   &Phi;        
+   ɸ        \phi              \phi                   &phi;        
+   φ       \varphi           \varphi                &varphi;
+   Ω       \Omega            \Omega                 &Omega;      
+   ω       \omega            \omega                 &omega;      
+   ∂        \partial          \partial               &part; 
 * 插件的
 ** 窗口布局
 *** ace-window
