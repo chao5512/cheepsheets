@@ -29,6 +29,7 @@
 - M-x org-entities-help 查看帮助
 - S-6 : ^ 上标
 - \rArr : 右箭头
+- log : \log_{m}n
 *** Greek
 
    Symbol   Org entity        LaTeX code             HTML code
