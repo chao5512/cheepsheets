@@ -1,0 +1,117 @@
+* Hbase
+** 概念
+1. 什么是Hbase?
+   1. Google Bigtable的开源实现
+   2. 分布式数据库
+   3. 列式存储
+   4. NoSql
+2. 列式存储的优势
+   1. 行中没有保存数据的列不占空间
+3. Hbase为什么高效？
+   1. 将随机读写转换为顺序读写，适合高并发写入
+   2. 均衡效果好，读写性能与机器数线性相关
+   3. 空间高效利用，行中没有保存数据的列不占空间，Hbase存储更为紧凑
+** Hbase使用
+*** 适用场景
+- 列族结构经常调整
+- 结构化数据或半结构化数据
+- 需要高并发写入
+
+*** 不适用场景 
+- 需要事务 因为hbase只有行锁级别的事务
+- 需要关系计算，例如 join,union,groupby，因为是列存
+- 不按rowkey查询
+- 高并发随机读
+
+*** hbase shell
+- 常用工具
+  - 状态查询
+  - ddl dml
+  - 集群工具
+  - replication
+  - 快照
+  - namespace
+*** 常用列族属性
+- IN_MEMORY : 在缓存中的优先级，常驻内存
+*** thrift
+- 跨语言的开发
+*** 协处理器
+**** 两类协处理器
+1. observe
+   - 类似触发器或回调函数
+   - 在某一事件后触发
+2. endpoint
+   - 类似存储过程
+   - 通过rpc调用rs端的计算
+**** 协处理器的配置
+- 全局 : jar包上传到服务端，并配置
+- 用户表协处理器 : hbase shell 或api部署
+- 一个参数 :避免因协处理器的异常导致rs的宕机，禁用有问题的协处理器
+**** 经验
+- 用处
+  - 辅助监控 observer
+  - 协助处理数据-索引表
+  - 统计操作
+    - 各region分别统计
+    - 客户端归并
+- 误区
+  - endpoint的数据太大
+  - 没有对资源占用进行估计
+    - 使用过多线程 cpu
+    - 使用过多内存 rs oom
+** Hbase基本架构
+- 客户端
+- master
+- regionserver
+- zk
+- hdfs 
+** 运维
+*** 集群状态信息
+- web页面
+- log查看
+  - 是否有Exception
+  - 是否有线程意外退出，exit关键字
+- gclog
+  - gc时间长或者full gc比较多，那么内存不够用或者配置有问题
+- hbase监控痛点
+  1. 组件下线
+  2. unassigned region时间过长
+     - zkdump或zk中获取:unassignedregion文件中有内容且超过一定时间
+       - 要么有严重的容灾
+       - 要么容灾卡住了
+  3. regionserver处理客户端请求的时间过长
+     - 某系关键线程可能卡住了
+  4. storefile总数过多
+     1. too many open file 异常
+     2. 影响其他线程
+     3. 也说明compaction线程不太行
+- 工具hbck查看
+  - 检测和修复数据不一致，表信息，rs挂载，hdfs目录这三类信息
+  - -repair 启动所有修补项
+  - 修复前确认没有正在跑的task，避免家中现有问题
+  - hbck是异步的，修复后根据受影响的region数量等待一段时间，再次检测
+*** 数据迁移和备份
+**** 迁库需求
+1. 服务器迁机房
+2. 服务扩容至更大的集群
+3. 从传统数据库导入
+4. 备份
+**** bulkload
+**** distcp
+1. hdfs 集群间的拷贝
+2. 拷贝完，(0.94后)用一次hbck修复数据不一致来加载表(旧版本用addTable.rb)
+**** export+import
+**** copytable
+- 逐条put
+**** 实时备份 replication
+** inbox
+- 分区容忍性 : 系统中任意信息的丢失或者失败不影响整个系统的运作
+  - 例如 : 一个rs挂掉了或者一个dn挂掉了，对整个系统的影响是很小的
+- zk协调rs的容灾问题
+- hbase releasenodes
+- hbase_cleanup.sh zk有一致性问题的时候用来删除zk上的数据，有什么弊端么
+- hbase 与hdfs append
+- 前缀树
+- 压缩算法的比较，与数据特性的关系
+- bloomfilter什么时候用rowcol
+- hbase 计数器
