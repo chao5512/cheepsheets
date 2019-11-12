@@ -28,6 +28,14 @@
 3. 缩放
    - C-x C-=
    - C-x C--
+4. 缩进
+   - C-M-\\ 
+5. 移动
+   - M-< 文件头
+   - M-> 文件尾部
+   - C-l 居中显示、按三下试试
+   - M-e 句尾
+   - M-a 句首
 
 ** laTex
 - [[https://blog.csdn.net/csfreebird/article/details/43636615][Ref]]
