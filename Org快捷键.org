@@ -97,9 +97,23 @@
 - H : 折叠父目录
 - b : 为当前选中设置书签
 - C-x t B : 使用标签快速定位
+- C-c C-p : 项目相关
 ** git 
 *** magit
 - untrack一个文件 : K
 - stage : s
 - comit : cc
 - push : Pp
+** org-protocol and org-capture
+用 org-capture 来做网页内容收集
+*** 原理
+**** org-protocol
+1. org-capture
+2. org-storelink
+[[https://blog.aaronbieber.com/2016/11/24/org-capture-from-anywhere-on-your-mac.html][原理详解]]
+**** mac设置
+[[https://github.com/sprig/org-capture-extension][参考]]
+**** emacs设置
+1. emacs 开启服务模式
+2. 引入org-protocol协议
+*** 书签
