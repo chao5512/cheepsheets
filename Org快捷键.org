@@ -21,9 +21,14 @@
 - #+DATE:        a date, an Org timestamp120, or a format string for format-time-string
 - #+EMAIL:       his/her email address (default from user-mail-address)
 ** 基本操作
-插入链接
+1. 插入链接
+   - C-c C-l
+2. 查看我绑定的key
+   - M-x describe-personal-keybindings
+3. 缩放
+   - C-x C-=
+   - C-x C--
 
-- C-c C-l
 ** laTex
 - [[https://blog.csdn.net/csfreebird/article/details/43636615][Ref]]
 - M-x org-entities-help 查看帮助
