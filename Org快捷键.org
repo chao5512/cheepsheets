@@ -21,6 +21,9 @@
 - #+DATE:        a date, an Org timestamp120, or a format string for format-time-string
 - #+EMAIL:       his/her email address (default from user-mail-address)
 ** 基本操作
+:LOGBOOK:
+CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
+:END:
 1. 插入链接
    - C-c C-l
 2. 查看我绑定的key
@@ -36,7 +39,8 @@
    - C-l 居中显示、按三下试试
    - M-e 句尾
    - M-a 句首
-
+6. 编辑
+   - 设置标记 C-SPC  : mac输入法冲突，在系统偏好设置中取消选择上一输入法快捷键
 ** laTex
 - [[https://blog.csdn.net/csfreebird/article/details/43636615][Ref]]
 - M-x org-entities-help 查看帮助
@@ -113,10 +117,12 @@
 - C-c C-p : 项目相关
 ** git 
 *** magit
-- untrack一个文件 : K
+- untrack一个文件 : K 大写的
 - stage : s
 - comit : cc
 - push : Pp
+- regresh : g
+- ignore : i
 ** org-protocol and org-capture
 用 org-capture 来做网页内容收集
 *** 原理
