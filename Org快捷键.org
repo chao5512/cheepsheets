@@ -1,5 +1,7 @@
 #+TITLE org-mode快捷键
 * 自带的
+[[https://blog.csdn.net/wangjianno2/article/details/52718428][emacs 入门参考]]
+[[https://www.ibm.com/developerworks/cn/education/aix/au-emacs5/index.html][补充]]
 ** <-SELECTOR-TAB
 
 - S    #+begin_src ... #+end_src 
@@ -27,21 +29,22 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 1. 插入链接
    - C-c C-l
    - C-c l : 标记一个锚点
-2. 查看我绑定的key
+2. 插入文件 C-x i
+3. 查看我绑定的key
    - M-x describe-personal-keybindings
-3. 缩放
+4. 缩放
    - C-x C-=
    - C-x C--
-4. 缩进
+5. 缩进
    - C-M-\\ 
-5. 移动
+6. 移动
    - M键可以用按下esc再松开代替
    - M-< 文件头
    - M-> 文件尾部
    - C-l 居中显示、按三下试试
    - M-e 句尾
    - M-a 句首
-6. 编辑
+7. 编辑
    - 设置标记 C-SPC  : mac输入法冲突，在系统偏好设置中取消选择上一输入法快捷键
 ** laTex
 - [[https://blog.csdn.net/csfreebird/article/details/43636615][Ref]]
@@ -77,10 +80,15 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
    Ω       \Omega            \Omega                 &Omega;      
    ω       \omega            \omega                 &omega;      
    ∂        \partial          \partial               &part; 
+** 字体
+[[https://blog.csdn.net/u010654583/article/details/73559375][设置字体]]
+** 切分窗口
+- esc松开 90 C-x 3 : 左右切分，左边占90个字符
 * 插件的
 ** 窗口布局
 *** ace-window
 - C-x o : 选择窗口
+- C-x o m : 交换窗口 
 - C-u C-x o : 加了C-u前缀，交换窗口
 *** 中间操作
 当设置了(setq aw-dispatch-always 't)后 在按下C-x o 选择窗口之前
@@ -141,3 +149,14 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 *** 书签
 ** reveal.js
 
+这是另外一行
+llll
+lllllllls llllllllll
+LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLSS
+这是一个标记
+
+#+BEGIN_src emacs-lisp
+  (setq-default auto-fill-function 'do-auto-fill)
+  (add-hook 'load-theme-hook ')
+
+#+end_src
