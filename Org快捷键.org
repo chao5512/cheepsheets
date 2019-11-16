@@ -26,6 +26,7 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 :END:
 1. 插入链接
    - C-c C-l
+   - C-c l : 标记一个锚点
 2. 查看我绑定的key
    - M-x describe-personal-keybindings
 3. 缩放
@@ -34,6 +35,7 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 4. 缩进
    - C-M-\\ 
 5. 移动
+   - M键可以用按下esc再松开代替
    - M-< 文件头
    - M-> 文件尾部
    - C-l 居中显示、按三下试试
@@ -101,20 +103,21 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 - C-x 2 : 水平切分窗口
 - C-x 3 : 垂直切分窗口
 - C-x 5 2 : 打开一个新的frame
-- C-x 5 0  : 关闭当前frame
-** 项目管理
+- C-x 5 0  : 关闭当前frame*
+* 项目管理
 *** treemacs
 [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
 
 - C-c C-p :工作空间的管理操作
 - 可以拖拽文件使其在某个窗口打开
-- C-t t : 选择treemacs窗口
+- C-x t t : 选择treemacs窗口
 - M-0 : treemacs 初始化 显示隐藏
 - C-c C-w s :切换工作空间
 - H : 折叠父目录
 - b : 为当前选中设置书签
 - C-x t B : 使用标签快速定位
 - C-c C-p : 项目相关
+- C-c pp : 切换项目
 ** git 
 *** magit
 - untrack一个文件 : K 大写的
@@ -136,3 +139,5 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 1. emacs 开启服务模式
 2. 引入org-protocol协议
 *** 书签
+** reveal.js
+
