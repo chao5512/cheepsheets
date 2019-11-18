@@ -90,6 +90,8 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 - C-x o : 选择窗口
 - C-x o m : 交换窗口 
 - C-u C-x o : 加了C-u前缀，交换窗口
+*** revertable C-x 1 
+note that，there is  a bug when we hava a treemacs window
 *** 中间操作
 当设置了(setq aw-dispatch-always 't)后 在按下C-x o 选择窗口之前
 
