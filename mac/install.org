@@ -1,0 +1,19 @@
+#+title: mac下的应用安装与管理
+* brew
+* Macport
+** 常用命令
+#+BEGIN_SRC sh
+  # 自我更新
+  sudo port -v selfupdate
+  # 列出远程可用的软件
+  sudo port list
+  # 搜索
+  port search emacs-app
+  # 详细说明
+  port info emacs-app
+  # 变体
+  port variants emacs-app
+  # 安装(加了imageMagick变体，去掉用-)
+  port install emacs-app +imageMagick
+
+#+END_SRC
