@@ -2,6 +2,9 @@
 
 * 安装emacs
 使用MacPort安装带imageMagick的emacs版本
+
+** MacPorts卡在"正在运行软件包脚本"解决方法
+因为网络的问题卡住  连vpn
 * 自带的
 [[https://blog.csdn.net/wangjianno2/article/details/52718428][emacs 入门参考]]
 [[https://www.ibm.com/developerworks/cn/education/aix/au-emacs5/index.html][补充]]
@@ -187,3 +190,7 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
   (add-hook 'load-theme-hook ')
 
 #+end_src
+** 文件检索
+[[https://blog.csdn.net/weixin_34417183/article/details/88662556][全文检索]]
+*** projectile
+- 利用ag进行项目内全文搜索：projectil-ag

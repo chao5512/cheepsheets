@@ -17,3 +17,7 @@
   port install emacs-app +imageMagick
 
 #+END_SRC
+** 安装路径
+应用程序的Macport文件夹下
+** 安装eamcs-app 
+- (image-type-available-p 'imagemagick) ： 测试是否是imageMagick版本（需要返回t）
