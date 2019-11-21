@@ -1,0 +1,3 @@
+#+title: idea备忘
+* 快捷键(C:ctrl)
+- C-j

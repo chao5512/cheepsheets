@@ -1,0 +1,68 @@
+#+title: jvm
+* 垃圾收集器
+** CMS
+*** 目标
+stop-the-world最短
+*** 适用场景
+注重响应速度的服务
+*** 回收算法
+标记-清楚
+*** 算法步骤
+1. 初始标记(STW)
+标记GCRoot能直接关联的对象
+2. 并行标记
+对外提供服务，继续向下标记，这步容忍有偏差
+3. 重新标记（STW）
+修正偏差
+4. 并发清除
+因为这步要并行做，所以无法避免浮动垃圾
+*** 3个缺点
+1. 面向并发，会与服务争夺cpu
+2. 无法避免浮动垃圾，触发垃圾回收时，老年代需要有担保内存来尽可能减少concurrent Mode Failure
+3. 产生大量空间碎片，为此我们不得不选择一种策略做compaction
+*** 备胎回收器
+Serial Old
+* OOM
+[[https://www.cnblogs.com/intsmaze/p/9550256.html][为什么使用dump而不是报错日志]]
+** 
+* 线程状态
+[[https://www.uml-diagrams.org/java-thread-uml-state-machine-diagram-example.html][参考]]
+* waiting状态的线程被唤醒的时候进入blocked状态
+#+DOWNLOADED: https://www.uml-diagrams.org/examples/state-machine-example-java-6-thread-states.png @ 2019-11-20 11:13:33
+[[file:%E7%BA%BF%E7%A8%8B%E7%8A%B6%E6%80%81/2019-11-20_11-13-33_state-machine-example-java-6-thread-states.png]]
+* 类加载
+- 在类被首次主动使用时才会类的初始化
+- 但并没有延迟加载，即类的加载在首次主动使用前就完成了，不过如果加载失败，这个错误信息要等到首次主动使用才会抛出(延迟抛出)
+- 当一个类初始化的时候，它所实现的接口是不会被初始化的
+- classloader去load一个类的时候不会导致类的初始化，只有用反射class.forname的时候才会初始化
+** 自定义类加载器
+*** 场景
+1. 冲突隔离
+2. 热加载
+3. 代码保护
+* 工具
+** jvisualvm
+- poid 优先级
+- 线程dump
+- 堆dump
+- Metaspace监控
+** jconsole
+- 线程监控可以看到线程的总等待、总阻止线程数
+- 检查死锁的线程
+** jmap
+- clstat : 查看类加载器的统计数据
+- heapheap : 堆和gc的统计数据
+** jstat
+- gc gc统计信息
+  - MC : current metaspace capacity  （KB）
+  - MU : metaspace Utillization 已用空间
+** jcmd (1.7新增的)
+- jcmd <pid> help ： 看一下可以对这个进程做什么
+- jcmd <pid> help <具体命令> : 具体命令的帮助
+- jcmd <pid> VM.flags : 查看jvm启动参数
+- jcmd <pid> PerfCounter.print : 统计jvm性能
+- jcmd <pid> VM.uptime : 这个jvm启动多长时间了
+- jcmd <pid> GC.class_histogram : 类的统计信息  可以用head查看前几行
+- jcmd <pid> Thread.print : 线程堆栈信息，grep deadlock 看有没有死锁及死锁的详细信息
+- jcmd <pid> GC.heap_dump <目标文件> : 导出dump文件，然后用jvisualvm装载(打开gui>菜单栏>装入文件)文件分析，heap dump会导致程序暂停一下
+- jcmd <pid> VM.system_properties : 查看jvm的信息，也就是 ps -ef 输出的那一大坨信息

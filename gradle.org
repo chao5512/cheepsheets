@@ -1,0 +1,8 @@
+#+title: 不只是gradle-构建工具
+* Ant
+所有东西都要配置，最自由的
+* Maven
+约定优于配置，划分底盘，不可以随便放
+* Gradle
+用Groovy来写配置
+[[https://www.bilibili.com/video/av70568380?from=search&seid=11093827846848681857][来自Gradle的大神]]
