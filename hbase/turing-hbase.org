@@ -1,0 +1,26 @@
+#+title: jvm 调优
+* CMS调优
+- [[http://hbasefly.com/2016/08/09/hbase-cms-gc/][参考]]
+** 结论
+1. 缓存模式采用BucketCache策略Offheap模式
+2. 对于大内存（大于64G），Xmn可以随着Java分配堆内存增大而适度增大，但是不能大于4g，取值范围在1~3g范围；SurvivorRatio一般建议选择为2；MaxTenuringThreshold设置为15；采用如下配置：
+#+begin_example
+  -Xmx64g
+  -Xms64g
+  -Xmn2g
+  -Xss256k
+  -XX:MaxPermSize=256m     //jdk1.8后为MaxMetaspaceSize
+  -XX:SurvivorRatio=2
+  -XX:+UseConcMarkSweepGC
+  -XX:+UseParNewGC	//指定CMS后默认的新生区收集器
+  -XX:+CMSParallelRemarkEnabled	//remark(CMS第五阶段)采用并行标记
+  -XX:MaxTenuringThreshold=15  	
+  -XX:+UseCMSCompactAtFullCollection	//CMS收集后整理碎片
+  -XX:+UseCMSInitiatingOccupancyOnly        //CMS触发条件限制为只有下面这一条
+  -XX:CMSInitiatingOccupancyFraction=75	  
+  -XX:-DisableExplicitGC			  禁用system.gc()
+#+end_example
+3. 对于小内存（小于64G），只需要将上述配置中Xmn改为512m-1g(靠向1G，为了充分淘汰rpc啥地)即可
+** 思考
+- 调大memstore和blockcatche来，在加上PretenureSizeThreshold来直接把memstore和blockcatche晋升到老年代，避免调大surviveRatio导致的长寿对象的无意义的复制。
+- 但是好像PretenureSizeThreshold只能和serial配合

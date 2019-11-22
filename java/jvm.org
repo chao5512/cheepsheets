@@ -1,5 +1,11 @@
 #+title: jvm
 * 垃圾回收
+** 简介
++ 垃圾收集器跟踪所有正在使用的对象,并把其余部分当做垃圾
++ 第一款垃圾收集器是1959年为Lisp语言开发的, 此后 Lisp 的垃圾收集技术也一直处于业界领先水平。
+
+** STW 存在的必要性
+垃圾收集过程中, 需要暂停应用程序的所有线程。假如不暂停,则对象间的引用关系会一直不停地发生变化, 那样就没法进行统计了
 ** 回收位置
 + heap : 回收性价比高
 + 方法区 : 虚拟机规范没有要求，商用虚拟机都实现了(回收废弃 *常量* 和 *无用的类*)
@@ -9,20 +15,33 @@
     3. 该类对应java.lang.class对象没有在任何地方被引用，且不存在任何可以通过反射访问该类的方法
   + 需要关注方法区垃圾回收（类卸载）的场景
     + 大量使用反射、动态代理、CGlib等字节码生成工具
-    + 动态生成jsp
     + OSGI类的频繁自定义classloader的场景
+    + 动态生成jsp
 ** 回收算法（分段式如何保证回收事务？）
 + 标记清除
-  + 两个阶段效率都不高
-  + 内存碎片问题
+  + 标记会stw
+  + 清除(不整理)效果不好，内存碎片问题
 + 标记整理
+  + 整理过程会移动对象，这样，就需要更新指向这个对象的引用，这是一个stw过程，停顿但是安全，这就是为什么CMS尽量不整理
 + 复制算法(空间换时间)
   + 现在的商用jvm都才用 **复制算法*实现新生代*
   + hostSpot ： eden区 : survivor区 = 8 : 1 : 1 (survivor个数可以设置)
+  + 优点是标记和复制可以同时做
   + 效率不一定高：正向作用是只需要扫描存活的对象，逆向作用是额外多一次复制操作，在存活率高的情况下放大逆向作用
   + *由于上述原因，复制算法适用于系统中会有大量生命周期特短的对象*
 + 分代算法
-** 判活以删除
+  + 分代也存在问题，即回收一个分代时，另一个分代中的所有对象都称为GC root，使用 *card-marking* 解决这个问题，[[http://psy-lob-saw.blogspot.com/2014/10/the-jvm-write-barrier-card-marking.html][参考]]
+  + 适合的场景 : 系统中大部分对象要么活得长，要么死的快
+
+** 死亡鉴定
+没有引用即为死
+*** 四种引用类型
++ 强引用
++ 软引用
++ 弱引用
++ 虚引用(Phantom)
+  
+** 判活的方法
 *** 引用计数
 + 缺点 ： 需要额外判断循环引用
 + Objective-C 使用引用计数
@@ -30,32 +49,215 @@
 + java 、 c#
 + 什么可以算是root？
   + 栈中引用(存在即有用的)
+  + 活动线程
   + 方法区中的静态引用
   + JNI中的引用
-
+** 垃圾回收的定义
+*** minor GC
++ 用于回收eden区
++ 触发时机 : 新对象生成后判断一下更新的eden区的使用情况，放不下的时候呢？
+*** full GC
++ 对整个JVM进行整理(young、old、perm)
++ 触发时机
+  + Old满了
+  + perm满了
+  + system.gc()建议gc
 ** 垃圾回收器
+*** 总览
+#+DOWNLOADED: file:/Users/wangchao/Desktop/截屏2019-11-22上午1.13.48.png @ 2019-11-22 01:16:22
+[[file:%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/2019-11-22_01-16-22_%E6%88%AA%E5%B1%8F2019-11-22%E4%B8%8A%E5%8D%881.13.48.png]]
+*** Serial
+**** 图
+#+DOWNLOADED: https://ss3.bdstatic.com/70cFv8Sh_Q1YnxGkpoWK1HF6hhy/it/u=3544756367,1523761064&fm=26&gp=0.jpg @ 2019-11-22 01:35:16
+[[file:%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/2019-11-22_01-35-15_u=3544756367,1523761064&fm=26&gp=0.jpg]]
+**** 文
++ client端的默认收集器
++ 最早的收集器,单线程进行GC
++ NeW和O|d generation都可以使用
++ 在新生代,采用复制算法;在老年代( *存活对象多，复制开销因而大*)采用Mark-Compact算法
++ 因为是单线程GC,没有多线程切换的额外开销,简单实用
+*** ParNew
++ Serial收集器在新生代的多线程版本
++ 使用复制算法(因为针对新生代)
++ 只有在多CPU的环境下,效率才会比 Seria收集器高
++ 可以通过 -XX: ParallelGCThreads来控制GC线程数的多少。需要结合具体CPU的个数
++ Server模式下 *新生代* 的缺省收集器
+*** Parallel Scavenge
+Para|lel Scavenge收集器也是一个多线程收集器,也是使用复制算法,但它的对象分配规则与回收策略都与 ParNew收集器有所不同,它是以 *吞吐量最大化(即GC时间占总运行时间最小)* 为目标的收集器实现, *允许用较长时间的STW换取总吞吐量最大化* 
+*** Seria|Old
+SerialOld是单线程收集器,使用 *标记一整理算法*,是 *老年代的收集器*
+*** ParallelOld
+老年代版本吞吐量优先收集器,使用 *多线程* 和 *标记一整理算法*,JWM1.6提供,在此之前,如果新生代使用了PS收集器的话,老年代除 Serial old外别无选择,因为PS无法与CMS收集器配合工作
++ Parallel Scavenge+ Parallel old=高吞吐量,但GC停顿可能不理想
 *** CMS
-**** 目标
-stop-the-world最短
-**** 适用场景
-注重响应速度的服务
-**** 回收算法
-标记-清楚
-**** 算法步骤
-1. 初始标记(STW)
-标记GCRoot能直接关联的对象
-2. 并行标记
-对外提供服务，继续向下标记，这步容忍有偏差
-3. 重新标记（STW）
-修正偏差
-4. 并发清除
-因为这步要并行做，所以无法避免浮动垃圾
++ [[https://github.com/cncounter/gc-handbook/blob/master/04_GC_Algorithms_Implementations_CN.md]参考]
++ 目标 : GC效率可能不高,但stop-the-world最短，适合online应用，web也算
++ 适用场景 : 注重响应速度的服务
++ 只针对老年代, 一般结合ParallelNew使用
++ 回收算法 : 标记-清除
++ 清除的含义，在用空闲列表维护的内存中，被清除就是添加到空闲列表中，，被认为是空的
++ 备胎回收器 : Serial Old
+
+**** 四步算法步骤
+1. 初始标记(STW) : 标记GCRoot能直接关联的对象，以及新生代引用的对象以及新生代引用的对象
+2. 并行标记 : 对外提供服务，继续向下标记，这步容忍有偏差
+3. 重新标记(STW) : 修正偏差
+4. 并发清除 : 因为这步要并行做，所以无法避免浮动垃圾
+
+**** 7步详细步骤，帮助理解log
+1. Phase 1: Initial mark
+   + STW
+   + 标记GCRoot能直接关联的对象
+   + 以及新生代引用的对象
+   + 对应log : [CMS Initial Mark
+
+2. Phase 2: Concurrent mark
+   + 从第一步标记的对象出发，并行标记所有老年代存活对象
+   + 完成时标记可能有偏差，为了保证程序正确执行，必须找到所有活的，包括在并行标记时偷偷又活过来的，可以放过在并行时悄悄死的，3-4步为了完成这个目标
+   + log : [CMS Initial Mark
+3. Phase 3: Concurrent preclean
+   + 使用Card-Marking标记在2中并行发生关系变化的对象，从这找到他们救活的对象
+   + log : [CMS Concurrent-preclean
+4. Phase 4: Concurrent abortable preclean
+   + log : [CMS-concurrent-abortable-preclean
+   + 此阶段可能显著影响STW停顿的持续时间,并且有许多重要[[https://blogs.oracle.com/jonthecollector/entry/did_you_know][重要配置]]和失败模式。
+5. Phase 5: Final remark
+   + STW来做最后的标记，准确的标记所有活的对象
+
+   + CMS尽可能的尝试在新生代为空的时候进入Final remark阶段
+6. Phase 6: Concurrent Sweep
+   + 并行回收空间
+7. Phase 7: Concurrent reset
+   + 重置CMS算法相关的内部数据, 为下一次GC循环做准备
+
+
 **** 3个缺点
-1. 面向并发，会与服务争夺cpu
+1. 以尽量并发的方式来满足低停顿，即尽量GC线程和用户线程同时跑，会与服务争夺cpu
 2. 无法避免浮动垃圾，触发垃圾回收时，老年代需要有担保内存来尽可能减少concurrent Mode Failure
 3. 产生大量空间碎片，为此我们不得不选择一种策略做compaction
-**** 备胎回收器
-Serial Old
+
+*** G1 – Garbage First
++ 目标 : 将STW停顿的时间和分布变成可预期以及可配置的(取决于选择多少老年小堆参与回收)
++ 将大堆分成小堆
++ 采用物理上分散，逻辑上分代的设计
++ 不必每次gc都全局扫描，而是增量的处理
++ 所有小堆区按所包含的垃圾对象数rank，每次回收垃圾多的老年代小堆和所有新生代小堆
++ 参数 ： -XX:+UseG1GC
+
+** 内存分配
++ 堆上分配 : 大多数分配至eden区，偶尔分在old
++ 栈上分配 : 原子类型的局部变量
+** 内存泄漏
+*** 产生原因
+**** 对象定义在错误的范围 (Wrong Scope)
+#+BEGIN_SRC java
+  //一段代码
+  class Foo{
+      private string[] names;
+      public void doIt(int length){
+          if (names = null II names.length < length)
+              names new string[length];
+          populate( names);
+          print(names);
+      }
+  }
+#+END_SRC
++ 如上面这段代码，变量names声明在方法外部，假如我们只会在这个方法中使用names，且foo类生命周期非常长，那么name对象由于一直有一个引用，所以对象所占这部分内存就被偷了，改成如下代码
+#+BEGIN_SRC java
+  class Foo {
+      public void doIt(int length) {
+          String[] names = new String [length]i
+              populate( names);
+          print(names);
+      }
+  }
+#+END_SRC
+**** 异常( EXception)处理不当
+#+BEGIN_SRC java
+  //连接泄露
+  Connection conn DriverManager getConnection(url, name, passwd);
+  try {
+      String sgl ="do a query sql";
+      Preparedstatement stmt = conn. preparestatement(sql);
+      Resultset rs = stmt. executequery();
+      while (rs.next()){
+          dosomestuff();
+      }
+      //主要看这里
+      rs close();
+      conn close();
+  } catch (Exception e){
+  }
+#+END_SRC
++ 如果 doSomestuff()抛出异常,rg.close和cnn.close不会被调用,会导致内存泄漏和连接泄漏,改正如下
+#+BEGIN_SRC java
+  Preparedstatement stmt null;
+  Resultset rs = null;
+  try {
+      string sql ="do a query sql";
+      stmt conn. preparestatement(sql);
+      rs stmt executequery;
+      while (rs.next()){
+          dosomestuff();
+      }
+  }catch (Exception e) {
+      // handle exception
+  } finally {
+      //永远用finally去关闭资源,避免资源泄漏
+      if (rs != null){
+          rs.close();
+      }
+      if (stmt ! null){
+          stmt. close();
+      }
+      conn close();
+  }
+#+END_SRC
+**** 集合数据管理不当
+* GC参数
+** 调试常用参数
+#+begin_example
+  -verbose:gc
+  -Xms20M
+  -Xmx20M
+  -Xmn10M
+  -XX:+PrintGCDetails
+  -XX:SurvivorRatio=8
+  -XX:PretenureSizeThreshold=4194304
+  -XX:+UseSerialGC
+#+end_example
++ -XX:MaxTenuringThreshold=5  : 晋升年龄的最大值，也就是有可能在小于5的时候就晋升，该参数的默认值为15,CMS中默认值为6,G1中默认为15(在JVM中,该数值是由4个bit来表示的,所以最大值1111,即15). 经历了多次Gc后,存活的对象会在 From Survivor与 To Survivor之间来回存放,而这里面的一个前提则是这两个空间有足够的大小来存放这些数据,一种策略是计算每个年龄对象的大小,如果达到某个年龄后发现总大小已经大于了 Survivor空间的50号,那么这时就需要调整阈值,不能再继续等到默认的15次gc,因为这样会导致 Survivor空间不足,所以需要调整阈值,让这些存活对象尽快完成晋升。
+** GC-log
+含义解析样例
+#+begin_example
+
+  [ GC (Allocation Failure)[PSYoungGen: 5646K->624K(9216K)] 5646K->4728K(19456K),0.0044403 secs] [Times: user=0.03 sys=0.00, real=0.01 secs
+  [ GC                   是什么GC? 是minorGC，如果是FullGC会显示FullGC
+  (Allocation Failure)  GC的原因是？Allocation failure 分配内存后达到新生代设置的GC阈值，这里意为尚可分配，但是有点挤了。若压根分配不开，会直接在老年代分配
+  [PSYoungGen:	本次会收使用什么垃圾收集器？ 分代parallel scavenge      
+  5646K->624K(9216K)] 			     具体的，回收前新生代被使用了5646k，回收后新生代被使用624k，总的新生代可用空间9216k(配置定死的)
+  5646K->4728K(19456K),		     回收前总的被使用的堆5646k，回收后总的堆被使用4728k，总堆可用大小为19456（配好的）
+  0.0044403 secs] [Times: user=0.03 sys=0.00, real=0.01 secs	总共用了0.0044403秒，其中用户空间糊了0.03秒，内核空间几乎是0.00，真正运行了0.01秒
+#+end_example
+#+begin_example
+  [Full GC (Ergonomics) [PSYoungGen: 608K->0K(9216K)] [ParOldGen: 5128K->5616K(10240K)] 5736K->5616K(19456K), [Metaspace: 3290K->3290K(1056768K)], 0.0057821 secs] [Times: user=0.01 sys=0.00, real=0.01 secs]
+  [Full GC
+  (Ergonomics)		GC本身需要的一次GC
+  [PSYoungGen: 608K->0K(9216K)]	新生代回收到0了
+  [ParOldGen: 5128K->5616K(10240K)] 5736K->5616K(19456K),
+  [Metaspace: 3290K->3290K(1056768K)],
+  0.0057821 secs] [Times: user=0.01 sys=0.00, real=0.01 secs] 
+#+end_example
+** 查看虚拟机默认参数
+#+BEGIN_SRC sh
+  java -XX:+PrintCommandLineFlags -version
+#+END_SRC
+
++ -XX:+UseCompressedOops : 指针膨胀时压缩
++ -XX:+UseParallelGC：新生代用Parallel scavenge 老年代用 parallel old
+** -XX:UseSerialGC 
++ -XX:PretenureSizeThreshold=<字节为单位的一个数> : 老年代预备役的大小，超过这个值将直接分配在老年代
+
 ** 
 * OOM
 [[https://www.cnblogs.com/intsmaze/p/9550256.html][为什么使用dump而不是报错日志]]
@@ -89,6 +291,10 @@ Serial Old
 * 字节码
 * 内存结构
 - Hotspot中方法栈和JNI方法栈是同一个
+* 主要组件和架构
+- 执行引擎
+  - GC
+  - JIT
 * 工具
 ** jvisualvm
 - poid 优先级
@@ -105,6 +311,7 @@ Serial Old
 - gc gc统计信息
   - MC : current metaspace capacity  （KB）
   - MU : metaspace Utillization 已用空间
+- jstat -gc -t <pid> 1s : 这个命令有歧义
 ** jcmd (1.7新增的)
 - jcmd <pid> help ： 看一下可以对这个进程做什么
 - jcmd <pid> help <具体命令> : 具体命令的帮助
