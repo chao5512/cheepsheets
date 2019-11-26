@@ -207,7 +207,7 @@ SerialOld是单线程收集器,使用 *标记一整理算法*,是 *老年代的�
   + 导致新生代大小不再可动态调节
 
 **** CS
-q**** RS : 记录的是指向我的region（包括新老吧？）的地址么(应该不是对象的地址吧？)
+**** RS : 记录的是指向我的region（包括新老吧？）的地址么(应该不是对象的地址吧？)
 **** 三色标记算法
 + 黑色:根对象,或者该对象与它的子对象都被扫描过(对象被标记了,且它的所有feld也被标记完了)
 + 灰色:对象本身被扫描,但还没扫描完该对象中的子对象(它的 field还没有被标记或标记完)
@@ -316,7 +316,7 @@ Ordinary Object Pointer对应于JMM
 + 用于 card marking
 + 用于 RS和CS
 *** 分代回收带来跨代引用问题
-假设一个对象x只有从老年代中的对象对x的引用，name按照GC root和trace的定义，x将被回收。但明显x是不应该被回收的，*card marking* 用于解决这个问题。
+假设一个对象x只有从老年代中的对象对x的引用，name按照GC root和trace的定义，x将被回收。但明显x是不应该被回收的。card marking 用于解决这个问题。
 *** card marking
 java把heap分成一组card，每个card略小于内存页。jvm维护一个Map<card> dirtyCard,每当heap中的一个对象的一个引用（pointer）字段（属性）被修改时，都会有这个对象所在的card对应于Map中的一个bit被设置（为0），表示这个card中的对象引用有变化
 #+begin_example
@@ -376,7 +376,12 @@ if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0;
 ** -XX:UseSerialGC 
 + -XX:PretenureSizeThreshold=<字节为单位的一个数> : 老年代预备役的大小，超过这个值将直接分配在老年代
 
-** 
+** XX:+UseStringDeduplication
++ 限制
+  1. 只适用于G1
+  2. 只适用于长期存活的对象，-XX:StringDeduplicationAgeThreshold=6，默认是3, 表示一个string对象经过几次GC为长期存活
+  3. 可能会增加GC时间，因为有附加的清除重复字符串的工作，但影响可能是减少随后的GC频率和随后的GC过程中扫描的负担
++ -XX:+PrintStringDeduplicationStatistics查看去重信息
 * OOM
 [[https://www.cnblogs.com/intsmaze/p/9550256.html][为什么使用dump而不是报错日志]]
 * 线程状态
@@ -451,3 +456,5 @@ if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0;
 ** jhat
 - 可以转储dump文件
 - 可以分析dump文件(没有图形界面的时候用)
+** heapHore
+** gceasy
