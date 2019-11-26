@@ -141,15 +141,18 @@ note that，there is  a bug when we hava a treemacs window
 - C-c C-p : 项目相关
 - C-c pp : 切换项目
 ** magit
-*** 帮助文档，
+*** 1. 帮助文档，
 - ? - key
 - C-h  key
-*** 保存中间参数
+*** 2. 保存中间参数
 + 只设置不使用会保存到下次调用
 + C-x s : 为当前会话保存参数
 + C-x C-s : 为这个emacs服务保存参数
 + transient-values-file ，永久配置
-*** 快捷键
+*** 3. 版本回退 
+在某一提交上按X，代表想回到这次提交
++ X i : 只回退index，head和worktree不变，可快速后悔
+*** 4. 快捷键
 + untrack一个文件 : K 大写的
 + stage : s
 + comit : cc
