@@ -127,7 +127,7 @@ note that，there is  a bug when we hava a treemacs window
 - C-x 5 2 : 打开一个新的frame
 - C-x 5 0  : 关闭当前frame*
 * 项目管理
-*** treemacs
+** treemacs
 [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
 
 - C-c C-p :工作空间的管理操作
@@ -140,30 +140,32 @@ note that，there is  a bug when we hava a treemacs window
 - C-x t B : 使用标签快速定位
 - C-c C-p : 项目相关
 - C-c pp : 切换项目
-** git 
-*** magit
-- untrack一个文件 : K 大写的
-- stage : s
-- comit : cc
-- push : Pp
-- regresh : g
-- ignore : i
-- 恢复一个文件
+** magit
+*** 帮助文档，
+- ? - key
+- C-h  key
+*** 保存中间参数
++ 只设置不使用会保存到下次调用
++ C-x s : 为当前会话保存参数
++ C-x C-s : 为这个emacs服务保存参数
++ transient-values-file ，永久配置
+*** 快捷键
++ untrack一个文件 : K 大写的
++ stage : s
++ comit : cc
++ push : Pp
++ regresh : g
++ ignore : i
++ 恢复一个文件
   - X :reset
   - f :恢复一个文件
   - 选择目标版本
   - 选择文件
-- 查看一个文件的提交历史
++ 查看一个文件的提交历史
   - l : log 面板
   - - : 只查看给定的文件列表
   - 输入文件名
   - l : log 命令
-
-
-
-
-
-
 ** org-protocol and org-capture
 用 org-capture 来做网页内容收集
 *** 原理
