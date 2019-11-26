@@ -95,8 +95,9 @@ SerialOld是单线程收集器,使用 *标记一整理算法*,是 *老年代的�
 + 适用场景 : 注重响应速度的服务
 + 只针对老年代, 一般结合ParallelNew使用
 + 回收算法 : 标记-清除
-+ 清除的含义，在用空闲列表维护的内存中，被清除就是添加到空闲列表中，，被认为是空的
-+ 备胎回收器 : Serial Old
++ 清除的含义，在用空闲列表维护的内存中，被清除就是添加到空闲列表中，被认为是空的
++ 备胎回收器 : 相当于+XX:UseSerialGC,即新（存疑）老都是
++ i-cms : 增量cms已经不推荐使用，stw阶段与用户线程交替执行
 
 **** 四步算法步骤
 1. 初始标记(STW) : 标记GCRoot能直接关联的对象，以及新生代引用的对象以及新生代引用的对象
@@ -105,44 +106,132 @@ SerialOld是单线程收集器,使用 *标记一整理算法*,是 *老年代的�
 4. 并发清除 : 因为这步要并行做，所以无法避免浮动垃圾
 
 **** 7步详细步骤，帮助理解log
+[[https://www.cnblogs.com/littleLord/p/5380624.html][详细步骤参考---说人话版本]]
+[[https://blogs.oracle.com/poonam/understanding-cms-gc-logs][外国人版本-上古CMS]]
 1. Phase 1: Initial mark
    + STW
    + 标记GCRoot能直接关联的对象
    + 以及新生代引用的对象
-   + 对应log : [CMS Initial Mark
+   + 对应log :[GC [1 CMS-initial-mark: 26386K(786432K)] 26404K(1048384K), 0.0074495 secs]   表示cms-initial-mark：开始于老年代占用是26386k，老年代总空间是786432k
 
 2. Phase 2: Concurrent mark
    + 从第一步标记的对象出发，并行标记所有老年代存活对象
-   + 完成时标记可能有偏差，为了保证程序正确执行，必须找到所有活的，包括在并行标记时偷偷又活过来的，可以放过在并行时悄悄死的，3-4步为了完成这个目标
+   + 完成时标记可能有偏差，为了保证程序正确执行，必须找到所有活的，包括在并行标记时偷偷又活过来的，可以放过在并行时悄悄死的，3-5步为了完成这个目标
    + log : [CMS Initial Mark
 3. Phase 3: Concurrent preclean
-   + 使用Card-Marking标记在2中并行发生关系变化的对象，从这找到他们救活的对象
+   + 处理应用程序第二阶段并行时新生成的从新生代指向老年代对象的引用，救活这个被引用的对象（也包括直接分配到老年代的对象）。
+   + 扫描dirtyCard找到在第二阶段并行时，老年代发生关系变化的对象所在的card，把card中所有对象引用到的对象救活。
    + log : [CMS Concurrent-preclean
 4. Phase 4: Concurrent abortable preclean
    + log : [CMS-concurrent-abortable-preclean
    + 此阶段可能显著影响STW停顿的持续时间,并且有许多重要[[https://blogs.oracle.com/jonthecollector/entry/did_you_know][重要配置]]和失败模式。
+   + *这个阶段实际上就是一个minorGC，用来减少新生代的对象，为下一阶段的Rescan减少压力*
+   + 两个参数：CMSScheduleRemarkEdenSizeThreshold、CMSScheduleRemarkEdenPenetration，默认值分别是2M、50%。两个参数组合起来的意思是预清理后，eden空间使用超过2M时启动可中断的并发预清理（CMS-concurrent-abortable-preclean），直到eden空间使用率达到50%时中断，进入remark阶段。
+   + 参数CMSMaxAbortablePrecleanTime ，默认为5S，最后的中断时间。中断这次minorGC，就算没有开始，也中断了，这就有可能没有minorGC就进入下一阶段了。
+   + CMSScavengeBeforeRemark参数，使remark前强制进行一次Minor GC。解决上一条的问题，但是新生代如果垃圾特别少，这强加的一次GC显然得不偿失。
 5. Phase 5: Final remark
    + STW来做最后的标记，准确的标记所有活的对象
-
+   + 重新标记的时候是要rescan新老分区的
    + CMS尽可能的尝试在新生代为空的时候进入Final remark阶段
 6. Phase 6: Concurrent Sweep
-   + 并行回收空间
+   + 并行回收空间，这步应该是清理5阶段标记出来的已死对象，此阶段新生成的对象不在第五阶段的标活或标死里，不对新对象进行清扫。
 7. Phase 7: Concurrent reset
    + 重置CMS算法相关的内部数据, 为下一次GC循环做准备
 
 
 **** 3个缺点
-1. 以尽量并发的方式来满足低停顿，即尽量GC线程和用户线程同时跑，会与服务争夺cpu
-2. 无法避免浮动垃圾，触发垃圾回收时，老年代需要有担保内存来尽可能减少concurrent Mode Failure
-3. 产生大量空间碎片，为此我们不得不选择一种策略做compaction
+1. 以尽量并发的方式来满足低停顿，即尽量GC线程和用户线程同时跑，会与服务争夺cpu，CMS默认的回收线程数是(CPU个数+3)/4，这是为了保证多核情况下，cm不会使用太少cpu，但是这导致cpu少的时候，cms会占用非常多的cpu资源。
+2. 无法避免浮动垃圾，浮动垃圾是一种引起concurrent-mode-failure的原因。垃圾回收线程与用户线程并行时，老年代需要预留担保内存（CMSInitiatingOccupancyFraction，默认92%）来尽可能减少concurrent Mode Failure
+3. 产生大量空间碎片，为此我们不得不选择一种策略(UseCMSCompactAtFullCollection或CMSFullGCsBeforeCompaction)做compaction,然而compaction是需要STW的
 
 *** G1 – Garbage First
-+ 目标 : 将STW停顿的时间和分布变成可预期以及可配置的(取决于选择多少老年小堆参与回收)
-+ 将大堆分成小堆
-+ 采用物理上分散，逻辑上分代的设计
-+ 不必每次gc都全局扫描，而是增量的处理
-+ 所有小堆区按所包含的垃圾对象数rank，每次回收垃圾多的老年代小堆和所有新生代小堆
-+ 参数 ： -XX:+UseG1GC
+[[https://tech.meituan.com/2016/09/23/g1.html][参考]]
+**** 参数 
++ -XX:+UseG1GC
++ -XX:G1HeapRegionSize ：设置region大小，取值范围从1M到32M，且是2的指数，如果不设定，那么G1会根据Heap大小自动决定
+#+BEGIN_SRC c
+  // share/vm/gc_implementation/g1/heapRegion.cpp
+  // Minimum region size; we won't go lower than that.
+  // We might want to decrease this in the future, to deal with small
+  // heaps a bit more efficiently.
+  #define MIN_REGION_SIZE  (      1024 * 1024 )
+  // Maximum region size; we don't go higher than that. There's a good
+  // reason for having an upper bound. We don't want regions to get too
+  // large, otherwise cleanup's effectiveness would decrease as there
+  // will be fewer opportunities to find totally empty regions after
+  // marking.
+  #define MAX_REGION_SIZE  ( 32 * 1024 * 1024 )
+  // The automatic region size calculation will try to have around this
+  // many regions in the heap (based on the min heap size).
+  #define TARGET_REGION_NUMBER          2048
+  void HeapRegion::setup_heap_region_size(size_t initial_heap_size, size_t max_heap_size) {
+    uintx region_size = G1HeapRegionSize;
+    if (FLAG_IS_DEFAULT(G1HeapRegionSize)) {
+      size_t average_heap_size = (initial_heap_size + max_heap_size) / 2;
+      region_size = MAX2(average_heap_size / TARGET_REGION_NUMBER,
+                         (uintx) MIN_REGION_SIZE);
+    }
+    int region_size_log = log2_long((jlong) region_size);
+    // Recalculate the region size to make sure it's a power of
+    // 2. This means that region_size is the largest power of 2 that's
+    // <= what we've calculated so far.
+    region_size = ((uintx)1 << region_size_log);
+    // Now make sure that we don't go over or under our limits.
+    if (region_size < MIN_REGION_SIZE) {
+      region_size = MIN_REGION_SIZE;
+    } else if (region_size > MAX_REGION_SIZE) {
+      region_size = MAX_REGION_SIZE;
+    }
+  }
+#+END_SRC
+
+**** 设计理念
++ 面向多核大内存的服务器垃圾回收
++ 将回收代价分摊，将STW停顿的时间和分布变成可预期以及可配置的(取决于选择多少老年小堆参与回收),不必每次gc都全局扫描，而是增量的处理
++ 将大堆分成小堆,物理上分散，逻辑上分代.内存的使用更加灵活
++ 垃圾优先 : 所有小堆区按所包含的垃圾对象比例rank，每次回收垃圾多的老年代小堆和所有新生代小堆
++ g1更像一个实时回收器
+**** region 角色
++ eden
++ survivor
++ old
++ Humongous  : 存大对象,超过region_size/2的对象
+  + 直接分配到old代，防止没必要的来回拷贝
+  + *H-obj在global concurrent marking阶段的cleanup 和 full GC阶段回收*
+  + *在分配H-obj之前先检查是否超过 initiating heap occupancy percent和the marking threshold, 如果超过的话，就启动global concurrent marking，为的是提早回收，防止 evacuation failures 和 full GC*
+  + TODO 连续的H-Obj分配对GC有什么影响
+
+**** 实践
++ 设置-Xmn
+  + 导致gc目标失效
+  + 导致新生代大小不再可动态调节
+
+**** CS
+q**** RS : 记录的是指向我的region（包括新老吧？）的地址么(应该不是对象的地址吧？)
+**** 三色标记算法
++ 黑色:根对象,或者该对象与它的子对象都被扫描过(对象被标记了,且它的所有feld也被标记完了)
++ 灰色:对象本身被扫描,但还没扫描完该对象中的子对象(它的 field还没有被标记或标记完)
++ 白色:未被扫描对象,扫描完成所有对象之后最终为白色的为不可达对象,即垃圾对象(对象没有被标记到)
+***** 问题
++ 在并发标记阶段，有可能因为应用程序的运行而导致指针改变，产生漏标问题。
++ 使用SATB来解决
+**** SATB
+全称是Snapshot-At-The-Beginning，用来解决误杀问题
+1. 标记之前做一个活的对象的快照。之后就算是真死了也暂时不管
+2. 标记完成后，看一下快照有没有增加新的引用，新引用的对象要标灰色
+3. 很大几率加深浮动垃圾(这个机制很有可能救了一堆不该救的人)
+**** global concurrent marking
+1. 初始标记
+2. 并发标记
+3. 重新标记
+4. 并发清楚已死的
+**** 和Card
+**** G1的收集模式
+***** Young GC
+***** Mixed GC
+***** note
++ 初始标记是在 Young GC上执行的,在进行全局并发标记的时候不会做Mixed gc,在做MixedGC的时候也不会启动初始标记阶段。
++ G1的运行过程是这样的:会在 Young GC和Mixed gc之间不断地切换运行,同时定期地做全局并发标记,在实在赶不上对象创建速度的情况下使用Full GC( Serial gc)
 
 ** 内存分配
 + 堆上分配 : 大多数分配至eden区，偶尔分在old
@@ -214,6 +303,35 @@ SerialOld是单线程收集器,使用 *标记一整理算法*,是 *老年代的�
   }
 #+END_SRC
 **** 集合数据管理不当
+** jvm write barrier
+[[http://psy-lob-saw.blogspot.com/2014/10/the-jvm-write-barrier-card-marking.html][大神，G1的write barrier没看完]]
+用于GC中的一些统计数据，比如RS，CS
+#+begin_quote
+Barriers can be implemented in either software or hardware. Software barriers involve additional instructions around load or store operations, which would typically be added by a cooperative compiler. Hardware barriers don’t require compiler support, and may be implemented on common operating systems by using memory protection.
+#+end_quote
+我们知道，java中，value store这个操作对原生类型和引用类型是不一样的。
+*** OOP
+Ordinary Object Pointer对应于JMM
+*** 用途
++ 用于 card marking
++ 用于 RS和CS
+*** 分代回收带来跨代引用问题
+假设一个对象x只有从老年代中的对象对x的引用，name按照GC root和trace的定义，x将被回收。但明显x是不应该被回收的，*card marking* 用于解决这个问题。
+*** card marking
+java把heap分成一组card，每个card略小于内存页。jvm维护一个Map<card> dirtyCard,每当heap中的一个对象的一个引用（pointer）字段（属性）被修改时，都会有这个对象所在的card对应于Map中的一个bit被设置（为0），表示这个card中的对象引用有变化
+#+begin_example
+设每个card的大小为512bit，this为改变的引用关系中的发起者，则有：
+CARD_TABLE [this address >> 9] = 0;
+#+end_example
+**** 牺牲
+在代码看来，这样每当有引用类型的赋值时，都会现有一个marking card 的操作，然后才是赋值。这是必要的牺牲。
+*** condition card marking
+同一个card中的多个对象的引用字段发生变化时，不必每次都设置Map<card> dirtyCard中的对应标志
+#+begin_example
+设每个card的大小为512bit，this为改变的引用关系中的发起者，则有：
+if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0; 
+#+end_example
+*** G1中的表现
 * GC参数
 ** 调试常用参数
 #+begin_example
