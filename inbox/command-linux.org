@@ -1,0 +1,4 @@
+#+title: linux 命令
+* 为分类
+** lsof (list open file,linux上所有东西视作文件)
++ lsof -i:port 

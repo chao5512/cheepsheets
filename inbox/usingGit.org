@@ -1,4 +1,5 @@
 * git备忘录
+[[https://blog.csdn.net/gcc_sky/article/details/14047687][参考]]
 ** 连接github
 #+BEGIN_SRC sh
   1. 本地生成ssh key
@@ -19,6 +20,12 @@
   5. enjoy git!
 #+END_SRC
 ** git工作流
++ 切换分支前要提交修改
+** 两个remote branch
+对一个feature分支来说，push的目的branch和merge的目的branch应该是不一样
+*** upstream-主流分支
+merge目的branch
+*** push-remote 
 ** git使用场景
 *** 版本回退
 与github相连，在某次提交（增加很多文件）后，想要回退到之前的版本，将文件用增量的方式慢慢加入git
@@ -29,4 +36,9 @@
   git reset -hard {id}
   #3. 推送到远程
   git push -f -u origin master
+#+END_SRC
+*** 推送到远程
+#+BEGIN_SRC sh
+  git remote add origin addressOfMyRepo
+  git push -u origin master
 #+END_SRC

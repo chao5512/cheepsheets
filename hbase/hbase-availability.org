@@ -1,0 +1,204 @@
+#+title: hbase 高可用
+* hbase 时间轴一致的读高可用-region replica
+[[https://blog.csdn.net/opensure/article/details/80674846][参考]]
++ hbase作为CP数据库，选择尽可能的优化可用性
+** hbase强一致性模型下的可用性的保证
+1. hbase将table分region管理，某一块region所在的rs宕机不影响同table中的其他部分
+2. hbase的数据实际存储在hdfs上，由hdfs来保证数据不会丢。hbase的任何节点都可以使用hdfs上的数据
+3. hbase将怀节点上托管的数据分配给新的rs，以此保证可用行
+
+*** 上面这种设计方案优点
+同一时间数据只托管在一个rs上，这样一致性的实现非常简单
+1. 不会出现脑裂
+2. 不会出现（last-write-win）只有最后一次写有效，覆盖中间写的情况
+*** 不足
+[[https://issues.apache.org/jira/browse/HBASE-10070][参考]]
++ rs不可用将导致它上面托管的region不能快速的对外提供服务
++ region恢复过程
+  1. detection ： 时间最长，可20-30秒，这个是rs的lease时间。为什么设置这么长呢。设置太短容易因为RS的一个长时间的GC就被（误判）判死。
+  2. assignment
+  3. recovery
+** hbase时间轴一致性模型下的高可用
+牺牲一些一致性来保证一些高可用
+*** 实现by Region-replica
+**** 服务器视角
++ 数据被一个主 Region和一个或多个副本 Region（冷备）所持有。
++ 任何一个 Region(无论是主 Reigon还是副本 Region)都可以响应针对该reigon数据的读请求。
++ 只有主 Region可以处理写请求。
++ 副本中的数据可能与主 Region的数据不一致,但是
++ 所有副本都会按照完全一致的顺序收到更新请求。
+**** 客户端视角：
++ 客户端可以在每次请求中指定使用何种一致性策略，严格的(Consistency.STRONG )还是宽松的(Consistency.TIMELINE)。
++ timeline一致性模型下，每次先请求一段时间的主region，无响应在去副本region中找
++ 返回的结果会显式的指出，数据是最新的（即来自主Region）还是过期的（即来自副本Region），Result.isStale()。
+** hbase Time-line一致性与纯粹的最终一致性是不太一样的
+1. 主region+有序更新：不管是否使用region-replica，写入时都只有主region对外提供服务，对内负责对写入进行排序并防止冲突。与最终一致性不同，直接不允许其他region也响应写。这样不要求其他region能在主region所在rs除了问题后继续保证写，但是可以提供一个stale状态的读呀。
+2. 副region也按wal写入，这样就提供历史一致的副本，而不只是结果一致
+3. 客户端的读可能不知道最新值是什么，但是可以知道此次读到的值是不是最新值。
+4. 这是由于客户端还是有可能会从多个region副本上读，但是这些读到的值没有顺序，没有transaction-id的保证
+** 优点
+1. 保证只读table的高可用
+2. 过时读的高可用
+3. 对以上两种情况的读取延迟大幅降低
+** 缺点
+1. 额外的写内存
+2. 额外的读内存
+3. 额外的备份带宽
+4. 额外的RPC
+** 适用版本
+hbase2.2支持了merge和split
+** 从主region向从region的数据复制
+两种方式：
+1. storefile refresher
+   + hbase.regionserver.storefile.refresh.period配置周期以启用
+   + RS定期检查所有的从region，如果到了refresh周期，则刷新从region自己的文件列表
+   + 缺点：只有主region的操作引起了文件列表的变化，从region才能看到写入的数据，非常慢
+2. async wal replication
+   1. 异步 WAL 复制
+   2. tail主region的wal写入到从region，从region接到从主region来的写入请求，直接写入memstore，不再本rs上再写wal。并且从region不应该flush，而是应该读wal中的flush后就清空自己的memstore就可以了。
+   3. 默认未开启异步 WAL 。将hbase.region.replica.replication.enabled设置为true来启用此功能。创建表时，如果region-replica>1，则建立名为region_replica_replication的WAL replica通道
+   4. 禁用此功能，两项操作：
+      1. 在hbase-site.xml中将配置属性hbase.region.replica.replication.enabled设置为 false
+      2. 禁用名为region_replica_replication的复制对等体在使用 hbase shell 或Admin类的集群中： hbase> disable_peer 'region_replica_replication'
+** 把storeFile的TTL设置的大一点
+主从region共享Hfile,从region上使用HFileLinks 来找到文件。此时如果主region完成了一次compaction，但是从region还没来得及回放这个事件，从region仍然可以通过HFileLinks来找到Hfile，但真实的Hfile在确认没用（如已合并）后，存活时间有限，因此要设置大一点的TTL来为从region的跟进争取时间。
+** meta表的replica只能通过第一种方式来复制
+目前，没有为 META 表的 WAL 执行异步 WAL 复制。元表的辅助副本仍然会从持久存储文件中刷新自己。因此，需要将hbase.regionserver.meta.storefile.refresh.period设置为某个非零值以刷新元存储文件。请注意，此配置的配置与hbase.regionserver.storefile.refresh.period不同。
+** 内存
+主从region共享Hfile，但是从region也有自己的memstore和blockcatche。并且从region不能主动flush即便是检查到内存压力。这时可以配置一个参数hbase.region.replica.storefile.refresh.memstore.multiplier，默认值是4。这个参数的意思是说，如果最大的replica region的memstore已经超过了最大的主region memstore的内存的4倍，就主动触发一次StoreFile Refresher去更新文件列表，如果确实发生了flush，那么replica内存里的数据就能被释放掉。但是，这只是解决了replication延迟导致的未flush问题，如果这个replica的主region确实没有flush过，内存还是不能被释放。写入阻塞还是会存在。
+** 从region的failover
++ 从region的memstore中的数据没有wal来保证，name在他离线-failover-上线后，memstore中的数据就丢失了
++ 使用hbase.region.replica.wait.for.primary.flush=true，意为replica region上线后，会被标记为不可读，同时它会去触发一次主region的flush操作。只有收到主region的flush marker之后，replica才把自己标记为可读，防止读回退
+** 配置
+*** rs上
+#+BEGIN_SRC xml
+  <property>
+      <name>hbase.regionserver.storefile.refresh.period</name>
+      <value>0</value>
+      <description>
+        从regin的storeFileRefresh的周期，0表示关闭这个功能。从region用这个功能来refresh storefile来匹配真实文件列表中的新文件（flush，compaction）。.太大会因为文件超过TTL被删除而找不到，现在版本会因为大于TTL (hbase.master.hfilecleaner.ttl)而被拒绝。 太小会加大对Namenode压力。
+      </description>
+  </property>
+
+  <property>
+      <name>hbase.regionserver.meta.storefile.refresh.period</name>
+      <value>300000</value>
+      <description>
+        由于Meta表的region replica不能通过replication来同步，所以如果要开启meta表的region replica，必须把这个参数设成一个不为0的值，具体作用参见上一个参数，这个参数只对meta表生效。
+      </description>
+  </property>
+
+  <property>
+      <name>hbase.region.replica.replication.enabled</name>
+      <value>true</value>
+      <description>
+       建立 "region_replica_replication"通道，如果要使用Internal replication的方式在Region replica之间同步数据的策略，必须把这个参数和下一个参数都设置为true
+      </description>
+  </property>
+  <property>
+    <name>hbase.region.replica.replication.memstore.enabled</name>
+    <value>true</value>
+    <description>
+      If you set this to `false`, replicas do not receive memstore updates from
+      the primary RegionServer. If you set this to `true`, you can still disable
+      memstore replication on a per-table basis, by setting the table's
+      `REGION_MEMSTORE_REPLICATION` configuration property to `false`. If
+      memstore replication is disabled, the secondaries will only receive
+      updates for events like flushes and bulkloads, and will not have access to
+      data which the primary has not yet flushed. This preserves the guarantee
+      of row-level consistency, even when the read requests `Consistency.TIMELINE`.
+    </description>
+  </property>
+
+  <property>
+      <name>hbase.master.hfilecleaner.ttl</name>
+      <value>3600000</value>
+      <description>
+        The period (in milliseconds) to keep store files in the archive folder before deleting them from the file system.</description>
+  </property>
+
+  <property>
+      <name>hbase.meta.replica.count</name>
+      <value>3</value>
+      <description>
+        Region replication count for the meta regions. Defaults to 1.
+      </description>
+  </property>
+
+  <property>
+      <name>hbase.region.replica.storefile.refresh.memstore.multiplier</name>
+      <value>4</value>
+      <description>
+        The multiplier for a “store file refresh” operation for the secondary region replica. If a region server has memory pressure, the secondary region will refresh it’s store files if the memstore size of the biggest secondary replica is bigger this many times than the memstore size of the biggest primary replica. Set this to a very big value to disable this feature (not recommended).
+      </description>
+  </property>
+
+  <property>
+   <name>hbase.region.replica.wait.for.primary.flush</name>
+      <value>true</value>
+      <description>
+        配置之后，replica region上线后，会被标记为不可读，同时它会去触发一次主region的flush操作。只有收到主region的flush marker之后，replica才把自己标记为可读，防止读回退
+      </description>
+  </property> 
+#+END_SRC
+*** 客户端
+#+BEGIN_SRC xml
+  <property>
+      <name>hbase.ipc.client.specificThreadForWriting</name>
+      <value>true</value>
+      <description>
+        因为当存在region replica时，当客户端发往主region的请求超时后，会发起一个请求到replica region，当其中一个请求放回后，就无需再等待另一个请求的结果了，通常要中断这个请求，使用专门的的线程来发送请求，比较容易处理中断。所以如果要使用region replica，这个参数要配为true。
+        hbase-1.0这个参数为hbase.ipc.client.allowsInterrupt
+      </description>
+  </property>
+  <property>
+    <name>hbase.client.primaryCallTimeout.get</name>
+    <value>10000</value>
+    <description>
+    如果把这个值设为1000ms，那么客户端的请求在发往主region超过1000ms还没返回后，就会再发一个请求到replica region（如果有多个replica的话，就会同时发往多个replica）,设置的过小会增加RPC’s, 但是会获得更小的延迟 p99 latencies.
+    </description>
+  </property>
+  <property>
+    <name>hbase.client.primaryCallTimeout.multiget</name>
+    <value>10000</value>
+    <description>
+        The timeout (in microseconds), before secondary fallback RPC’s are submitted for multi-get requests (Table.get(List<Get>)) with Consistency.TIMELINE to the secondary replicas of the regions. Defaults to 10ms. Setting this lower will increase the number of RPC’s, but will lower the p99 latencies.
+    </description>
+  </property>
+  <property>
+    <name>hbase.client.replicaCallTimeout.scan</name>
+    <value>1000000</value>
+    <description>
+      The timeout (in microseconds), before secondary fallback RPC’s are submitted for scan requests with Consistency.TIMELINE to the secondary replicas of the regions. Defaults to 1 sec. Setting this lower will increase the number of RPC’s, but will lower the p99 latencies.
+    </description>
+  </property>
+  <property>
+      <name>hbase.meta.replicas.use</name>
+      <value>true</value>
+      <description>
+       如果服务端上开启了meta表的replica后，客户端可以使用这个参数来控制是否使用meta表的replica的region。 Whether to use meta table replicas or not. Default is false.
+      </description>
+  </property> 
+#+END_SRC
+** 使用
+*** 建表
+1. create
+#+BEGIN_SRC sh
+  create 't1', 'f1', {REGION_REPLICATION => 2}
+  describe 't1'
+  for i in 1..100
+  put 't1', "r#{i}", 'f1:c1', i
+  end
+  flush 't1' 
+#+END_SRC
+2. 允许动态修改从region数，但是天妖disable
+#+BEGIN_SRC sh
+  disable 't1'
+  alter ‘t1’, { REGION_REPLICATION => 1}
+  enable 't1'
+#+END_SRC
+*** read： 
+1. java使用setConsistency(Consistency.TIMELINE);shell同理scan 't1', {CONSISTENCY => 'TIMELINE'}
+2. 使用isStale区分数据来源
+** 总结
+来自大神正研的建议，region replica功能适合于用户集群规模较小，对读可用性非常在意，同时又可以接受非强一致性读的情况下开启。如果集群规模较大，或者读写流量非常大的集群上开启此功能，需要留意内存使用和网络带宽。Memstore占用内存过高可能会导致region频繁刷盘，影响写性能，同时cache容量的翻倍会导致一部分读请求击穿cache直接落盘，导致读性能的下降。

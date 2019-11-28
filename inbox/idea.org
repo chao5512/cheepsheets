@@ -1,0 +1,13 @@
+#+title: about idea 
+* 快捷键 
+约定 C ：control，s : command,  S : shift 
++ s-A : 查找，可以查操作可以查类
++ s-F : find everywhere
++ C-d : debug
++ C-r : run
+** 大部分与emacs相同
++ C-j 向下滚动屏幕
++ C-l 向上滚动屏幕
+* maven
+** 普通项目添加maven支持
+在工程名称上右击并点击【Add Framework Support】

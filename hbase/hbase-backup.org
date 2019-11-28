@@ -1,0 +1,158 @@
+#+title: hbase 备份
+* inbox
+- 支持全量备份和增量备份
+- 全量备份是增量备份的基础
+- 备份可以是表级的
+- 增量可以用cron规划为定时任务.
+- hbase支持表级备份
+- backup+restore用distcp实现over time备份
+- 尚未在打开了Transparent Data Encryption的hdfs上的测试[[https://issues.apache.org/jira/browse/HBASE-16178][相关issue]]
+- hbase备份工具不支持多目的集群，一个解决办法是手动在集群建拷贝备份文件
+
+* 增量备份的优点 
+1. 增量备份效率⽐全量备份更⾼
+2. 增量备份允许⽤户回到之前的任意增量备份 
+对于数据的备份，backup+restore=冷备份，Replication是热备份 以前⽤户只能⽤ExportSnapshot全量备份，现在可以增量备份
+
+* 备份策略
+1. 同集群内备份-测试用
+2. 专用的备份集群，为备份工具提供一个独立的目的hdfs（归档集群）
+3. 云备份，包括存储服务
+
+* 配置
+由于此功能充分利用YARN的MapReduce框架来并行化这些I / O繁重的操作，因此配置除了hbase-site.xml之外还会有些hadoop的配置。
+** YARN
+*** allowed.system.users=hbase
++ container-executor.cfg 里设置
++ 不允许空格
++ 若不设置，第一次备份时会报runtime错误
+#+begin_example
+  yarn.nodemanager.log-dirs=/var/log/hadoop/mapred
+  yarn.nodemanager.linux-container-executor.group=yarn banned.users=hdfs,yarn,mapred,bin
+  allowed.system.users=hbase
+  min.user.id=500
+#+end_example
+** Hbase
++ *",…" 表示以逗号分隔的列表*
+#+BEGIN_SRC xml
+  <property>
+    <name>hbase.backup.enable</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>hbase.master.logcleaner.plugins</name>
+    <value>org.apache.hadoop.hbase.backup.master.BackupLogCleaner,...</value>
+  </property>
+
+  <property>
+    <name>hbase.procedure.master.classes</name>
+    <value>org.apache.hadoop.hbase.backup.master.LogRollMasterProcedureManager,...< /value>
+  </property>
+
+  <property>
+    <name>hbase.procedure.regionserver.classes</name>
+    <value>org.apache.hadoop.hbase.backup.regionserver .LogRollRegionServerProcedureManager,...</value>
+  </property>
+
+  <property>
+    <name>hbase.coprocessor.region.classes</name>
+    <value>org.apache.hadoop.hbase.backup.BackupObserver,...</value>
+  </property>
+
+   <property>
+    <name>hbase.master.hfilecleaner.plugins</name>
+    <value>org.apache.hadoop.hbase.backup.BackupHFileCleaner,...</value> 
+  </property>
+#+END_SRC
+
+* 命令
+对于使用Apache Phoenix的HBase群集：在备份中包括SQL系统目录表。如果需要还原HBase备份，则可以通过访问系统目录表来恢复Phoenix与还原后的数据的互操作性。
+** create
++ 第一步是执行全量备份，并将数据存储在与源不同的映像中。此后才可以使用增量备份。
+#+BEGIN_SRC sh
+  hbase backup create <type> <backup_path>
+  hbase backup create full hdfs://host5:8020/data/backup -t SALES2,SALES3 -w 3
+#+END_SRC
++ 参数
+  1. type : full or incremental
+  2. backup_path : 目的集群的完整url
++ 选项
+  1. -t <table_name[,table_name]> : 逗号分隔的要备份表列表。如果未指定任何表，则备份所有表。没有正则表达式或通配符支持；所有表名都必须明确列出。有关在表集合上执行操作的更多信息，请参见backup set。与-s选项互斥；这些命名选项之一是必需的。
+  2. -s <backup_set_name> : 根据备份集确定要备份的表
+  3. -w <number_workers> :（可选）指定将数据复制到备份目标的并行工作程序数。当前由MapReduce作业执行备份，因此此值对应于该作业将产生的Mappers数量。
+  4. -b <bandwidth_per_worker> :（可选）以MB /秒为单位指定每个工作进程的带宽。
+  5. -d : 打开create命令的log
+  6. -q <name> ： 限制备份线程在yarn的一个队列里
+
++ 备份成功返回SUCCESS 和backup ID.backup ID是hmaster接收到客户端备份请求的unix时间
++ 好的习惯，记录这个backup ID
+** restore
++ 必须在处于运行状态的hbase集群上运行
+#+BEGIN_SRC sh
+  hbase restore <backup_path> <backup_id>
+  hbase restore /tmp/backup_incremental backupId_1467823988425 -t mytable1,mytable2
+#+END_SRC
+*** 参数
+1. -t : 还原的表（可以存好几个只恢复一个）
+2. -s : backup set
+3. -q : yarn 队列
+4. -c : （可选）执行恢复的空运行。操作已检查，但未执行。
+5. -m <target_tables> : 可选，此处可以改恢复后的表名，若不指定则为原来的表名，必须与-t的参数的位置、数量一致
+6. -o : 表已存在时覆盖
+** merge 增量备份
+#+BEGIN_SRC sh
+  hbase backup merge <backup_ids>
+  hbase backup merge backupId_1467823988425,backupId_1467827588425
+#+END_SRC
++ 用来整理增量备份，多个合成一个大的
++ 应用场景：小时增量合并为天增量，天增量合并为周增量
++ 问题，咋找到增量备份的。
+** backup sets
++ 使用backup set，来分组管理需要备份的表. 
++ 使用命令hbase backup set add 来添加table到一个备份集中
++ 当我们有了backup set后就可以在hbase backup create or hbase restore中指定一个backup set来备份一组table.
++ backup set 的名字应该区分大小写
++ backup set的元数据存在hbase中，因此使用backup set时要保证能找到backup set的元数据，也就是说，在别的hbase集群上restore 备份的时候只能退回到输入表名
++ backup set的log、数据啥的可以自己留一份，有备无患
+*** 命令
+#+BEGIN_SRC sh
+  hbase backup set <subcommand> <backup_set_name> <tables>
+  hbase backup set add Q1Data TEAM3,TEAM_4
+#+END_SRC
+1. add :
+2. remove ： 移除tables
+3. list
+4. describe : 描述backup set信息,包括备份类型，开始备份时间和完成备份时间，set中的tables
+5. delete ： 删除backup set
+** 管理 backup image
+1. 查询正在运行的备份进程 ：hbase backup progress <backup_id>
+2. 管理备份历史（单位为session）：hbase backup history <backup_id>
+3. 描述一次备份 ： hbase backup describe <backup_id>
+4. 删除image ： hbase backup delete backupId_1467823988425
+5. 修复备份数据和元数据的不一致：hbase backup repair
+* 最佳实践
+1. 策略先行
+2. 保护全量备份的安全更重要
+3. 使用backup set管理备份
+4. 多做记录，局外的
+* inbox2
+** backup+restore支持的版本
+*** [[https://issues.apache.org/jira/browse/HADOOP-15850][一个ditcp的bug]]
+distcp在目标集群粘合文件时候有问题
+*** 修复的版本
++ 2.7.x
+
++ 2.8.x
+
++ 2.9.2+
+
++ 2.10.0+
+
++ 3.0.4+
+
++ 3.1.2+
+
++ 3.2.0+
+
+  + 3.3.0+

@@ -1,0 +1,15 @@
+#+title: netty
+* overview
+- 异步网络框架
+- 事件驱动
+* 使用场景
++ 可以做为http服务器
++ socket 开发
++ 支持长连接的开发
+* 组件
+** HttpServerCodec
+用于编解码
+* netty编程范式
+1. 一个帮助启动netty服务的启动器ServerBootstrap
+2. 拦截init方法，在这替换我们要用的handler
+3. 自定义handler中重写read0方法，处理数据

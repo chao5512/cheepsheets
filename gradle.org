@@ -6,3 +6,28 @@
 * Gradle
 用Groovy来写配置
 [[https://www.bilibili.com/video/av70568380?from=search&seid=11093827846848681857][来自Gradle的大神]]
+** idea + gradle
++ gradle 6.1过新 将至4.1
+#+begin_example
+Error:No such property: GradleVersion for class: JetGradlePlugin
+#+end_example
++ 在用户空间下的.gradle添加国内源
+#+BEGIN_SRC groovy
+  allprojects {
+      repositories {
+          maven {
+              url "http://maven.aliyun.com/nexus/content/groups/public"
+          }
+      }
+  }
+#+END_SRC
++ 在gradle.build里面添加测试
+#+BEGIN_SRC groovy
+  task showRepos {
+      doLast {
+          repositories.each {
+              println "repository: ${it.name} ('${it.url}')"
+          }
+      }
+  }
+#+END_SRC

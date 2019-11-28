@@ -1,0 +1,6 @@
+#+title: java
++ [[https://docs.oracle.com/javase/8/][官方文档]]
++ [[https://docs.oracle.com/javase/8/docs/technotes/guides/troubleshoot/][问题定位]]
++ [[https://docs.oracle.com/javase/specs/index.html][java和jvm]]
++ [[https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html][参数]]
+
