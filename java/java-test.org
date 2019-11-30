@@ -1,0 +1,18 @@
+#+title: 测试问题记录
+* test方法在键盘输入卡死
+[[https://www.jianshu.com/p/86fe4314ec53][参考]]
+** 原因：
+junit是用例自动化单元测试的，那么控制台输入这个人工操作就应该不会支持，解决方案如下
+** 解决办法 
+思路 : 把输入流redirect到字符串输入，把要输入的字符串写入，运行测试案例，再把输入流重新设置为控制台输入，我按照这种方法修改了测试用例:
+#+BEGIN_SRC java
+  //输入流重定向到字符串输入的范式
+  String cmd = "需要输入的内容\n";
+  InputStream in = System.in;//保存控制台输入流
+  try {
+      System.setIn(new ByteArrayInputStream(cmd.getBytes()));
+      selectSort.testSort(integers); //你的测试方法
+  } finally {
+      System.setIn(in);//把输入流复原
+  }
+#+END_SRC
