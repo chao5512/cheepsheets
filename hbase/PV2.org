@@ -1,0 +1,22 @@
+#+title: 基础框架
+* 参考
+[[http://www.nosqlnotes.com/technotes/hbase/procedure-v2/][HBase基础框架级特性Procedure解读]]
+* procedure
+** 定义
++ Procedure是hbase实体的一个状态变化的过程，实体：例如region、table
++ ProcedureExecutor实例来调度所有的Procedure
++ PE只能看到Porcedure中精简的步骤
++ Procedure现在的状态保存在ProcedureStore中
++ Procedure中的代码实现应该是幂等的，并且应该实现rollback
++ PE.excute()每次执行Procedure中的一小步
+* Procedure生命周期
+一个procedure由一系列动作组成，要么全都成功，要么不成功，失败后集群不会出于不一致的状态
+** procedure 操作状态
+1. INITIALIZING Procedure 构建中，还没有提交给框架
+2. RUNNABLE Procedure 提交到框架中，并做好了执行的准备
+3. WAITING 等待子procedure完成
+4. WAITING_TIMEOUT 等待一个超时事件或外部事件
+5. ROLLEDBACK The procedure 失败并且roll-back了
+6. SUCCESS The procedure 完全执行成功了
+7.  FAILED The procedure 失败了，可能需要roll-back.
+

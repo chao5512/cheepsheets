@@ -141,18 +141,42 @@ note that，there is  a bug when we hava a treemacs window
 - C-c C-p : 项目相关
 - C-c pp : 切换项目
 ** magit
-*** 1. 帮助文档，
+*** 帮助文档，
 - ? - key
 - C-h  key
-*** 2. 保存中间参数
+*** 保存中间参数
 + 只设置不使用会保存到下次调用
 + C-x s : 为当前会话保存参数
 + C-x C-s : 为这个emacs服务保存参数
 + transient-values-file ，永久配置
-*** 3. 版本回退 
+*** reflog
++ l r 查看当前分支的reflog
+*** stash-隐藏项
+暂时上不了台面还不想丢弃的
++ z z : 把选中项入栈藏起来，底层是push
++ z p : 把藏起来的栈顶弹()出来，magit可选,底层是pop
++ z a : 应用(apply)一个藏起来的改变，底层是peek，也就是说项不会出栈，可以继续应用到其他地方
++ z k : 相当于直接在一个stash项上按k  drop（删除）掉这项
++ z v : 查看这里的内容
+*** tag
+可以用来打版本标签，可以带注释 
++ git status 面板中显示最新的tag
++ t-f t : 强行打tag，哪怕是和以前的重名，踢走他
++ t p : 如果本地删了一些tag，但是远端还有，运行这个命令，删除远端多余的，反之亦然，不知道新加的tag会不会同步
+*** diff
++ d r : 比较两次提交的差别，
+  1. 选择一个region，比较头尾
+  2. 或者A..B作为参数，比较A,B
++ d w : 比较工作树(unstaged)和head
++ d s ：比较index(stage)和head
++ d u : 比较工作树和index
+
+
+*** 版本回退 
 在某一提交上按X，代表想回到这次提交
++ 如果在reset -hard后的时候突然想返回，找到回退的那些提交，用reflog
 + X i : 只回退index，head和worktree不变，可快速后悔
-*** 4. 快捷键
+*** 快捷键
 + untrack一个文件 : K 大写的
 + stage : s
 + comit : cc

@@ -1,0 +1,27 @@
+#+title: hash 表
+* 散列
+** hashtable
+** 冲突
+控制冲突的概率
+1.降低冲突，设计适合的散列函数
++ 除余法
++ MAD法
++ 数位选择法
++平方取中法
++ 折叠
++ 位异或
+2.解决冲突
++装填因子 希望的每个桶的容量/待处理数据的总和
+
+* some idea
+hash 左式堆
+* hashcode
+* hashcode冲散列和prime()的优化
+* 排列组合
+* questions
+
+Name -> ID 就是 string -> int，字符串最好用 Hash 或 Tree 来索引，不过由于 Name 不是唯一的
+，一个 Name 可能对应多个 ID，要用 Linked List 做对应过来的结构。
+所以可以是 Hash + Linked List 或 Tree + Linked List。
+（Tree 可以用 Trie，复杂度是 O(length(name))，其实 Hash 会更好，理论上复杂度是 O(1)）。
+ID -> Name 就是 int(7 digit) -> string，7 位数也就是 1000 w，可以开得下（人家机子好），所以就可以随机查了。

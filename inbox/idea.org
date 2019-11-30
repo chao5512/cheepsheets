@@ -11,3 +11,21 @@
 * maven
 ** 普通项目添加maven支持
 在工程名称上右击并点击【Add Framework Support】
+* plugins
+** 1. Grep console
+[[https://www.cnblogs.com/jajian/p/8081658.html][控制台彩色效果]]
+** 2. Translation
++ [[https://jingyan.baidu.com/album/597a0643111cf8312b524307.html?picindex=12][有道翻译设置教程-收费的]]
+*** 改键
+1. translation 添加C-q
+** 3. CodeGlance
+代码缩略图
+** 4. Rainbow Brackets
+彩色高亮括号
+*** 按键
+1. 高亮括号内容：s-M2
+2. 暗化括号外内容 : M-M2
+3. 取消选定
+* 未安装的pluagins
+ [[https://www.geek-share.com/detail/2776227576.html][插件介绍]]
+** 1. find-bugs
