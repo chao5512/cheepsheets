@@ -41,22 +41,92 @@
 + 最好O(n)
 + 平均O(n2)
 + 最坏O(n2)
-
-*** 稳定
+*** 稳定：在插入条件为不大于(不是小于)插入元素时。
+具体看代码
 *** 使用场景
 1. jdk中的Arrays.sort()在排序长度小于7的时候使用直接插入
-2. 在近乎有序的数据中
-** 归并排序
+2. 在近乎有序的数据中，可以用范围很小的有大量重复元素的数据模拟
+*** 代码
+#+BEGIN_SRC java
+    public void sort(Comparable[] a) {
+        //整理出lo hi
+        int hi = a.length;
+        for (int i = 1; i < hi; i++) {
+            int j=i-1;
+            //保存需要插入的元素
+            Comparable t = a[i];
+            //从后向前遍历有序队列，直到找到第一个小于插入元素的元素的位置
+            //此位置右边整体向右移动一位，把插入元素插入这个位置之后
+            //这里需要注意判定条件，在之前为lessThan(t,a[j])，这样就会丢失稳定性，甚至还有性能的损失
+            while (j>=0&&lessThan(t,a[j])){
+                a[j+1]=a[j];
+                j--;
+            }
+            //找到的位置就是前一个位置，避免自我赋值
+            if(j!=i-1){
+                a[j+1]=t;
+            }
+        }
+    }
+#+END_SRC
+** 归并排序（）
 *** 时间复杂度
-O(nlogn)
++ 层级为\Omicron(\log N )
++ 每层为\Omicron(N)
++ 所以时间复杂度为O(nlogn)
 *** 稳定
+与插入排序一样，稳定性都是与代码相关的，正确的代码保证稳定性
 *** 优化手段
 1. 合并阶段判有序
 2. 当合并的两部分中一部分用尽，另一部分直接放入
 *** 适用场景
 1. 需要稳定的场景下
 2. 数据结构是链表的情况下（因为快排依赖数据的随机存取，不适用于链表）
+*** 缺点
++ 需要额外的辅助空间
+*** 自顶向下的code
+#+BEGIN_SRC java
+  private void sort(Comparable[] a,Comparable[]aux, int lo, int hi) {
+      if (lo >= hi) {
+          return;
+      }
+      //不使用(lo+hi)/2这种形式找中点的原因之一是下面这样不会发生（lo+hi）溢出的错误
+      int mid = lo + ((hi - lo)>>>1);
+      sort(a,aux ,lo, mid);
+      sort(a,aux ,mid + 1, hi);
+      merge(a,aux, lo, mid, hi);
+  }
+  private void merge(Comparable[] a,Comparable[] aux, int lo, int mid, int hi) {
+      assert isSorted(a, lo, mid);
+      assert isSorted(a, mid + 1, hi);
+      //如果已经有序了，直接返回原数组,递归基
+      if(lessThanOrEqual(a[mid],a[mid+1]))return;
+      //
+      for (int i = lo; i <= hi; i++) {
+          aux[i] = a[i];
+      }
+      //分成p,q前后两个数组。
+      for(int i = lo, p = lo, q = mid+1; i <= hi; i++) {
+          //第三个条件正常的形式应该是lessOrEqual(aux[p],aux[q]),或者整个改成后面数组在成立条件里，怎么办都行。
+          if (q > hi || p < mid+1 && !lessThan(aux[q],aux[p]))
+              //p归队的情况
+              //1. q > hi q数组已经为空
+              //2. 或者在p不为空（p<mid+1）的前提下，p的首元素小于等于(等于这个条件是为了稳定性)q的寿元素
+              a[i] = aux[p++];
+          else
+              //其他情况全是q
+              a[i] = aux[q++];
+      }
+  }
+#+END_SRC
+*** 自底向上的code
+#+BEGIN_SRC java
 
+#+END_SRC
+*** 比较
++ 以上两种实现方式效率上差不多，统计意义上，递归还要比迭代快。
++ 自底向上的排序没有使用数组的秩
++ 可以用自底向上的排序来实现链表的n\Omicron(\log N)的排序
 ** 快速排序
 *** 三大缺点
 1. 最坏O(n2)
