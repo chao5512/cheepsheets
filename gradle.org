@@ -31,3 +31,17 @@ Error:No such property: GradleVersion for class: JetGradlePlugin
       }
   }
 #+END_SRC
+** gradle的目录结构
+1. 创 建目录结构
+#+BEGIN_SRC sh
+
+#+END_SRC
+#+begin_example
+  └─src
+      ├─main
+      │  ├─java
+      │  ├─resource
+      └─test
+          ├─java
+          └─resource
+#+end_example
