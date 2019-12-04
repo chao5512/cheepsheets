@@ -8,6 +8,10 @@
 2. 去掉Spelling下的Typo复选框即可
 ** 设置鼠标悬停显示帮助文档
 Editor>>General>>Show quick documentation on mouse move
+** 自动导包设置
++ Editor >> General >> auto import，勾上下面这两项
+  1. Add unambiguous imports on the fly，自动导包
+  2. Optimize imports on the fly (for current project)，去除没用的包
 * 快捷键 
 约定 C ：control，s : command,  S : shift 
 + s-A/S-S : 查找，可以查操作可以查类
@@ -15,6 +19,7 @@ Editor>>General>>Show quick documentation on mouse move
 + C-d : debug
 + C-r : run
 + s-U : 大小写转换，toggle case
++ s-d :复制一行到下一行
 ** 大部分与emacs相同
 + C-j ：向下滚动屏幕
 + C-l ：向上滚动屏幕
