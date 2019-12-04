@@ -209,7 +209,41 @@
 + [[https://blog.csdn.net/qq_39986274/article/details/79215311][从释放资源角度讲]]
 + [[https://blog.csdn.net/qq_37347341/article/details/77740215][从安全发布角度讲]]
   
-** 
+** 观察者模式
+主题发生改变的时候，通知观察者
+*** 角色
+1. subject ： 主题，可被观察者，具有一些可以被观察的属性，同时维护了订阅当前主题的所有observer
+2. abstract observer ： 观察者的抽象定义，提供给主题一个通知接口，主题可以选择一个时间来调用观察者的接口
+3. concrete observer : 具体的观察者，被通知，做具体响应
+*** 使用观察者模式监控线程生命周期
+** 多线程读写分离
+waitset  线程间通信
+*** 分析
+| ++    | read | write |
+| read  | y    | n     |
+| write | n    | n     |
+*** 实现
+1. 根据分析中的情况记录
+   1. waiting read 的线程数 ： 可以看读的拥挤程度(没看出来啥用)
+   2. waiting write 的线程数 ： 用来缓解写饥饿
+   3. reading 的线程数  ： 用来读写控制
+   4. writing 的线程数  ： 用来读写控制
+2. 写等待的条件，存在正在读的或者正在写的，具体为: reading > 0 || writing > 0
+3. 读等待的条件，存在正在写的，具体为 writing > 0 ,这里为了避免写饥饿，附加一个或条件(preferWriting && waiting write > 0)
+
+* waitset
++ 可以去OpenJdk看hotspot怎么实现的？链表实现的
+* 缓存一致性协议
+** 核心思想
+1. 当cpu写入数据的时候,如果发现该变量被共享(也就是说,在其他cpu中也存在该变量的副本),会发出一个信号,通知其他cpu该变量的缓存无效，当其他cpu访问该变量的时候,重新到主内存进行获取
+* JMM 
+用来简化理解
++ 工作内存可以理解为高速缓存
++ 主内存
+* happen-before relationship java天生保证的的有序关系
+* volitale关键字
+** 使用场景
+1. 状态标志
 * inbox 
 ** 实现两个线程安全的累加器的
 1. synchronized
