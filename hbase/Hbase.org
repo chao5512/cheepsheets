@@ -117,6 +117,208 @@
 - bloomfilter什么时候用rowcol
 - hbase 计数器
 - 底层数据迁移时 版本不正确 使用bin/hbase migrate'
+- 使用hfile命令行工具可以查看hfile中key所占的空间比
+** protobuf
+*** 一些protobuf相关的信息
++ 从protobuf .proto文件生成java文件是构建的一部分
++ proto文件在2.0以后被集中起来
++ hbase2.0以后 proto的使用变得有点复杂，为了升级到protobuf3来配合netty的零拷贝。hbase core的protobuf从HDFS独立出来。
++ 相比hbase-protocol，hbase core已经开始依赖hbase-protocol-shaded了，但是为了兼顾endpoint，还保留着hbase-protocol。以后会理清吧
+*** hbase项目生成protos的java文件
+1. build protocol-shaded子模块,有需要还会buildprotocol模块
+#+BEGIN_SRC sh
+  # pl 指定打包的模块，可以用路径也可以用坐标，如果父项目同时是父目录，那么进入父目录下，直接“-pl 项目目录名”即可
+  # -am：意味着also-make （dependency），即同时打包依赖的模块；
+  mvn clean install -pl hbase-protocol-shaded -am
+#+END_SRC
+2. 刷新maven index，找到生成的代码
+
+** Mini-clushter
+
+** WAL
+通常，一个region上的所有table公用一个wal。但是hbase：meta有自己的专用wal
+*** purpose 
+用来恢复在rs宕机时还没来的及flush的memstore中的变化的数据
+*** 在hdfs上的位置
++ /hbase/WALs/{每个region}
++ 暂时不要使用hadoop ec目录
+
+*** 配置
++ hbase.wal.provider ：具体的wal实现
++ hbase.wal.meta_provider ： meta表专有的实现
+*** wal Provider
+**** 具体的
+1. asyncfs ：基于非阻塞的dfsClient实现的wal写入器，目前重度依赖hdfs的更新，会在失败时替换会filesystem
+2. filesystem ：基于老式的阻塞dfsClient
+3. multiwal ： 一个rs上多个wal
+*** wal splitting
+当一个region open时，需要把wal中属于该region的edit 重放，因此edit需要按region分组，这个分组过程就是log splitting
+**** 触发时机，master是执行者
+1. start-up
+2. serverShutdownHandler
+**** procedure
+1. The /hbase/WALs/<host>,<port>,<startcode> directory is renamed.
+2. 按region分组，一个分组一个分组的读，写入到/hbase/<table_name>/<region_id>/recovered.edits/.temp，写完后.temp 重命名为该文件中的第一条log的sequence id，sequenc id用来决定replay时从哪开始
+3. 分组完成后，assign region ，region open 后replay，然后flush，然后删除recovered.edits
+**** 2.0以后不需要使用PV2代替zk做协调
+*** wal Compression
+
+** Region
+
+** master
+*** 职责
+1. monitor所有rs
+2. 保存所有metadata
+*** HMasterInterface
+面向metadata的方法
++ Table (createTable, modifyTable, removeTable, enable, disable)
++ ColumnFamily (addColumn, modifyColumn, removeColumn)
++ Region (move, assign, unassign)
+*** 线程
+**** 1. LoadBalancer
+
+**** 2. CatalogJanitor
+周期性的检查清理hbase:meta
+
+*** MasterProcWAL
+master上procedure的wal
+
+** regionServer
+
+*** HRegionRegionInterface
+面向data和region管理
++ Data (get, put, delete, next, etc.)
++ region（master下发命令的执行者）
+
+*** 线程
+1. CompactSplitThread ： for split and minor compaction
+2. MajorCompactionChecker
+3. MemStoreFlusher
+4. LogRoller
+
+*** block cache
+hbase提供两种不同的cache来缓存从hdfs读上来的数据块
+1. on-heap LruBlockCache
+2. BucketCache 通常在堆外
+
+**** CombinedBlockCache
+一个管理类，开启bucketCache，形成一个双层缓存，L2（bucketcache）在堆外缓存datablock，L1(LruBlockCache)缓存metaBlock（index block和bloom block）
+**** LruBlockCache
+***** 设计：内部为block划分3个优先级
+1. Single access priority 初次从hdfs load上来的
+2. Multi access priority 在1中再次命中的
+3. In-memory 配置的常驻内存，例如meta表
+***** 使用
++ 集群中总cache大小的计算：rs数 * heap size * hfile.block.cache.size * 0.99
++ hfile.block.cache.size 默认0.4
++ 0.99 lru装载因子，超过这个比例，就淘汰block
++ 频繁的eviction将会导致更多的GC
++ map一个table的时候可以选择不带blockcache的scan
+**** 堆外缓存
+1. 2.0以前，使用堆外缓存意味着在读取的时候先要把block从堆外copy回来，尽管避开了GC，但是速度慢了
+2. 2.0以后，改变了读路径，可以直接读非堆上的block，零拷贝的读。同时又兼具自己管理GC的好处，从HBase 2.0.0起，L1和L2的概念已被弃用。当BucketCache打开时，DATA块将始终转到BucketCache，而INDEX / BLOOM块将转到堆LRUBlockCache。 cacheDataInL1支持已被删除
+**** bucketBlockCache
+三种模式
++ off-heap
++ file
++ mmaped file mode
+
+** off-heap
+
+
+** quota
+*** 配置
++ hbase.quota.enabled 是否启用quota
++ hbase.quota.refresh.period 配置刷新周期
++ 可以提前配额或者在runtime配额
+
+*** 基本使用
+#+BEGIN_SRC sh
+  # Limit user u1 to 10 requests per second
+  hbase> set_quota TYPE => THROTTLE, USER => 'u1', LIMIT => '10req/sec'
+
+  # Limit user u1 to 10 read requests per second
+  hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => READ, USER => 'u1', LIMIT => '10req/sec'
+
+  # Limit user u1 to 10 M per day everywhere
+  hbase> set_quota TYPE => THROTTLE, USER => 'u1', LIMIT => '10M/day'
+
+  # Limit user u1 to 10 M write size per sec
+  hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => WRITE, USER => 'u1', LIMIT => '10M/sec'
+
+  # Limit user u1 to 5k per minute on table t2
+  hbase> set_quota TYPE => THROTTLE, USER => 'u1', TABLE => 't2', LIMIT => '5K/min'
+
+
+  # Limit user u1 to 10 read requests per sec on table t2
+  hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => READ, USER => 'u1', TABLE => 't2', LIMIT => '10req/sec'
+
+  # Remove an existing limit from user u1 on namespace ns2
+  hbase> set_quota TYPE => THROTTLE, USER => 'u1', NAMESPACE => 'ns2', LIMIT => NONE
+
+  # Limit all users to 10 requests per hour on namespace ns1
+  hbase> set_quota TYPE => THROTTLE, NAMESPACE => 'ns1', LIMIT => '10req/hour'
+
+  # Limit all users to 10 T per hour on table t1
+  hbase> set_quota TYPE => THROTTLE, TABLE => 't1', LIMIT => '10T/hour'
+
+  # Remove all existing limits from user u1
+  hbase> set_quota TYPE => THROTTLE, USER => 'u1', LIMIT => NONE
+
+  # List all quotas for user u1 in namespace ns2
+  hbase> list_quotas USER => ‘u1, NAMESPACE => 'ns2'
+
+  # List all quotas for namespace ns2
+  hbase> list_quotas NAMESPACE => 'ns2'
+
+  # List all quotas for table t1
+  hbase> list_quotas TABLE => 't1'
+
+  # list all quotas
+  hbase> list_quotas
+#+END_SRC
+*** 全局配置同时配置某个用户不生效
+#+BEGIN_SRC sh
+  # a per-namespace request limit
+  hbase> set_quota NAMESPACE => 'ns1', LIMIT => '100req/min' 
+
+  # user u1 is not affected by the limit
+  hbase> set_quota USER => 'u1', GLOBAL_BYPASS => true
+
+
+#+END_SRC
+*** 配置Namespace Quotas : 
+  + hbase.namespace.quota.maxtables  配置一个namespace里最多可以有多少个table
+  #+BEGIN_SRC sh
+    # Create a namespace with a max of 5 tables
+    hbase> create_namespace 'ns1', {'hbase.namespace.quota.maxtables'=>'5'}
+
+    # Alter an existing namespace to have a max of 8 tables
+    hbase> alter_namespace 'ns2', {METHOD => 'set', 'hbase.namespace.quota.maxtables'=>'8'}
+
+    # Show quota information for a namespace
+    hbase> describe_namespace 'ns2'
+
+    # Alter an existing namespace to remove a quota
+    hbase> alter_namespace 'ns2', {METHOD => 'unset', NAME=>'hbase.namespace.quota.maxtables'}
+  #+END_SRC
+  + 也可以配置一个ns上有多少个region
+    #+BEGIN_SRC sh
+      # Create a namespace with a max of 10 regions
+      hbase> create_namespace 'ns1', {'hbase.namespace.quota.maxregions'=>'10'}
+
+      # Show quota information for a namespace
+      hbase> describe_namespace 'ns1'
+
+      # Alter an existing namespace to have a max of 20 regions
+      hbase> alter_namespace 'ns2', {METHOD => 'set', 'hbase.namespace.quota.maxregions'=>'20'}
+
+      # Alter an existing namespace to remove a quota
+      hbase> alter_namespace 'ns2', {METHOD => 'unset', NAME=> 'hbase.namespace.quota.maxregions'}
+    #+END_SRC
+*** Space Quotas
++ 限制hbase的ns 和 table可以使用多少文件系统的存储
+*** 待续。。。
 * Hbase源码
 ** Hbase-RPC 
 - 远程过程调用

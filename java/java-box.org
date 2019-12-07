@@ -1,0 +1,261 @@
+#+title: java复习
+* javac
+1. -d 递归生成包指定的目录
+2. import导入一个包的时候，并不会把子包一并导入
+* String
+** 三种类型
++ String 内部是一个final修饰的数组，是常量，创建后值将不能再被改变
+  + String类型的变量的赋值，如果使用字面量赋值，那么jvm会现在常量池中找这个字面量对应的String对象，存在则直接指向
+  + 如果使用new方式赋值，会在堆上创建对象，并保证在常量池中也存该字面量对应的一个对象
++ StringBuilder 普通数组，实现了扩容策略，允许追加
++ StringBuffer 与StringBuilder相同，当时append方法加了锁，是线程安全的
+** intern
++ “xxx”.intern()，如果字符串池中已经有与xxx equal()的值得时候，直接返回字符串池中的对象，如果没有，则在池中创建一个
+* hash
++ hashcode 一个对象的标识，用来配合hash表使用
++ 常与equal一起重写
+* Integer
++ 如果想使用一个Integer的实例，相比于构造方法，应优先使用valueOf方法，因为valueOf方法缓存了-128~127之间的Integer实例
+* 枚举
++ values()和valueOf()
++ 我们定义的枚举类型都是继承自java.lang.Enum类
++ 枚举类中的成员变量都是public static
++ 每个枚举的成员本质上就是枚举类型的一个实例，在编译时就确定下来的，运行时无法新添加了
++ [[https://blog.csdn.net/qq_21870555/article/details/82769721][使用枚举类型来代替你的常量们]]
+* 反射
++ 通过反射访问私有成员方法，应该用Method#setAccessible(true);
+* Annotation
+
+** 内置注解
++ @Override     保持策略为source
++ @Deprecated            保持策略为runtime
++ @Suppresswarnings("unchecked")      保持策略为source
+** 自定义注解
++ @interface 注解的类型
++ @retention 可以通过retention来设定注解的生命周期，保持到什么时候
+  + class
+  + runtime
+  + source
++ @Target   自定义注解时限定注解使用范围
++ @Documented  自定义注解是指定生成java doc的同时，附加注解的帮助文档
++ @Inherited    默认情况下，一个父类的注解不会被继承到子类，可以在自定义注解时使用Inherited来改变
+* junit
+** 版本
+1. 3.8 ：基于反射
+2. 4+ ：基于注解和反射
+** JUnit4的执行的一般流程:
+1. 首先获得待测试类所对应的cass对象。
+2. 然后通过该Cass对象获得当前类中所有 public方法所对应的 Method数组
+3. 遍历该 Method数组,取得每一个 Method对象
+4. 调用每个 Method对象的 isAnnotation Present(Test class)方法,判断该方法是否被Test注解所修饰。
+5. 如果该方法返回true,那么调用 method. invoke方法去执行该方法,否则不执行。
+** 测试用工具类Optional
+* Exception
+** 分类
+1. Checked exception
+2. Unchecked exception
+* 深拷贝和浅拷贝
+1. 这里的拷贝是对对象的拷贝，所以就设计对象本身和对象引用的对象
+   1. 深拷贝，对象本身和所有引用的对象都复制
+   2. 浅拷贝，只复制对象本身
+2. 继承自Object.clone的复制都是浅拷贝
+* 内部类
+定义在内部类
+** 分类
+1. 静态内部类，只能访问外部类的静态方法和静态属性
+2. 成员内部类，创建方式，new 外部类 .new 内部类;
+3. 局部内部类，定义在方法中的，只能访问方法中的final类型的变量
+4. 匿名内部类，
+** inbox
+1. 在内部类中访问外围类的属性，Outclass.this.属性
+* jdk1.8
+** 包 
++ java.util.function
+
+** lambda
+*** 函数式接口
++ 整一个只有一个method的接口，用来“传method"
++ 在一个接口上加上注解@FunctionalInterface时，编译器帮我们检查该接口是否符合函数式接口
++ 一个满足函数式接口定义的接口，编译器也还是会把接口看做一个函数式接口
+
+** 接口中的默认方法
+** joda-time
++ 不可变对象
++ 标准UTC时间:2014-11-04T09:22:54.876Z
++ 传输按上面的形式来传，没有歧义
+** 静态推导
+** Optional
+针对空指针异常，即当你明确带访问的对象中是非null的，使用Optional避免无意义的空指针异常
+** Stream
+*** 概念
+1. 一个源+ Optional中间操作+终止操作
+2. 操作分类
+   1. lazy 求值
+   2. 及早求值
+** Functional interface
+*** 四种基本形式
+1. Function T到R的一元函数
+2. Consumer T到void的一元函数
+3. Predicat T到boolean的一元函数
+4. Supplier nil到R的无参函数
+*** 参数个数（arity）前缀
+加前缀Bi将为二元函数
+*** 衍生形式
+1. UnaryOperator 一元操作符，参数与返回值类型相同
+2. BinaryOperator 二院操作符，参数与返回值类型相同
+*** 前缀ToXxx，表示返回值类型
+1. ToIntFunction
+*** 形参前缀
+1. DoubleConsumer
+2. ObjIntConsumer
+*** 参数To返回值前缀
+IntToDoubleFunction
+*** 如果所有参数到显示的指定类型，那么arity前缀是多余的
+* ForkJoin框架
+**  ForkJoinPool
++ 与其他Executor Service相比，ForkJoinPool的优势在于，pool中的线程除了处理提交上来的任务外，还会处理pool中其他线程产生的子任务。
+*** 适用于
+1. 有很多小任务
+   1. 会产生许多小任务
+*** asyncMode
+在构造中设置asyncMode为true，意味着pool适用于基于事件不用去join的task
+** ForkJoinTask
+一个ForkJoinTask类似于线程，但是比线程更轻量，是一个轻量的Future
+* inbox
++ 静态方法只能继承，不能重写。
++ final修饰引用类型变量，则这个变量不能修改指针，但是指向的对象内部是可以改变的,修饰的数组长度可变么
++ 静态代码块只能执行一次
++ java.lang.包不需要导入
++ 常量池，看一下老年代被取消后它跑哪去了
++ instance方法判断是不是某类对象或者是不是实现了某个接口
+* java中的设计模式
+** 单例模式
+** 策略模式
++ 抽象策略角色：Comparable
++ 具体策略角色： 具体的Compartor
++ 环境角色 : Collections,TreeMap
+*** 
+** 代理模式
+*** 角色
++ 共同的能力(接口)
++ 代理角色，持有真实角色的引用
++ 真实角色
+*** hbase中的协处理器使用到代理模式
+*** 静态代理
+真实对象是实现存在的
+*** 动态代理
++ 一个接口 ：invocationHandler
++ 一个类 : Proxy 动态代理类
++ 范式，使用Proxy.newProxyInstance(谁,干什么,handler(怎么干))来动态生成一个代理类，然后调用代理被托管的那个真实角色的方法，同静态方法。
+** 装饰模式(wapper)
++ 包装一个对象，使其功能变多，且上层感觉不到
++ 在不创建更多类的情况下扩展对象功能
+*** 角色
+1. component --> InputStream
+2. concrete component -->FileInputStream
+3. decorator --> FilterInputStream
+4. concrete decorator --> BufferedInputStream
+* native
+java中怎么调用c++
+* 网络编程 
+** 阻塞IO的一般步骤
+1. 服务端
+#+BEGIN_SRC java
+
+  //阻塞io的服务器步骤
+  ServerSocket serverSocket = new ServerSorcket();
+  serverSocket.bind(8899);
+  while(true){
+      Socket socket = serverSocket.accept();//阻塞方法
+      new Thread((socket)->{
+              System.out.printf(“do somthing here”)
+                  socket.getInputStream();
+      }).start;
+  }
+#+END_SRC
+2. 客户端
+#+BEGIN_SRC java
+  //port 是用来与服务器建立连接的端口
+  int port = 8899;
+  Socket socket = new Socket( "localhost",port);
+  socket.connect();
+#+END_SRC
+* io
+阻塞io
+** 核心是流
+*** 分类
+**** 按功能
+1. 输入流
+2. 输出流
+**** 按结构
+1. 字节流
+   1. InputStream
+   2. OutputStream
+2. 字符流
+   1. Writer
+   2. Reader
+**** 按继承关系
+1. 节点流：直接连设备
+2. 过滤流：另外一个流的包装，使用的是装饰模式
+*** 流是单向的
+** 使用步骤(面向流的编程)
+1. 打开一个流
+2. (optional:组合功能到一个流链)
+3. 循环从/向流中读/写数据
+4. 关闭流
+* nio
+非阻塞io
+** 核心
+1. Selector：一个线程根据事件来选择不同的Channel
+2. Channel
+   1. 只能通过Buffer来读写
+   2. 双向的（linux底层也是双向的）
+3. Buffer
+   1. 原生数据类型(除了Boolean)都有自己的Buffer
+** 通信过程
+
+#+DOWNLOADED: https://img-blog.csdn.net/20141213161210309?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvcm9iaW5qd29uZw==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center @ 2019-12-04 17:59:48
+[[file:nio/2019-12-04_17-59-48_20141213161210309.png]]
+
+** Buffer源码
++ 是一个特殊原生类型的容器。
++ buffer不能断点续读
++ 不是线程安全的
++ byteBuffer可以存其他各种原生类型
+*** 重要属性
+1. capacity ： buffer的容量
+2. limit ：buffer中第一个不能被读写的位置
+3. position ： buffer中下次用于读写的位置
+*** slice方法
+返回一个buffer的子序列为新的buffer，底层共享同一份数组，但是有4个独立的标志位
+*** DirectBuffer
++ 使用Unsafe来分配内存，读写内存。每个DirectBuffer有一个自己的回收器DeAllocator
++ Buffer中有一个表示堆外内存地址的long型address
++ 因为这个buffer是要和硬件打交道的，所以直接分配到操作系统内存中，省掉了一步从堆copy到系统内存。即零拷贝。更快
+*** MappedByteBuffer
++ 映射文件的内存。这不是emacs的buffer？
++ 把文件的某一部分缓存到内存中，可以直接在内存中写，有操作系统决定怎么写回文件。
+*** 文件锁
+fileLock
+*** scattering
+比如，从文件中读到多个buffer。天然的适配解析具有一定格式的数据
+*** Gathering
+比如, 从多个buffer向一个文件写
+** Selector
+Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够知晓通道是否为诸如读写事件做好准备的组件。这样，一个单独的线程可以管理多个channel，从而管理多个网络连接
+
+*** 概念
++ registrations
++ register 使用selector为channel注册
++ cancel 方法在cancelled-key上同步
++ selection 
+*** 三个key set
+1. key set
+2. select-key set
+3. cancelled-key
+* 为什么系统不能直接访问java堆上的内容呢?
+[[https://www.bilibili.com/video/av33707223?p=38][参考]]
+1. jvm上的对象在GC时可能会发生移动，操作系统访问内存的方式是固定的地址。这样在GC的时候，虽然jvm内对移动对象的访问有jvm控制以保证合法，但是JNI的方法不会因为GC而停下，这时内存出现错乱。
+2. 操作系统来控制硬件和内存之间的交互，如1所说，现在操作系统直接操作jvm的堆上对象可能会发生错误。那怎么解决呢？
+3. 要么让对象不动，那就得禁止GC。java没了GC！！！没得玩了
+4. 要么不让系统直接操作堆上内存。由jvm先安全的copy出一份到堆外内存来，然后系统来调度读写。这个过程中由jvm保证这块堆外内存的正确性。这基于内存拷贝非常快。一方面，jvm的检查一致性压力没那么大，一方面相比于与硬件的交互，这个copy动作非常快，所以性能也还可以

@@ -1,6 +1,8 @@
 #+title: 基础框架
 * 参考
-[[http://www.nosqlnotes.com/technotes/hbase/procedure-v2/][HBase基础框架级特性Procedure解读]]
++ [[http://www.nosqlnotes.com/technotes/hbase/procedure-v2/][HBase基础框架级特性Procedure解读]]
++ [[https://mp.weixin.qq.com/s/48MNab6mZkK7YGOlEGf8OA][Procedure V2介绍]]
++ [[https://yq.aliyun.com/articles/601096?spm=a2c4e.11155435.0.0.2f023e4eTzDjM0][深入解读HBase2.0新功能之AssignmentManagerV2]]
 * procedure
 ** 定义
 + Procedure是hbase实体的一个状态变化的过程，实体：例如region、table
@@ -19,4 +21,133 @@
 5. ROLLEDBACK The procedure 失败并且roll-back了
 6. SUCCESS The procedure 完全执行成功了
 7.  FAILED The procedure 失败了，可能需要roll-back.
+* PV2的组件
+** 1. Procedure
+表示为了完成一件事情的一个过程，活
+*** 1.1 如何创建一个Procedure（发布一个活）
+procedure的创建下放到具体的实现类上，这样每个过程可以有自己的构建方式
+*** 1.2 
+*** 分类
+
+#+DOWNLOADED: file:/Users/wangchao/Desktop/截屏2019-12-05上午11.49.41.png @ 2019-12-05 12:01:08
+[[file:PV2%E7%9A%84%E7%BB%84%E4%BB%B6/2019-12-05_12-01-08_%E6%88%AA%E5%B1%8F2019-12-05%E4%B8%8A%E5%8D%8811.49.41.png]]
+**** 1. StateMachineProcedure
+1. SwitchRpcThrottleProcedure (org. apache hadoop, hbase master procedure)
+2. AbstractPeerNoLockProcedure (org. apache hadoop hbase. master. replication
+3. AbstractstateMachineNamespace Procedure (org. apache hadoop hbase. master procedure
+4. AbstractstateMachineTableProcedure (org. apache hadoop hbase master procedure)
+5. SplitWALProcedure (org. apache hadoop hbase master procedure)
+6. ServercrashProcedure (org. apache hadoop hbase master procedure)
+7. RecoverMetaProcedure org apache hadoop hbase. master procedure)
+8. ------------------------------------------------------------------------
+8. TestsMProcedureBadRollback in TeststateMachineProcedure (org. apache hadoop. hbase procedure2)
+9. NoopStateMachineProcedure in ProcedureTestingUtility (org. apache. hadoop hbase. procedure2)
+10. SimplestateMachineProcedure in TestProcedureTostring (org. apache hadoop hbase. procedure2)
+11. TestSMProcedure in TeststateMachineProcedure (org. apache. hadoop hbase. procedure2)
+12. TeststateMachineProcedure in TestProcedureRecovery (org. apache hadoop hbase. procedure2
+13. FakeServerProcedure in TestsplitWALManager (org. apache hadoop hbase master)
+14. TeststateMachineProcedure in TestYieldProcedures (org. apache hadoop hbase procedure2
+*** 接口
+1. TableProcedureInterface ： 操作特定表的Procedure(例如，创建、删除、快照等)必须实现此接口，以允许系统处理锁/并发问题。
+*** 实例
+createTable这个procedure
+0. 创建createTableProcedure
+#+BEGIN_SRC java
+  new CreateTableProcedure( procedureExecutor.getEnvironment(), tableDescriptor, newRegions, latch)
+#+END_SRC
+1. submitProcedure
+   1. store记录
+   2. 入Scheduler的队列
+2. 看一眼masterScheduiler的queue
+   + serverRunQueue
+   + tableRunQueue
+   + peerRunQueue
+   + metaRunQueue
+
+3. 具体步骤-6步
+   1. CREATE_TABLE_PRE_OPERATION;
+   2. CREATE_TABLE_WRITE_FS_LAYOUT;
+   3. CREATE_TABLE_ADD_TO_META;
+   4. CREATE_TABLE_ASSIGN_REGIONS;
+   5. CREATE_TABLE_UPDATE_DESC_CACHE;
+   6. CREATE_TABLE_POST_OPERATION;
+
+** 2. ProcedureExecutor
++ 调度器，一个系统中同时有一堆Procedure，需要管理，接活的
++ 一个用来处理提交过程的线程池
++ 通过submitProcedure(proc)来提交过程
+  1. store.insert(proc, null);
+  2. return pushProcedure(proc);
++ 用isFinished(procId)来检查过程是否完成了
++ 用getResult(procId)来获得结果，获得什么结果？？
+*** 属性 
+1. ConcurrentHashMap<Long, RootProcedureState<TEnvironment>> rollbackStack ：root 过程的id到状态的映射，submit的时候添加进来，完成的时候弹出
+** 3. WorkerThread
+有执行能力的一些线程，干活的
+** 4. ProcedureStore
++ 每一个操作都记录下来，服务重启的时候，恢复未完成的步骤。
+** 5. RootProcedureState
+每个Procedure配一个执行栈
+** 6. ProcedureScheduler
++ 跟踪活动的Procedure
++ 向Executor提供一些nice的procedure，什么样的呢？不会引起资源竞争的。比如Hmaster处理对于不同表的请求，完全不涉及到锁的问题。
++ 每一个Procedure都应该实现一个用来用来为Scheduler提供信息的接口。例如TableProcedureInterface，同一个表的所有Procedure都在一个queue中，以便做更好的呃任务编排
++ 更好的任务编排实例，比如入队时符合这些条件，那么直接添加到run queue里
+  1. 如果这个Procedure已经获得锁了，
+  2. 如果是restart时的保留锁的那个Procedure
+  3. 如果丢列中还没有人占据排它锁
+  4. Procedure或者他的祖先持有这个队列排他锁
+** 7. RootProcedureState
++ root procedure的状态
++ 只被Executor使用,Executor每执行完一步procedure，都检查下procedure的state。如果一个procedure执行失败，并且它是可回滚的，就添加到subprocStack中
++ 状态枚举
+  1. RUNNING,         // The Procedure is running or ready to run
+  2. FAILED,          // The Procedure failed, waiting for the rollback executing
+  3. ROLLINGBACK,  //The Procedure failed and the execution was rolledback
+
+* 从Procedure来看各种流程
+** create table
+1. CREATE_TABLE_PRE_OPERATION：可被abort，可被rollback
+   1. prepare create: 检查表存在么，要创建的table是否有cf
+   2. preCreate： 检查namespace和RegionQuota，pre协处理器
+2. CREATE_TABLE_WRITE_FS_LAYOUT ：hdfs 写入文件布局
+   1. 子流程DeleteTableProcedure.deleteFromFs，保证幂等性
+   2. 在hdfs上创建布局文件
+      1. 根据tableDesc创建临时目录，并罚入tableDesc文件
+      2. 临时目录里写region布局文件，regionInfo
+      3. 把临时目录移动到hbase root上
+3. CREATE_TABLE_ADD_TO_META ： 写meta表
+   1. add replica
+   2. 把regionInfo写到meta表里。应该包括replica regionInfo(再看)
+   3. setup replica reigon
+4. CREATE_TABLE_ASSIGN_REGIONS:
+   1. 设置table的状态为enabling，先写meta表再写hmaster
+   2. 添加子过程：assign region
+5. CREATE_TABLE_UPDATE_DESC_CACHE
+   1. 设置table状态为TableState.State.ENABLED
+   2. 更新master中的tableDescriptor的缓存
+6. CREATE_TABLE_POST_OPERATION：post协处理器
+** split region
+1. SPLIT_TABLE_REGION_PREPARE
+   1. 如果当前table正在Snapshot，则不可split
+   2. 如果region已经在split中了
+   3. 如果region不是Close或online的，不可split
+2. SPLIT_TABLE_REGION_PRE_OPERATION
+   1. pre协处理器
+   2. 检查namespace quota
+3. SPLIT_TABLE_REGION_CLOSE_PARENT_REGION
+   1. 子流程 ： unassign region
+4. SPLIT_TABLE_REGIONS_CHECK_CLOSED_REGIONS
+   1. 检查上一步的unassign有没有被打断 如果wal hasRecoveredEdits 则重新assign 再unassign
+5. SPLIT_TABLE_REGION_CREATE_DAUGHTER_REGIONS
+   1. 创建daughter regions
+6. SPLIT_TABLE_REGION_WRITE_MAX_SEQUENCE_ID_FILE
+
+** unassign region
+
+** RegionTransitionProcedure
+1. REGION_TRANSITION_QUEUE : push into the AM queue for balancer policy
+2. REGION_TRANSITION_DISPATCH : send the request to the target server
+3. REGION_TRANSITION_FINISH: wait assignment response. completion/failure
+
 

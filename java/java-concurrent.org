@@ -230,6 +230,7 @@ waitset  线程间通信
    4. writing 的线程数  ： 用来读写控制
 2. 写等待的条件，存在正在读的或者正在写的，具体为: reading > 0 || writing > 0
 3. 读等待的条件，存在正在写的，具体为 writing > 0 ,这里为了避免写饥饿，附加一个或条件(preferWriting && waiting write > 0)
+** Two-Phase Termination 
 
 * waitset
 + 可以去OpenJdk看hotspot怎么实现的？链表实现的
