@@ -96,6 +96,10 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 - org中图片开关 : C-c C-x C-v
 - org中图片大小 : #+ATTR_ORG: :width 350
   - ;;(setq org-image-actual-width '(400))
+** Dired
++ i : 创建子文件夹
++ R : rename
++ s : sort by name/time
 * 插件的
 ** 窗口布局
 *** ace-window

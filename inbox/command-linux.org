@@ -1,4 +1,19 @@
-#+title: linux 命令
-* 为分类
+#+title: linux 
+* 命令
 ** lsof (list open file,linux上所有东西视作文件)
 + lsof -i:port 
+* linux两大分支
+** 1. redhat系列
+1. redhat 服务收费
+2. fedora 类似于redhat开发分支 服务收费
+3. centos 与redhat基本一样，完全免费
+4. suse 欧洲用的多，ui更好
+5. gentoo linux 高级人员使用
+** 2. debian系列
+1. ubuntu 桌面更好一点，不适合服务
+2. KNOPPIX 免安装
+* 杂记
+** BSD 伯克利大学的
+** linux内核版本，www.kernel.com
+**  Unix TCP/IP C语言 Linux 的关系
+

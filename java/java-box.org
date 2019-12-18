@@ -134,7 +134,6 @@ IntToDoubleFunction
 + 抽象策略角色：Comparable
 + 具体策略角色： 具体的Compartor
 + 环境角色 : Collections,TreeMap
-*** 
 ** 代理模式
 *** 角色
 + 共同的能力(接口)

@@ -251,3 +251,46 @@ waitset  线程间通信
 2. lock
 3. cas，使用AtomicXXX原子类来帮助完成
 4. unsafe
+* thread
+** doc
++ jvm启动时候，会有一个线程去调用main()方法
++ 子线程的优先级默认等于父线程的优先级
++ 子线程只有在父线程是Daemon线程的时候，才是Daemon线程，daemon线程中启动的线程默认也是daemon线程，daemon方法需要在start之前调用
++ 线程停止条件
+  + 调用了Runtime.exit()，并且the security manager允许了退出
+  + 所有非daemon线程执行完毕(返回或者抛出异常)
++ daemon线程的应用，比如心跳线程，垃圾清理线程等等，随着你的应用线程的退出同时退出
+** state machine
+#+DOWNLOADED: https://www.uml-diagrams.org/examples/state-machine-example-java-6-thread-states.png @ 2019-12-08 18:28:57
+[[file:%E7%BA%BF%E7%A8%8B%E7%8A%B6%E6%80%81/2019-12-08_18-28-55_state-machine-example-java-6-thread-states.png]]
+** api
+*** join
+用wait()和notify()实现的
+*** interrupt
+使用interrupt优雅的停止线程
+1. 设置一个自定义的标志位，volitile类型的，不适用interrupt的中断标志，是怕吞没标志位
+2. 每次运行业务代码之前，while检查一下标志位，该停则停
+3. 为了尽可能的中断阻塞，停止线程的时候除了更改标志位的值，还要发一次中断请求。
+4. 不响应中断的阻塞方法，有一招是在线程A中再创建一个Daemon线程。然后使用标志位去停止A，A作为应用线程停止了，那么A的Daemon线程，真正的业务逻辑线程就停止了
+* Runnable
+** doc
+除非你想改变Tread的基础行为，不然你不应该随便继承Thread类,也就是说，你只改变run方法的时候应该继承Runnable
+* ThreadPoolExecutor
+** excute
+提task到线程池
+1. 如果池中running的线程数尚未到达corePoolSize，则会为提交的task创建一个新的线程并尝试start。
+2. 
+** acl
+*** workerCount 
+*** runState
+1. RUNNING：接受新的task或者处理队列里的task
+2. SHUTDOWN：不接受新的task，但是处理队列的task
+3. STOP : 不接受新task，不处理队列任务，并且向正在处理的任务发中断请求
+4. TIDYING ： 所有task已经执行完成，并且workerCount为0
+5. TERMINATED ： terminated()方法执行完了
+* ThreadLocal
+* Future
+** 角色
+1. Future
+2. FutureTask
+3. FutureService

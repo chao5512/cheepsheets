@@ -1,0 +1,15 @@
+#+title: mac 上的虚拟机
+* parallels desktop
++ ssh wangchao@10.211.55.3
++ password wangchao
+
+
+40G cms 
+
+6-700T
+
+85台
+
+hbase运维，gc优化 
+
+容忍gc停顿
