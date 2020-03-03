@@ -13,7 +13,7 @@ Editor>>General>>Show quick documentation on mouse move
   1. Add unambiguous imports on the fly，自动导包
   2. Optimize imports on the fly (for current project)，去除没用的包
 * 快捷键 
-约定 C ：control，s : command,  S : shift 
+约定 C ：control，s : command,  S : shift, A:option
 + s-A/S-S : 查找，可以查操作可以查类
 + s-F : find everywhere
 + C-d : debug
@@ -22,11 +22,17 @@ Editor>>General>>Show quick documentation on mouse move
 + s-d :复制一行到下一行
 ** 大部分与emacs相同
 + C-j ：向下滚动屏幕
-+ C-l ：向上滚动屏幕
++ C-i ：向上滚动屏幕
 + s-= ：展开代码块
 + s-- : 收起代码块
 + S-s = : 展开所有
 + S-s - ：收起所有
++ C-r : ace jump
+** coding
++ s--A p 抽取当前变量为当前方法参数
+** coding review
++ s-b : 从变量使用处跳到声明处，或从声明处跳到使用处
++ C-h : 查看继承关系
 * maven
 ** 普通项目添加maven支持
 在工程名称上右击并点击【Add Framework Support】

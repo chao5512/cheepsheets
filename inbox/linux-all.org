@@ -1,4 +1,26 @@
 #+title: linux 命令
-* 为分类
+* inbox
 ** lsof (list open file,linux上所有东西视作文件)
 + lsof -i:port 
+** time 后面跟命令，统计这个命令执行系统耗费的时间
+* 网络测试
+** 找出两台机器的可用带宽
+*** nc 接收
+netcat
+#+begin_example
+nc -l 5001 > /dev/null 
+-l : 接收下一次tcp连接
+#+end_example
+*** dd 发送
+转换或拷贝数据
+#+BEGIN_SRC sh
+  #发往本机10G的数据
+  dd if=/dev/zero bs=1MB count=10000 | nc localhost 5001
+
+#+END_SRC
+*** 测试结果
+#+begin_example
+10000+0 records in
+10000+0 records out
+10000000000 bytes (10 GB, 9.3 GiB) copied, 11.4357 s, 874 MB/s
+#+end_example

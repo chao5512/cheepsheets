@@ -1,5 +1,22 @@
 #+title: mac下的应用安装与管理
 * brew
+** brew下载太慢，更新brew源
+#+BEGIN_SRC sh
+  # 以下针对 mac OS 系统上的 Homebrew
+  git -C "$(brew --repo homebrew/core)" remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git
+  git -C "$(brew --repo homebrew/cask)" remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-cask.git
+  git -C "$(brew --repo homebrew/cask-fonts)" remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-cask-fonts.git
+  git -C "$(brew --repo homebrew/cask-drivers)" remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-cask-drivers.git
+
+  echo 'export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles' >> ~/.bash_profile
+  source ~/.bash_profile
+#+END_SRC
+** 常用命令
+1. brew install
+2. brew info
+3. brew list 显示本地
+** 安装路径
+/usr/local/Cellar
 * Macport
 ** 常用命令
 #+BEGIN_SRC sh

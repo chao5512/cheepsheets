@@ -100,6 +100,9 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
 + i : 创建子文件夹
 + R : rename
 + s : sort by name/time
+** 注释java内容
++ 注释 :  C-c c
++ 取消注释 : C-u C-c c
 * 插件的
 ** 窗口布局
 *** ace-window
@@ -130,6 +133,18 @@ note that，there is  a bug when we hava a treemacs window
 - C-x 3 : 垂直切分窗口
 - C-x 5 2 : 打开一个新的frame
 - C-x 5 0  : 关闭当前frame*
+*** plantuml
+**** 关键字
++ :file 图片输出目录
++ :cmdline -charset utf-8
+*** yasnippet
+**** 添加新模板
+#+begin_quote
+# -*- mode: snippet -*-  //在什么mode下使用
+# name:  //命名
+# key:  //快捷键
+# -- //从这句之后就是快捷键对应的snippet
+#+end_quote
 * 项目管理
 ** treemacs
 [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
@@ -227,3 +242,13 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 [[https://blog.csdn.net/weixin_34417183/article/details/88662556][全文检索]]
 *** projectile
 - 利用ag进行项目内全文搜索：projectil-ag
+** uml
+1. plantuml
+* benchmark of emacs 
+** cpu
+1. profile-start
+2. profile-report
+** 这可能是spaceMacs的
++ Emacs --timed-requires --profile
++ 那么emacs怎么看启动时间
+
