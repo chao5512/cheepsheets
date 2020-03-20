@@ -16,7 +16,18 @@
 2. brew info
 3. brew list 显示本地
 ** 安装路径
-/usr/local/Cellar
++ /usr/local/Cellar
++ 替换命令 
+#+BEGIN_SRC sh
+  ln -sf /usr/local/Cellar/git/2.25.0_1/bin/git /usr/local/bin/git
+#+END_SRC
+** 已安装的工具
+*** coreutils
+一个shell工具套件
+*** ripgrep
+比find更高效的文件搜索
+*** fd
+简单快速友好的find
 * Macport
 ** 常用命令
 #+BEGIN_SRC sh

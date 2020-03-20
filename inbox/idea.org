@@ -30,6 +30,7 @@ Editor>>General>>Show quick documentation on mouse move
 + C-r : ace jump
 ** coding
 + s--A p 抽取当前变量为当前方法参数
++ C-A o 去除无用import
 ** coding review
 + s-b : 从变量使用处跳到声明处，或从声明处跳到使用处
 + C-h : 查看继承关系

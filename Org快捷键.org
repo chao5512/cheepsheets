@@ -88,7 +88,7 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
    ω       \omega            \omega                 &omega;      
    ∂        \partial          \partial               &part; 
 ** 字体
-[[https://blog.csdn.net/u010654583/article/details/73559375][设置字体]]
+[[https://blog.csdn.net/u010654583/article/details/73559375]
 ** 切分窗口
 - esc松开 90 C-x 3 : 左右切分，左边占90个字符
 ** iamge
@@ -133,18 +133,29 @@ note that，there is  a bug when we hava a treemacs window
 - C-x 3 : 垂直切分窗口
 - C-x 5 2 : 打开一个新的frame
 - C-x 5 0  : 关闭当前frame*
-*** plantuml
-**** 关键字
+** plantuml
+*** 关键字
 + :file 图片输出目录
 + :cmdline -charset utf-8
-*** yasnippet
-**** 添加新模板
+** yasnippet
+*** 添加新模板 yas edit
 #+begin_quote
 # -*- mode: snippet -*-  //在什么mode下使用
 # name:  //命名
 # key:  //快捷键
 # -- //从这句之后就是快捷键对应的snippet
 #+end_quote
+** undo-tree
+- C-x u :打开undo tree
+- t : 时间戳开关
+- f : flush
+- q ：退出undo 视图
+- ，。 ： 视图左右滚动
+- C-f :在分叉口选择右侧分支
+- C-b ：在分叉口选择左侧分支
+- n : 向下
+- p : 向上
+
 * 项目管理
 ** treemacs
 [[https://github.com/Alexander-Miller/treemacs/blob/51141833efba4263aba92a89a004a36b78c44675/README.org][detail]]
@@ -251,4 +262,9 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 ** 这可能是spaceMacs的
 + Emacs --timed-requires --profile
 + 那么emacs怎么看启动时间
-
+* 函数
+** edit
+1. (org-copy-visible) ：copy 可见标题，再不想复制的时候不可见的子标题也会被复制时使用
+* 锚点
+1. 飞雷神标记定义：<<anchor1>>
+2. 飞到指定标记: [[anchor1]]

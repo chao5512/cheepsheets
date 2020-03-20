@@ -3,6 +3,46 @@
 ** lsof (list open file,linux上所有东西视作文件)
 + lsof -i:port 
 ** time 后面跟命令，统计这个命令执行系统耗费的时间
+** 了解一台机器 
+*** 磁盘
+#+BEGIN_SRC sh
+  #查看磁盘大小和使用情况
+  df -hl
+#+END_SRC
+**** 常见磁盘 
+ 1. fd：软驱 
+ 2. hd：IDE 磁盘
+ 3. sd：SCSI 磁盘
+ 4. tty：terminals 
+ 6. vd：virtio 磁盘 虚拟机磁盘
+*** 查看各用户使用存储空间的大小
+#+BEGIN_SRC sh
+  # -s means only give a summarize
+  du -sh /home/*
+#+END_SRC
+*** 查看linux内核信息
+#+BEGIN_SRC sh
+  uname －a 
+#+END_SRC
+*** 查看操作系统版本信息？
+#+BEGIN_SRC sh
+  cat /proc/version
+#+END_SRC
+*** 查看操作系统发行版信息?
+#+BEGIN_SRC sh
+  cat /etc/issue
+#+END_SRC
+*** cpu info
+#+BEGIN_SRC sh
+  #查询系统具有多少个逻辑核：
+  cat /proc/cpuinfo | grep "processor" | wc -l
+
+  #查询系统CPU的物理核数：
+  cat /proc/cpuinfo | grep "cpu cores" | uniq
+
+  #查询系统CPU是否启用超线程：
+  cat /proc/cpuinfo | grep -e "cpu cores"  -e "siblings" | sort | uniq
+#+END_SRC
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收

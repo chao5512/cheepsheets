@@ -1,4 +1,4 @@
-#+title: linux 
+#+title: linux 兄弟连笔记
 * 命令
 ** lsof (list open file,linux上所有东西视作文件)
 + lsof -i:port 
