@@ -1,0 +1,80 @@
+#+title: java-log
+* logback
+** logback分为3个模块
+1. logback-core ：logback-core为其他两个模块完成了基础工作，你可以基于logback-core 实现自己的模块，就想logback-access一样
+2. logback-classic ：logback-classic可以看做是log4j的进阶版，但更厉害的是，它原生实现了SLF4J API
+3. logback-access ：和tomcat、jetty等一起使用，更好的服务于HTTP server 访问log [[http://logback.qos.ch/access.html][logback-access]]
+** Logger[classic]
+Logger是classic包中的概念，core包并不认识它
+1. 每一个logger都关联与某个loggerContext
+2. loggerContext ： 生成logger，并且维护所有的logg作为一棵树
+*** logger是一个named entity，也就是我们用loggerFactory创建一个logger时传的参数，一般为
+loggerContext正是用这个命名来维护树结构
+#+BEGIN_SRC java
+  public class LogBackTest {
+      //class chaos.LogBackTest
+      private static final Logger LOG = LoggerFactory.getLogger(LogBackTest.class);
+  }
+#+END_SRC
+*** 日志级别
+**** slf4j 定义 - 这些print method称为level request statement
+#+BEGIN_SRC java
+  package org.slf4j; 
+  public interface Logger {
+
+    // Printing methods: 
+    public void trace(String message);
+    public void debug(String message);
+    public void info(String message); 
+    public void warn(String message); 
+    public void error(String message); 
+  }
+#+END_SRC
+**** logback定义
+1. ch.qos.logback.classic.Level ：这是final的
+2. Marker
+
+**** level Inheritance
+1. 如果一个logger没有指定level，则从最近的祖先获得level，以此类推
+2. rootLogger 默认level为DEBUG，因此如果所有logger都不显式指定level，那大家都是DEBUG level。
+**** 基本规则
+1. level request statement大于等于effective level 时会打印出message
+2. [effective level] : TRACE < DEBUG < INFO <  WARN < ERROR
+3. 总结，每个logger可以配置effective level，配合level request 例如INFO方法，来控制disable一些level request statement
+**** set level 
+#+BEGIN_SRC java
+  @Test
+  public void testEffectiveLevel(){
+      private static final Logger LOG = LoggerFactory.getLogger(LogBackTest.class);
+      //需要显式指定为logback的实现
+      ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LOG;
+      logger.setLevel(Level.INFO);
+  }
+#+END_SRC
+**** LoggerFactory
+1. 用LoggerFactory.getLogger(name) 会获得相同name的同一个实例。单例工厂
+** Appender[core]
+*** 一些appender
+1. [default]console 
+2. files
+3. Syslog
+4. TCP Sockets
+5. JMS
+6. MySQL
+7. 。。。
+*** appender也具有继承特性
+1. 定义为继承父类的appender，化简后结果为，继承所有父类的appender
+2. 可以指定Additivity Flag为false来阻止继承父类的appender
+** Layout[core]
+输出样式
+** 参数化打印
+#+BEGIN_SRC java
+  //使用对象数组传递多个日志参数
+  Object[] paramArray = {newVal, below, above};
+  logger.debug("Value {} was inserted between {} and {}.", paramArray);
+#+END_SRC
+* log4j
+* JUL - java util logging
+* Any log vs System.out.print
+1. log api 最大的好处是可以禁用某些输出却不会阻塞其他print
+
