@@ -1,0 +1,238 @@
+#+title: google guice
+guice 是一个轻量的依赖注入的java框架
+1. 简单来说，guice减轻了工厂和new的使用
+2. 你可以简单的用@Inject俩替代new关键字
+3. 为了更方便的重构、重用、单元测试
+4. java 相关，类型安全、泛型、注解
+5. Guice的愿景：使开发和debug更简单更迅速
+
+* motivation
+** 1. 现在我们有一个需求
+#+BEGIN_SRC java
+  public interface BillingService {
+
+    /**
+     ,* 尝试去charge账单
+     ,*
+     ,* @return a receipt（收据） of the transaction. If the charge was successful, the
+     ,*      receipt will be successful. Otherwise, the receipt will contain a
+     ,*      decline note describing why the charge failed.
+     ,*/
+    Receipt chargeOrder(PizzaOrder order, CreditCard creditCard);
+  }
+#+END_SRC
+** 2. 我们的工作就是对上面的接口实现
+#+BEGIN_SRC java
+  public class RealBillingService implements BillingService {
+    public Receipt chargeOrder(PizzaOrder order, CreditCard creditCard) {
+      CreditCardProcessor processor = new PaypalCreditCardProcessor();
+      TransactionLog transactionLog = new DatabaseTransactionLog();
+
+      try {
+        ChargeResult result = processor.charge(creditCard, order.getAmount());
+        transactionLog.logChargeResult(result);
+
+        return result.wasSuccessful()
+            ? Receipt.forSuccessfulCharge(order.getAmount())
+            : Receipt.forDeclinedCharge(result.getDeclineMessage());
+       } catch (UnreachableException e) {
+        transactionLog.logConnectException(e);
+        return Receipt.forSystemFailure(e.getMessage());
+      }
+    }
+  }
+#+END_SRC
+1. This code poses problems for modularity and testability.
+2. 实现类写好后，我们需要一个FakeCreditCardProcessor来模拟信用卡付款时非常不方便
+** 3. 工厂模式
+工厂模式可以有效的做客户端和实现类的去耦
+*** 工厂将真正的实现类封装起来，并且有改变的可能
+#+BEGIN_SRC java
+  public class CreditCardProcessorFactory {
+
+    private static CreditCardProcessor instance;
+
+    public static void setInstance(CreditCardProcessor processor) {
+      instance = processor;
+    }
+
+    public static CreditCardProcessor getInstance() {
+      if (instance == null) {
+        return new SquareCreditCardProcessor();
+      }
+
+      return instance;
+    }
+  }
+#+END_SRC
+*** 用工厂创建代替直接用new调用构造方法
+#+BEGIN_SRC java
+  public class RealBillingService implements BillingService {
+    public Receipt chargeOrder(PizzaOrder order, CreditCard creditCard) {
+      CreditCardProcessor processor = CreditCardProcessorFactory.getInstance();
+      TransactionLog transactionLog = TransactionLogFactory.getInstance();
+
+      try {
+        ChargeResult result = processor.charge(creditCard, order.getAmount());
+        transactionLog.logChargeResult(result);
+
+        return result.wasSuccessful()
+            ? Receipt.forSuccessfulCharge(order.getAmount())
+            : Receipt.forDeclinedCharge(result.getDeclineMessage());
+       } catch (UnreachableException e) {
+        transactionLog.logConnectException(e);
+        return Receipt.forSystemFailure(e.getMessage());
+      }
+    }
+  }
+#+END_SRC
+*** 并且可以很方便的写单元测试
+#+BEGIN_SRC java
+  public class RealBillingServiceTest extends TestCase {
+
+      private final PizzaOrder order = new PizzaOrder(100);
+      private final CreditCard creditCard = new CreditCard("1234", 11, 2010);
+      //mock for test
+      private final InMemoryTransactionLog transactionLog = new InMemoryTransactionLog();
+      private final FakeCreditCardProcessor processor = new FakeCreditCardProcessor();
+
+      @Override public void setUp() {
+          // 这里就是工厂模式比直接构造模式方便的一点
+          TransactionLogFactory.setInstance(transactionLog);
+          CreditCardProcessorFactory.setInstance(processor);
+      }
+
+      @Override public void tearDown() {
+          TransactionLogFactory.setInstance(null);
+          CreditCardProcessorFactory.setInstance(null);
+      }
+
+      public void testSuccessfulCharge() {
+          RealBillingService billingService = new RealBillingService();
+          Receipt receipt = billingService.chargeOrder(order, creditCard);
+
+          assertTrue(receipt.hasSuccessfulCharge());
+          assertEquals(100, receipt.getAmountOfCharge());
+          assertEquals(creditCard, processor.getCardOfOnlyCharge());
+          assertEquals(100, processor.getAmountOfOnlyCharge());
+          assertTrue(transactionLog.wasSuccessLogged());
+      }
+  }
+#+END_SRC
+*** 但上面的代码还是有问题的
+因为工厂类中我们使用类变量来指向我们的具体实现，如果tearDown失败，可能会对其他测试产生影响，并且在并行情况下如果不同线程需要不同的实现，可能会出问题
+*** 更大的问题还在后面
+ 依赖隐藏于code中，这导致
+1. 如果我们要新加一个依赖项，比如要引入一个CreditCardFraudTracker，我们不得不重新跑一遍所有的测试，才能知道哪些测试因为依赖项的加入而不通过
+2. 我们当然还有可能会忘记setInstance，而且这很有可能到尝试付款逻辑的时候才会被发现
+3. 随着项目的增长，工厂模式来完成这项解耦这项工作显然会带来更大的负担
+4. 你当然可以交给QA，但你其实可以做的更好
+** 4. 依赖注入
+**** 把依赖的具体实现当成构造器参数
+#+BEGIN_SRC java
+  public class RealBillingService implements BillingService {
+    private final CreditCardProcessor processor;
+    private final TransactionLog transactionLog;
+
+    public RealBillingService(CreditCardProcessor processor,
+        TransactionLog transactionLog) {
+      this.processor = processor;
+      this.transactionLog = transactionLog;
+    }
+
+    public Receipt chargeOrder(PizzaOrder order, CreditCard creditCard) {
+      try {
+        ChargeResult result = processor.charge(creditCard, order.getAmount());
+        transactionLog.logChargeResult(result);
+
+        return result.wasSuccessful()
+            ? Receipt.forSuccessfulCharge(order.getAmount())
+            : Receipt.forDeclinedCharge(result.getDeclineMessage());
+       } catch (UnreachableException e) {
+        transactionLog.logConnectException(e);
+        return Receipt.forSystemFailure(e.getMessage());
+      }
+    }
+  }
+#+END_SRC
+**** 当我们不再需要工厂模式的时候，去掉setup和tearDown
+#+BEGIN_SRC java
+  public class RealBillingServiceTest extends TestCase {
+
+      private final PizzaOrder order = new PizzaOrder(100);
+      private final CreditCard creditCard = new CreditCard("1234", 11, 2010);
+
+      private final InMemoryTransactionLog transactionLog = new InMemoryTransactionLog();
+      private final FakeCreditCardProcessor processor = new FakeCreditCardProcessor();
+
+      public void testSuccessfulCharge() {
+          RealBillingService billingService
+              = new RealBillingService(processor, transactionLog);
+          Receipt receipt = billingService.chargeOrder(order, creditCard);
+
+          assertTrue(receipt.hasSuccessfulCharge());
+          assertEquals(100, receipt.getAmountOfCharge());
+          assertEquals(creditCard, processor.getCardOfOnlyCharge());
+          assertEquals(100, processor.getAmountOfOnlyCharge());
+          assertTrue(transactionLog.wasSuccessLogged());
+      }
+  }
+#+END_SRC
+不幸的是，客户端现在必须要引用具体的实现类
+** 5. guice
+依赖注入使代码更加模块化，更方便测试。guice使依赖注入更易写。下面是使用guice写依赖注入的流程
+**** 1. map interface to implements。
+可以实现Module接口来声明一个配置类，用来存接口到具体实现的映射关系
+#+BEGIN_SRC java
+  public class BillingModule extends AbstractModule {
+    @Override
+    protected void configure() { //里面的内容相当于配置项，接口映射到实现类
+      bind(TransactionLog.class).to(DatabaseTransactionLog.class);
+      bind(CreditCardProcessor.class).to(PaypalCreditCardProcessor.class);
+      bind(BillingService.class).to(RealBillingService.class);
+    }
+  }
+#+END_SRC
+**** 2. 在那些依赖于我们声明的具体实现 的类构造上使用@Inject注解
+Guice会检查被注解的构造器，并帮构造器安排具体参数
+#+BEGIN_SRC java
+
+  public class RealBillingService implements BillingService {
+      private final CreditCardProcessor processor;
+      private final TransactionLog transactionLog;
+      // 这里注解RealBillingService的构造器。以委托Guice去找到合适的参数
+      @Inject
+      public RealBillingService(CreditCardProcessor processor,
+                                TransactionLog transactionLog) {
+          this.processor = processor;
+          this.transactionLog = transactionLog;
+      }
+
+      public Receipt chargeOrder(PizzaOrder order, CreditCard creditCard) {
+          try {
+              ChargeResult result = processor.charge(creditCard, order.getAmount());
+              transactionLog.logChargeResult(result);
+
+              return result.wasSuccessful()
+                  ? Receipt.forSuccessfulCharge(order.getAmount())
+                  : Receipt.forDeclinedCharge(result.getDeclineMessage());
+          } catch (UnreachableException e) {
+              transactionLog.logConnectException(e);
+              return Receipt.forSystemFailure(e.getMessage());
+          }
+      }
+#+END_SRC
+**** 3. 最后我们将一切打包在Injector中
+#+BEGIN_SRC java
+  public static void main(String[] args) {
+      Injector injector = Guice.createInjector(new BillingModule());
+      // 我们在这里获得BillingService的具体实现，
+      // 而具体实现也是有依赖的，通过注解构造器和配置类的配合，帮助具体实现也找到它的正确依赖
+      BillingService billingService = injector.getInstance(BillingService.class);
+      ...
+    }
+#+END_SRC
+* core Guice concepts
+1. @Injuect constructor
+2. Guice modules
+
