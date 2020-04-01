@@ -64,3 +64,40 @@ nc -l 5001 > /dev/null
 10000+0 records out
 10000000000 bytes (10 GB, 9.3 GiB) copied, 11.4357 s, 874 MB/s
 #+end_example
+* arch
+** 装机
+*** 分区，用cfdisk
+*** 格式化
+**** 引导分区-EFI system 的格式化
+#+BEGIN_SRC sh
+  mkfs.fat -F32 /dev/<partion>
+
+#+END_SRC
+*** 挂载
+规划
+*** 装服务
+*** passwd 123
+*** 安装过程中不识别ide硬盘，
+改为achi模式，又导致window不能正常启动
+[[https://itbbs.pconline.com.cn/diy/52883973.html][参考]]
+如何获得管理员权限 [[https://www.zhihu.com/question/34471559][参考]]
+*** 安装过程中可以联网，装完以后不能联网
+1. 使用arch引导，安装dhcp
+2. 由于引导盘中没有保留fstab，所以要进入已安装的系统，要手动mount一遍
+3. 安装dhcpcd
+4. 重启，打开archlinux 动态获取ip
+5. ping
+* vim
+宏录制
+#+BEGIN_SRC sh
+  # start
+  q a
+  # do somthing
+  v 用来选取内容
+  C-o 回到上一个位置
+  # end
+  q
+  # replay
+  @a
+
+#+END_SRC
