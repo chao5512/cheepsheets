@@ -139,7 +139,7 @@ git pull = git fetch + git merge
   #github的配置
   Host github.com
   HostName github.com
-  IdentityFile ~/.ssh/id_rsa
+  IdentityFile ~/.ssh/github/id_rsa
   User git
   # gitlab的配置
   # 直接配置ip的例子
@@ -151,8 +151,15 @@ git pull = git fetch + git merge
   #码云的配置
   Host gitee.com
   HostName gitee.com
-  IdentityFile ~/.ssh/mayun/id_rsa
+  IdentityFile ~/.ssh/gitee/id_rsa
   User git
+#+END_SRC
+*** 去远端仓库添加公钥
+1. for github ： https://github.com/settings/keys -》 new ssh 添加刚刚生成的给github的公钥
+*** connect test
+有些服务器添加公钥认证会比较慢，所以如果失败了可以确认服务器是否已经添加成功了，一般会有邮件通知
+#+BEGIN_SRC sh
+  ssh git@github.com
 #+END_SRC
 * git for aur
 ** git config
