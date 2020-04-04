@@ -103,3 +103,80 @@ git remote -v 查看
 
 git pull = git fetch + git merge
 
+* git 是基于ssh的
+
+** ssh 配置
+.ssh/config
+*** ssh命令详解 
+**** ssh-keygen
+用来生成，管理，转换ssh的秘钥的工具
+1. -t : 指定秘钥类型，默认rsa
+2. -C : 指定user@host 默认为系统的
+3. 通常工具会询问一个文件位置来存放私钥，公钥就是私钥append一个.pub
+4. 还会询问一个密码，设置为空就好
+** 配置多个git远程仓库
+*** 在~/.ssh 目录下划分好各仓库目录
+#+BEGIN_SRC sh
+  cd ~/.ssh
+  mkdir github
+  mkdir gitlab
+  mkdir gitee
+#+END_SRC
+*** 使用ssh-keygen工具生成ssh的私钥和公钥
+#+BEGIN_SRC sh
+  ssh-keygen -C "" -f ~/.ssh/gitee/id_rsa
+  ssh-keygen -C "" -f ~/.ssh/github/id_rsa
+  ssh-keygen -C "" -f ~/.ssh/gitlab/id_rsa
+#+END_SRC
+
+*** 配置
+[[https://blog.csdn.net/Daiwood/article/details/50561306][配置非22端口]]
+#+BEGIN_SRC sh
+  vim ~/.ssh/config
+
+  # 添加如下内容
+
+  #github的配置
+  Host github.com
+  HostName github.com
+  IdentityFile ~/.ssh/id_rsa
+  User git
+  # gitlab的配置
+  # 直接配置ip的例子
+  Host 192.168.1.1
+  # 配置非22端口的例子
+  Port 2226
+  IdentityFile ~/.ssh/gitlab/id_rsa
+  User git
+  #码云的配置
+  Host gitee.com
+  HostName gitee.com
+  IdentityFile ~/.ssh/mayun/id_rsa
+  User git
+#+END_SRC
+* git for aur
+** git config
+Git 自带一个 git config 的工具来帮助设置控制 Git 外观和行为的配置变量。 这些变量存储在三个不同的位置：
+
+1. /etc/gitconfig 文件: 包含系统上每一个用户及他们仓库的通用配置。 如果在执行 git config 时带上 --system 选项，那么它就会读写该文件中的配置变量。 （由于它是系统配置文件，因此你需要管理员或超级用户权限来修改它。）
+
+2. ~/.gitconfig 或 ~/.config/git/config 文件：只针对当前用户。 你可以传递 --global 选项让 Git 读写此文件，这会对你系统上 所有 的仓库生效。
+
+3. 当前使用仓库的 Git 目录中的 config 文件（即 .git/config）：针对该仓库。 你可以传递 --local 选项让 Git 强制读写此文件，虽然默认情况下用的就是它。。 （当然，你需要进入某个 Git 仓库中才能让该选项生效。）
+*** 优先级local > user > etc
+#+BEGIN_SRC sh
+  # 查看配置和所在文件
+  git config --list --show-origin
+#+END_SRC
+** first step 
+*** 配置用户信息
+#+BEGIN_SRC sh
+  # 使用git config 工具配置，保存在当前用户配置文件下
+  git config --global user.name "wangchao"
+  git config --global user.email 543164029@qq.com
+#+END_SRC
+*** 配置默认editor
+在输入git信息 比如commit message的时候使用
+#+BEGIN_SRC sh
+  git config --global core.editor emacs
+#+END_SRC
