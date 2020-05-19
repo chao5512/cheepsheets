@@ -43,6 +43,14 @@
   #查询系统CPU是否启用超线程：
   cat /proc/cpuinfo | grep -e "cpu cores"  -e "siblings" | sort | uniq
 #+END_SRC
+** how to kill a program
+[[https://itsfoss.com/how-to-find-the-process-id-of-a-program-and-kill-it-quick-tip/][参考]]
+*** find pid by name
+1. pidof
+2. ps -aux |grep -i 'music'
+*** kill 
+1. kill -9
+2. kill -9 `pidof pname`
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收

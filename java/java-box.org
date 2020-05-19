@@ -111,6 +111,28 @@
 *** 参数To返回值前缀
 IntToDoubleFunction
 *** 如果所有参数到显示的指定类型，那么arity前缀是多余的
+** time
+1. time 包中参照ISO标准定义了一些时间相关的类,都是不可变、线程安全的
+2. 所有的date time都是由暴露创建接口的字段们组成，如果想要直接访问字段，查阅子包temporal中的
+3. 各个时间表示直接的转换参照子包format
+4. 子包chrono包含了calender的api
+5. 推荐的做法是持久化时间、如像数据库和网络传输的时候使用iso-8601标准，由使用层来转换
+*** dates and times
+**** Instant
+时间戳/时间点，可以从clock中获取
+**** LocalDate 
+存一个日期，没得具体时间
+**** LocalTime
+只有时间，没得日期
+**** LocalDateTime
+形如2010-12-03T11:30
+**** ZonedDateTime
+附带时区的完整时间，建议尽量用默认时区，以减少复杂性。但是为了做日志分析，我还是全都加上了时区。
+*** Duration and Period
+**** Duration 相对于时间点，可以贝当作为时间线
+**** Period
+*** 附加的value类型
+**** OffsetTime 和OffsetDateTime主要用于网络传输和存数据库，因为相比Europe/Paris，+02:00 是更为简单的结构
 * ForkJoin框架
 **  ForkJoinPool
 + 与其他Executor Service相比，ForkJoinPool的优势在于，pool中的线程除了处理提交上来的任务外，还会处理pool中其他线程产生的子任务。
