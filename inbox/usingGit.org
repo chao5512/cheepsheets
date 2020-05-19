@@ -15,7 +15,7 @@
   #上面虽然设置了免密 但是使用https方式还是会每次要求输入账户密码 可用如下密令查看url格式
   git remote -v
   #更改url为ssh方式
-  git remote set-url origin git@github.com:someaccount/someproject.git
+  git remote set-url origin git@github.com:chao5512/cheepsheets.git
 
   5. enjoy git!
 #+END_SRC
