@@ -109,30 +109,33 @@ SerialOld是单线程收集器,使用 *标记一整理算法*,是 *老年代的�
 
 **** 7步详细步骤，帮助理解log
 [[https://www.cnblogs.com/littleLord/p/5380624.html][详细步骤参考---说人话版本]]
+[[https://www.jianshu.com/p/ba768d8e9fec][人话进阶版]]
 [[https://blogs.oracle.com/poonam/understanding-cms-gc-logs][外国人版本-上古CMS]]
 1. Phase 1: Initial mark
    + STW
    + 标记GCRoot能直接关联的对象
    + 以及新生代引用的对象
-   + 对应log :[GC [1 CMS-initial-mark: 26386K(786432K)] 26404K(1048384K), 0.0074495 secs]   表示cms-initial-mark：开始于老年代占用是26386k，老年代总空间是786432k
+   + 对应log :[GC [1 CMS-initial-mark: 26386K(786432K)] 26404K(1048384K), 0.0074495 secs]   表示cms-initial-mark：开始于老年代占用是26386k，老年代总空间是786432k,后面的26404K(1048384K), 表示当前整个堆的内存使用情况和本次初始标记耗费的时间
 
 2. Phase 2: Concurrent mark
    + 从第一步标记的对象出发，并行标记所有老年代存活对象
    + 完成时标记可能有偏差，为了保证程序正确执行，必须找到所有活的，包括在并行标记时偷偷又活过来的，可以放过在并行时悄悄死的，3-5步为了完成这个目标
-   + log : [CMS Initial Mark
+   + 简单的，对象引用发生变化时，标记该对象所在区域为dirty card
+   + log : [CMS-concurrent-mark-start]
 3. Phase 3: Concurrent preclean
    + 处理应用程序第二阶段并行时新生成的从新生代指向老年代对象的引用，救活这个被引用的对象（也包括直接分配到老年代的对象）。
    + 扫描dirtyCard找到在第二阶段并行时，老年代发生关系变化的对象所在的card，把card中所有对象引用到的对象救活。
    + log : [CMS Concurrent-preclean
 4. Phase 4: Concurrent abortable preclean
    + log : [CMS-concurrent-abortable-preclean
+   + 为什么叫abortable？ 这个阶段是重复的做相同的事情直到发生aboart的条件（比如：重复的次数、多少量的工作、持续的时间等等）之一才会停止。
    + 此阶段可能显著影响STW停顿的持续时间,并且有许多重要[[https://blogs.oracle.com/jonthecollector/entry/did_you_know][重要配置]]和失败模式。
    + *这个阶段实际上就是一个minorGC，用来减少新生代的对象，为下一阶段的Rescan减少压力*
    + 两个参数：CMSScheduleRemarkEdenSizeThreshold、CMSScheduleRemarkEdenPenetration，默认值分别是2M、50%。两个参数组合起来的意思是预清理后，eden空间使用超过2M时启动可中断的并发预清理（CMS-concurrent-abortable-preclean），直到eden空间使用率达到50%时中断，进入remark阶段。
    + 参数CMSMaxAbortablePrecleanTime ，默认为5S，最后的中断时间。中断这次minorGC，就算没有开始，也中断了，这就有可能没有minorGC就进入下一阶段了。
    + CMSScavengeBeforeRemark参数，使remark前强制进行一次Minor GC。解决上一条的问题，但是新生代如果垃圾特别少，这强加的一次GC显然得不偿失。
 5. Phase 5: Final remark
-   + STW来做最后的标记，准确的标记所有活的对象
+   + STW来做最后的标记，准确的标记老年代所有活的对象,尽管先前的pre clean阶段尽量应对处理了并发运行时用户线程改变的对象应用的标记，但是不可能跟上对象改变的速度，只是为final remark阶段尽量减少了负担。
    + 重新标记的时候是要rescan新老分区的
    + CMS尽可能的尝试在新生代为空的时候进入Final remark阶段
 6. Phase 6: Concurrent Sweep
@@ -145,6 +148,16 @@ SerialOld是单线程收集器,使用 *标记一整理算法*,是 *老年代的�
 1. 以尽量并发的方式来满足低停顿，即尽量GC线程和用户线程同时跑，会与服务争夺cpu，CMS默认的回收线程数是(CPU个数+3)/4，这是为了保证多核情况下，cm不会使用太少cpu，但是这导致cpu少的时候，cms会占用非常多的cpu资源。
 2. 无法避免浮动垃圾，浮动垃圾是一种引起concurrent-mode-failure的原因。垃圾回收线程与用户线程并行时，老年代需要预留担保内存（CMSInitiatingOccupancyFraction，默认92%）来尽可能减少concurrent Mode Failure
 3. 产生大量空间碎片，为此我们不得不选择一种策略(UseCMSCompactAtFullCollection或CMSFullGCsBeforeCompaction)做compaction,然而compaction是需要STW的
+
+**** final remark阶段的详细解读
+1. [Rescan (parallel) , 0.0103714 secs]这是整个final remark阶段扫描对象的用时总计，该阶段会重新扫描CMS堆中剩余的对象，重新从“根对象”开始扫描，并且也会处理对象关联。本次扫描共耗时 0.0103714s。
+2. [weak refs processing, 0.0006267 secs]第一个子阶段，表示对弱引用的处理耗时为0.0006267s。
+
+3. [class unloading, 0.0368915 secs]第二个子阶段，表示卸载无用的类的耗时为0.0368915s。
+
+4. [scrub symbol table, 0.0486196 secs]最后一个子阶段，表示清理分别包含类级元数据和内部化字符串的符号和字符串表的耗时。
+
+5. [1 CMS-remark: 108093K(126116K)]表示经历了上面的阶段后老年代的内存使用情况。再后面的132398K(165412K), 0.1005635 secs表示final remark后整个堆的内存使用情况和整个final remark的耗时。
 
 *** G1 – Garbage First
 [[https://tech.meituan.com/2016/09/23/g1.html][参考]]
@@ -349,6 +362,7 @@ if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0;
 + -XX:MaxTenuringThreshold=5  : 晋升年龄的最大值，也就是有可能在小于5的时候就晋升，该参数的默认值为15,CMS中默认值为6,G1中默认为15(在JVM中,该数值是由4个bit来表示的,所以最大值1111,即15). 经历了多次Gc后,存活的对象会在 From Survivor与 To Survivor之间来回存放,而这里面的一个前提则是这两个空间有足够的大小来存放这些数据,一种策略是计算每个年龄对象的大小,如果达到某个年龄后发现总大小已经大于了 Survivor空间的50号,那么这时就需要调整阈值,不能再继续等到默认的15次gc,因为这样会导致 Survivor空间不足,所以需要调整阈值,让这些存活对象尽快完成晋升。
 ** GC-log
 含义解析样例
++ 正常gc
 #+begin_example
 
   [ GC (Allocation Failure)[PSYoungGen: 5646K->624K(9216K)] 5646K->4728K(19456K),0.0044403 secs] [Times: user=0.03 sys=0.00, real=0.01 secs
@@ -359,14 +373,24 @@ if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0;
   5646K->4728K(19456K),		     回收前总的被使用的堆5646k，回收后总的堆被使用4728k，总堆可用大小为19456（配好的）
   0.0044403 secs] [Times: user=0.03 sys=0.00, real=0.01 secs	总共用了0.0044403秒，其中用户空间糊了0.03秒，内核空间几乎是0.00，真正运行了0.01秒
 #+end_example
+
++ full GC
 #+begin_example
   [Full GC (Ergonomics) [PSYoungGen: 608K->0K(9216K)] [ParOldGen: 5128K->5616K(10240K)] 5736K->5616K(19456K), [Metaspace: 3290K->3290K(1056768K)], 0.0057821 secs] [Times: user=0.01 sys=0.00, real=0.01 secs]
   [Full GC
   (Ergonomics)		GC本身需要的一次GC
   [PSYoungGen: 608K->0K(9216K)]	新生代回收到0了
-  [ParOldGen: 5128K->5616K(10240K)] 5736K->5616K(19456K),
-  [Metaspace: 3290K->3290K(1056768K)],
+  [ParOldGen: 5128K->5616K(10240K)] 5736K->5616K(19456K),// 回收前5128k，回收后5616k，老年代总共10240k，后面的一对数为对空间回收前后的值，堆总大小为19456k
+  [Metaspace: 3290K->3290K(1056768K)], //元空间在GC前后的变化
   0.0057821 secs] [Times: user=0.01 sys=0.00, real=0.01 secs] 
+#+end_example
+
++ Full GC - another version
+#+begin_example
+2020-05-25T22:32:30.549+0800: 30.993: [Full GC (GCLocker Initiated GC) 2020-05-25T22:32:30.549+0800: 30.993: 
+[CMS: 3086306K->3086306K(3086784K), 0.6462093 secs] 4082949K->3768837K(4083584K), // 回收前后
+[Metaspace: 37917K->37917K(1083392K)], 0.6462875 secs] [Times: user=0.65 sys=0.00, real=0.64 secs]
+
 #+end_example
 ** 查看虚拟机默认参数
 #+BEGIN_SRC sh
@@ -386,6 +410,19 @@ if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0;
 + -XX:+PrintStringDeduplicationStatistics查看去重信息
 * OOM
 [[https://www.cnblogs.com/intsmaze/p/9550256.html][为什么使用dump而不是报错日志]]
+
+todo 
+1. 排查内存溢出
+** 生成dump文件的集中方式
+1. jmapdump
+2. jconsole HotSpotDiagnosticMXBean
+3. jvm参数
+   1) -XX:+HeapDumpOnOutOfMemoryError
+   2) -XX:HeapDumpPath=/home/wangchao/brfs/dump
+4. hprof 命令，查看cpu和内存
+   1. [[http://docs.oracle.com/javase/8/docs/technotes/samples/hprof.html][参考]]
+
+
 * 线程状态
 [[https://www.uml-diagrams.org/java-thread-uml-state-machine-diagram-example.html][参考]]
 
@@ -433,9 +470,12 @@ if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0;
 ** jconsole
 - 线程监控可以看到线程的总等待、总阻止线程数
 - 检查死锁的线程
+- HotSpotDiagnosticMXBean ： 生成内存快照
 ** jmap
 - clstat : 查看类加载器的统计数据
 - heapheap : 堆和gc的统计数据
+- jmap -dump:file=3.dump 19076 : 生成内存快照
+- -histo : 内存直方图
 ** jstat
 - gc gc统计信息
   - MC : current metaspace capacity  （KB）
@@ -460,8 +500,10 @@ if (CARD_TABLE [this address /512] != 0) CARD_TABLE [this address >> 9] = 0;
 - 与jcmd差不多，但是是实时的
 - 可以jcmd生成JFR(java fligh recorder:飞行记录器)文件
 ** jhat
-- 可以转储dump文件
-- 可以分析dump文件(没有图形界面的时候用)
+**** 可以转储dump文件
+**** 可以分析dump文件(没有图形界面的时候用)
+1. 可以按条件查询，比如查询某个class的所有实例
+
 ** heapHore
 ** gceasy
 ** top

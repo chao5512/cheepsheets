@@ -13,3 +13,9 @@
 1. 一个帮助启动netty服务的启动器ServerBootstrap
 2. 拦截init方法，在这替换我们要用的handler
 3. 自定义handler中重写read0方法，处理数据
+* RPC
+1. 高效的消息传输
+2.
+** todo 
+1. netty的零拷贝是如何做到的？
+2. 加入序列化这一步后又会有什么不一样么？还是零拷贝么？

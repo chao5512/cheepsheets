@@ -1,0 +1,8 @@
+#+title: jenkins
+* 参考
+
+1.[[ https://my.oschina.net/bysu/blog/2250954]] 
+2. [[https://ywnz.com/linuxyffq/4137.html]]
+
+* 更换源
+

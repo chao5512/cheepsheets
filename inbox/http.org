@@ -1,0 +1,10 @@
+#+title: http
+* HTTP/2
+* okhttp
+一个注重效率的http客户端
+** 默认的
+1. 在HTTP/2支持下，所有访问同一个域的请求共用一个socket
+2. HTTP/2不可用时，也会缓存connection来降低请求latency
+3. 透明压缩
+4. response缓存
+

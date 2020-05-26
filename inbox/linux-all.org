@@ -51,6 +51,7 @@
 *** kill 
 1. kill -9
 2. kill -9 `pidof pname`
+** 分析内存占用
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
@@ -95,6 +96,8 @@ nc -l 5001 > /dev/null
 3. 安装dhcpcd
 4. 重启，打开archlinux 动态获取ip
 5. ping
+** 空投
+1. [[https://blog.csdn.net/superstar_zbt/article/details/100883570][pacman 404]]
 * vim
 宏录制
 #+BEGIN_SRC sh
@@ -109,3 +112,8 @@ nc -l 5001 > /dev/null
   @a
 
 #+END_SRC
+* 应用
+** scrot
+截屏用 [[https://blog.csdn.net/zhyh1986/article/details/39831469][参考]]
+
+
