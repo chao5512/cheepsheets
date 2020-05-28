@@ -52,6 +52,20 @@
 1. kill -9
 2. kill -9 `pidof pname`
 ** 分析内存占用
+** top
+[[https://javawind.net/p131][参考]]
+[[https://www.cnblogs.com/dragonsuc/p/5512797.html][更详细的版本]]
+*** 内部命令
+** htop
++ 在某个进程上按l: lsof
+** cat
+concatenate and print
+** grep
+g/re/p
+** find and locate
+** man
+*** DESCRIPTION
+描述的是c接口，与系统调用的differences在NOTES里面
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
@@ -98,6 +112,9 @@ nc -l 5001 > /dev/null
 5. ping
 ** 空投
 1. [[https://blog.csdn.net/superstar_zbt/article/details/100883570][pacman 404]]
+** 内存管理
+** 系统管理
+
 * vim
 宏录制
 #+BEGIN_SRC sh
