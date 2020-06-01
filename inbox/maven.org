@@ -1,6 +1,10 @@
 #+title: maven
 * inbox
 1. mvn -X ： 查看当前mvn使用配置文件
+** 远程仓库的依赖下载不下来403错误
+***  最后的办法
+1. 下载jar包
+2. mvn install:install-file -DgroupId=com.google.errorprone -DartifactId=javac -Dversion=9+181-r4173-1 -Dpackaging=jar -Dfile=javac-9+181-r4173-1.jar
 * repository
 ** 配置公司仓库不生效
 cause by [[https://blog.csdn.net/lovewebeye/article/details/80060410?utm_source=blogxgwz5][私有仓库不生效]]
@@ -45,3 +49,4 @@ plugin lists (including reports)
 plugin executions with matching ids
 plugin configuration
 resources
+* 
