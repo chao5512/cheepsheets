@@ -66,6 +66,15 @@ g/re/p
 ** man
 *** DESCRIPTION
 描述的是c接口，与系统调用的differences在NOTES里面
+** free
+** load
+[[https://blog.csdn.net/ztf312/article/details/80342234][参考]]
+** swap
+*** 清空交换区
+关闭在重启
+#+BEGIN_SRC sh
+swapoff -a && swapon -a 
+#+END_SRC
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收

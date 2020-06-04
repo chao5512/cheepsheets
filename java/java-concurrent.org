@@ -294,3 +294,5 @@ waitset  线程间通信
 1. Future
 2. FutureTask
 3. FutureService
+* Excutor
+用来将task和调度解耦，建议用Excutor来代替直接spwans a Thread
