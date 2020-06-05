@@ -1,0 +1,40 @@
+#+title: Lethe: A Tunable Delete-Aware LSM Engine
+* 出发点
+1. hbase目前没有保证什么时候能够真正删除the deletion key
+2. 只能使用sortkey删除，如果想要删除by其他属性（timestamp），需要完全遍历一遍,并且re-writen？
+* 需要如下特性的场景
+在不影响读写的前提下，尽早使删除生效
+1. right-to-be-forgotten。用户需要有立即删除自己隐私信息的权利
+2. 流式系统中一个窗口中的数据
+3. 数据系统的大规模云上布署使storage成为珍贵的资源,而大量的需要删除生效的数据还在占用着宝贵的存储资源
+* Lethe
+1. 通过额外添加一点元数据来完成Delete—Aware的一系列策略
+2. 通过新的物理存储结构，维持着sort key和delete key的顺序
+3. 支持用户自定义的delete presistence latencyd的阈值
+4. 不需要full tree merge的非主键范围删除
+* challenge
+1. 空间放大
+2. 读cost
+3. 写放大
+4. 隐私考虑
+* two new components
+** FADE
+fast deletion
+*** 合并策略
+1. 按包含的无效key的个数来选择合并文件
+2. 按无效key最老的年龄
+3. 和其他文件的重叠部分的大小
+** KIWI
+key weaving storage Layout,主要为了非主键的范围删除
+*** delete tiles
+1. 每个sorted file 上增加几个delete tiles
+2. 每个delete tiles包含几个data page
+3. 一个delete tile是按照secondary key 排序的
+4. data page 按soted key排序
+*** LSM-Tree Level 
+由几个排序的文件组成
+* inbox
+1. out-of-place ：非原地
+2. in-palce
+3. state of the art : 业界最先进的
+4. workload characteristics

@@ -633,6 +633,12 @@ GCViewer
 2. mvn clean package
 3. java -jar gcviewer-xxx.jar
 4. 装入log
+** mat
+*** 分析命令
+- org.eclipse.mat.api:suspects 找到可以的内存泄漏
+#+BEGIN_SRC sh
+  ./ParseHeapDump.sh ~/brfs/dumpdir/dump-data org.eclipse.mat.api:suspects org.eclipse.mat.api:overview org.eclipse.mat.api:top_components
+#+END_SRC
 * to read
 [[https://cloud.tencent.com/developer/article/1451049][干货]]
 [[https://www.ps.uni-saarland.de/courses/gc-ws01/slides/generational_gc.pdf][分代回收]]
