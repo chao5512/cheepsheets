@@ -48,7 +48,7 @@
 *** find pid by name
 1. pidof
 2. ps -aux |grep -i 'music'
-*** kill 
+*** kill
 1. kill -9
 2. kill -9 `pidof pname`
 ** 分析内存占用
@@ -73,7 +73,7 @@ g/re/p
 *** 清空交换区
 关闭在重启
 #+BEGIN_SRC sh
-swapoff -a && swapon -a 
+swapoff -a && swapon -a
 #+END_SRC
 * 网络测试
 ** 找出两台机器的可用带宽
@@ -119,11 +119,50 @@ nc -l 5001 > /dev/null
 3. 安装dhcpcd
 4. 重启，打开archlinux 动态获取ip
 5. ping
+
 ** 空投
 1. [[https://blog.csdn.net/superstar_zbt/article/details/100883570][pacman 404]]
 ** 内存管理
 ** 系统管理
 
+
+** AUR Arch User Repository
+包含包描述(PKGBUILDS，build脚本)，当你需要从源码用makepkg编译的时候需要用到包描述信息。然后你有可能用pacman来安装刚刚编译的软件
+** some kind of Repository
+*** official repository
+1. 包含了必要的包和流行的包，这里的包可以随时通过pacman来访问。pacman（packet manager）
+2. 保证了软件包与上游同步更新
+3. 保证了所管理的软件的兼容
+**** core
+1. Arch linux 启动时所需的东西
+2. connecting to the internet
+3. building packages
+4. management and repair of support of filesystem
+5. 系统设置程序
+6. 还有上述几项的依赖和base meta 依赖
+
+** pacman
+pacman是archlinux的一个主要特性，旨在管理所有包，不论是官方的还是用户的
+
+** 中文输入法
+1. 配置系统的语言环境
+2. 查看中文支持:locale locale-gen
+3. 安装ibus
+4. 配置开机启动
+
+*** 简体
+~/.config/ibus/rime/build/luna_pinyin.schema.yaml
+找到simplification reset：1
+** wine
+** 声音
+1. 安装alsa-ustils
+2. 使用alsamixer 来解除静音：方向键移动，按m借出静音
+3. 配置文件
+#+BEGIN_SRC sh
+  # .asoundrc
+  defaults.ctl.card 1
+  defaults.pcm.card 1
+#+END_SRC
 * vim
 宏录制
 #+BEGIN_SRC sh
@@ -138,8 +177,48 @@ nc -l 5001 > /dev/null
   @a
 
 #+END_SRC
+* zsh
+** 配置文件的读取顺序
+1. /etc/zsh/zshenv     or /etc/zshrc
+2.
+** 更改sh
+#+BEGIN_SRC sh
+  # 查看当前有的sh
+  chsh -l
+  # 改为zsh并保存
+  chsh -s /bin/zsh
+#+END_SRC
+*** 配置文件
+在第一次进入zsh的时候会有引导，选择生成配置文件。
+- /etc/zsh/zprofile : 全局配置文件，用户登录的时候加载。常用语配置一些登陆时要执行的命令。默认是一行加载/etc/profile的命令
+#+BEGIN_SRC sh
+  emulate sh -c 'source /etc/profile'
+#+END_SRC
+- ~/.zshrc : 用户配置文件
+*** do 配置
+
+
 * 应用
 ** scrot
 截屏用 [[https://blog.csdn.net/zhyh1986/article/details/39831469][参考]]
 
+* zsh
+** 配置文件的读取顺序
+1. /etc/zsh/zshenv     or /etc/zshrc
+2.
+** 更改sh
+#+BEGIN_SRC sh
+  # 查看当前有的sh
+  chsh -l
+  # 改为zsh并保存
+  chsh -s /bin/zsh
+#+END_SRC
+*** 配置文件
+在第一次进入zsh的时候会有引导，选择生成配置文件。
+- /etc/zsh/zprofile : 全局配置文件，用户登录的时候加载。常用语配置一些登陆时要执行的命令。默认是一行加载/etc/profile的命令
+#+BEGIN_SRC sh
+  emulate sh -c 'source /etc/profile'
+#+END_SRC
+- ~/.zshrc : 用户配置文件
+*** do 配置
 

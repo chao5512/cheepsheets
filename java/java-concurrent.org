@@ -276,10 +276,20 @@ waitset  线程间通信
 ** doc
 除非你想改变Tread的基础行为，不然你不应该随便继承Thread类,也就是说，你只改变run方法的时候应该继承Runnable
 * ThreadPoolExecutor
-** excute
+1. 可配置为几种线程池的用来执行提交任务的ExecutorService
+2. 通常使用Executors 工厂来配置
+
+** execute
 提task到线程池
-1. 如果池中running的线程数尚未到达corePoolSize，则会为提交的task创建一个新的线程并尝试start。
-2. 
+1. 如果池中running的线程数尚未到达corePoolSize，则会为提交的task创建一个新的线程并尝试start。创建线程的时候还会在检查一遍，以防在不应该创建出线程的时候创建（具体runState和workerCount）
+2. 当task成功入队(看一下等待队列)后，double-check for
+   1) 是否创建线程，因为有的线程可能挂掉了。
+   2) 进入这个方法后，是否有pool shutdown的命令下来
+3. 如果不能成功入队，尝试创建一个新的线程，如果失败了，那就表示pool已经饱和了，那么拒绝这个task
+
+** execute和submit的区别
+1. execute是Executor的方法
+2. submit是AbstractExecutorService对execute方法的包装，用来传出future。
 ** acl
 *** workerCount 
 *** runState
@@ -288,11 +298,48 @@ waitset  线程间通信
 3. STOP : 不接受新task，不处理队列任务，并且向正在处理的任务发中断请求
 4. TIDYING ： 所有task已经执行完成，并且workerCount为0
 5. TERMINATED ： terminated()方法执行完了
+** shutDownNow
+
 * ThreadLocal
 * Future
+1. 用来存储异步计算的结果
 ** 角色
 1. Future
 2. FutureTask
 3. FutureService
 * Excutor
 用来将task和调度解耦，建议用Excutor来代替直接spwans a Thread
+** methods
+1. get() //阻塞等待找回结果
+2. get(timeTowait) //阻塞一短时间来找回结果，到时没拿到抛出超时异常
+3. cancel()
+4. boolean cancel(boolean mayInterruptIfRunning)  //尝试取消任务
+   1) 对已经complet和已经cancel的任务调用cancel会失败
+   2) 如果task还未开始，那么它将不会被开始
+   3) 如果已经开始，根据参数来决定要不要尝试中断该task
+* Executor
+提交任务的接口
+** 用处
+1. 用来避免显式的创建线程
+2. 好处是将task提交和task执行的具体逻辑(包括线程调度)分开
+** 不强制要求提交上来的任务是异步执行的
+#+BEGIN_SRC java
+  //最简单的Executor实现
+  // 相当于直接在caller`s thread中执行
+  class DirectExecutor implements Executor {
+      //提交上来的任务直接执行，可以不是异步的
+      public void execute(Runnable r) {
+       r.run();
+     }
+   }
+#+END_SRC
+** 更为典型的Executor实现是在以下两方面对task做出了限制
+1. 执行方式
+2. 执行实际
+** 子接口 ExecutorService
+提供了shutdown 管理和产出future结果的方法
+*** methods
+1. shutDownNow() //尽力终止，对不响应中断的任务不保证一定能终止
+   1) 返回还未开始执行的任务
+   2) 不等待已经执行的任务，如果需要等待用awaitTermination
+

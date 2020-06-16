@@ -53,6 +53,7 @@ CLOCK: [2019-11-13 三 03:35]--[2019-11-13 三 04:00] =>  0:25
    - M-a 句首
 8. 编辑
    - 设置标记 C-SPC  : mac输入法冲突，在系统偏好设置中取消选择上一输入法快捷键
+   - C-d : delete-forward-char
 ** laTex
 - [[https://blog.csdn.net/csfreebird/article/details/43636615][Ref]]
 - M-x org-entities-help 查看帮助
@@ -268,3 +269,65 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 * 锚点
 1. 飞雷神标记定义：<<anchor1>>
 2. 飞到指定标记: [[anchor1]]
+* emacs
+** GC
+[[http://blog.lujun9972.win/blog/2019/05/16/%25E4%25BC%2598%25E5%258C%2596emacs%25E7%259A%2584%25E5%259E%2583%25E5%259C%25BE%25E6%2590%259C%25E9%259B%2586%25E8%25A1%258C%25E4%25B8%25BA/index.html][emacs gc优化]]
+** move
+- M-< : beginning-of-buffer
+- M-> : end-of-buffer
+** 组织函数展开，即使用函数本身
+在function前加single quota
+** abbreviation
+- sexp : S-expression = symbolic expression
+** apropos
+- 用来询问相关变量或者方法的。
+- M-x 只能找到被定义为interactive的方法
+** 自定义函数
+- parameter 和 argument的区别
+  - parameter用在函数定义时
+  - argument是函数在被call时传过来的参数
+- (interactive) 表示汉是可以交互式掉用，用M-x或者绑定的快捷键
+- (interactive "p") 接受前缀参数
+*** 定义可选参数
+1. 使用(&optional n)来使参数可选，如果调用时不指定n，则n为nil
+2. (if n func1 func2) 如果n非空，调用func1，如果n是空，调用func2
+3. 可以用(or 来代替if)
+4. raw form ：大写的P表示将前缀参数保存在raw form中，并赋值给n
+5. (prefix-numeric-value n) 将raw form中data structure 解释为一个数字
+6. Emacs-Lisp-Like
+   1. 使用build-in函数而不是重新构造他
+#+begin_src emacs-lisp
+  (defun other-window-backward (&optional n)
+    "Select Nth previous window."
+    (interactive "p")
+    (if n
+        (other-window (- n));ifn s non-nil
+      (other-window -1))) ;ifn snil
+  ;; best version ，Emacs-Lisp-like
+  (defun other-window-backward (&optional n)
+  "Select Nth previous window."
+  (interactive "P") ;;注意这里换成了大写的P
+  (other-window (- (prefix-numeric-value n))))
+#+end_src
+*** nil 和 t
+false 和ture
+*** 条件参数
+#+begin_src emacs-lisp
+  (if test
+      (a b)
+    (a c))
+
+  ;;可以简写为
+  （a (if test b c)）
+#+end_src
+*** 逻辑表达式
+**** 短路或
+找到第一个有效值并返回，找不到返回nil
+#+begin_src emacs-lisp
+(if a a b)
+;; 简写为
+(or a b)
+#+end_src
+** TODO 全文搜索
+* Lisp Interaction mode
+- M-TAB : 补全lisp表达式

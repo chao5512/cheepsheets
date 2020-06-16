@@ -25,20 +25,74 @@
 * 反射
 + 通过反射访问私有成员方法，应该用Method#setAccessible(true);
 * Annotation
+帮助尽早发现bug
 
-** 内置注解
+** build-in annotation
+*** java.lang
 + @Override     保持策略为source
-+ @Deprecated            保持策略为runtime
+  - 吩咐compiler检查这个方法是不是重写的继承方法，如果不是编译报错
+  - 一个作用是，当你的本意是想重写一个父类方法时，不小心弄错了一些符号或者参数或者什么东西，这些失误会导致compiler曲解你的意思，它以为你要生命一个新的方法，这显然是不对的。此时如果你给自己规定所有重写父类的方法都做一个maker，让编译器有能力明白的你的意思，并帮你做一些检查，这个maker就是@Override
++ @Deprecated            保持策略为
+  - 过期方法，编译时警告
 + @Suppresswarnings("unchecked")      保持策略为source
-** 自定义注解
+  - 在编译的时候不标记范围内（如function）中的警告会被镇压
+*** java.lang.annotation - Meta annotation
+配置其他注解的注解
 + @interface 注解的类型
 + @retention 可以通过retention来设定注解的生命周期，保持到什么时候
-  + class
-  + runtime
   + source
-+ @Target   自定义注解时限定注解使用范围
-+ @Documented  自定义注解是指定生成java doc的同时，附加注解的帮助文档
-+ @Inherited    默认情况下，一个父类的注解不会被继承到子类，可以在自定义注解时使用Inherited来改变
+  + class
+  + runtime 通过反射
++ @Target   限定其他注解作用范围(一个java 元素)
++ @Documented  自定义注解时，生成java doc的同时，附加注解的帮助文档
++ @Inherited    默认情况下，一个父类的注解不会被继承到子类，可以在配置注解时使用@Inherited来让子类继承配置的注解
+*** java 7 之后
+@SafeVarargs
+*** java 8 之后
+1. @FunctionalInterface 声明为一个函数接口
+2. @Repeatable 同一个注解声明可以使用多次
+*** 自定义注解
+**** 注解声明和使用
+#+BEGIN_SRC java
+    // @Twizzle is an annotation to method toggle().
+    @Twizzle
+    public void toggle() {
+    }
+
+    // Declares the annotation Twizzle.
+    public @interface Twizzle {
+    }
+#+END_SRC
+**** 注解可以一些可选的kv  for what?
+
+#+BEGIN_SRC java
+    // Same as: @Edible(value = true)
+    @Edible(true)
+    Item item = new Carrot();
+
+    public @interface Edible {
+        boolean value() default false;
+    }
+
+    @Author(first = "Oompah", last = "Loompah")
+    Book book = new Book();
+
+    public @interface Author {
+        String first();
+        String last();
+    }
+#+END_SRC
+**** 可配置的作用范围和使用时机
+#+BEGIN_SRC java
+    @Retention(RetentionPolicy.RUNTIME) // Make this annotation accessible at runtime via reflection.
+    @Target({ElementType.METHOD})       // This annotation can only be applied to class methods.
+    public @interface Tweezable {
+    }
+#+END_SRC
+**** 保留的注解
+为了向compiler明确语义
+**** TODO 使用场景
+参考 [[https://en.wikipedia.org/wiki/Java_annotation#cite_note-3][wiki]]
 * junit
 ** 版本
 1. 3.8 ：基于反射
@@ -50,9 +104,10 @@
 4. 调用每个 Method对象的 isAnnotation Present(Test class)方法,判断该方法是否被Test注解所修饰。
 5. 如果该方法返回true,那么调用 method. invoke方法去执行该方法,否则不执行。
 ** 测试用工具类Optional
+
 * Throwable
-** Exception
-*** 分类
+* Exception
+** 分类
 1. Checked exception
 2. Unchecked exception
 ** Error
@@ -123,7 +178,7 @@ IntToDoubleFunction
 *** dates and times
 **** Instant
 时间戳/时间点，可以从clock中获取
-**** LocalDate 
+**** LocalDate
 存一个日期，没得具体时间
 **** LocalTime
 只有时间，没得日期
@@ -248,7 +303,7 @@ java中怎么调用c++
 + byteBuffer可以存其他各种原生类型
 *** 重要属性
 1. capacity ： buffer的容量
-2. limit ：buffer中第一个不能被读写的位置
+2. limit ：读到哪，buffer中第一个不能被读写的位置
 3. position ： buffer中下次用于读写的位置
 *** slice方法
 返回一个buffer的子序列为新的buffer，底层共享同一份数组，但是有4个独立的标志位
@@ -258,7 +313,7 @@ java中怎么调用c++
 + 因为这个buffer是要和硬件打交道的，所以直接分配到操作系统内存中，省掉了一步从堆copy到系统内存。即零拷贝。更快
 *** MappedByteBuffer
 + 映射文件的内存。这不是emacs的buffer？
-+ 把文件的某一部分缓存到内存中，可以直接在内存中写，有操作系统决定怎么写回文件。
++ 把文件的某一部分缓存到内存中，可以直接在内存中写，由操作系统决定怎么写回文件。
 *** 文件锁
 fileLock
 *** scattering

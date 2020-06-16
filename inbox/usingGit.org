@@ -187,3 +187,15 @@ Git 自带一个 git config 的工具来帮助设置控制 Git 外观和行为�
 #+BEGIN_SRC sh
   git config --global core.editor emacs
 #+END_SRC
+* 使用场景
+** 不小心提交了不该提交的文件到暂存区，而且这个文件本地还要用
+#+BEGIN_SRC sh
+  git rm --cached README
+#+END_SRC
+** 有时候我们提交完了才发现漏掉了几个文件没有添加，或者提交信息写错了。 此时，可以运行带有 --amend 选项的提交命令来重新提交
+#+BEGIN_SRC sh
+  git commit --amend
+#+END_SRC
+最终我们只会得到最后一次的提交message
+** TODO 修整gitlog
+** 

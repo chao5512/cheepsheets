@@ -48,5 +48,4 @@ developers and contributors
 plugin lists (including reports)
 plugin executions with matching ids
 plugin configuration
-resources
-* 
+resourc

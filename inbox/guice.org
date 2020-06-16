@@ -5,6 +5,14 @@ guice 是一个轻量的依赖注入的java框架
 3. 为了更方便的重构、重用、单元测试
 4. java 相关，类型安全、泛型、注解
 5. Guice的愿景：使开发和debug更简单更迅速
+6. Inversion of control 控制反转, "Hollywood principle", "injection"
+7. 学习Guice的先决条件，现代java
+   1. 注解
+   2. 方法引用
+   3. lambdas
+   4. 面向对象原理
+   5. 设计模式
+
 
 * motivation
 ** 1. 现在我们有一个需求
@@ -232,7 +240,90 @@ Guice会检查被注解的构造器，并帮构造器安排具体参数
       ...
     }
 #+END_SRC
+
+* MentalModel
+
+** Key
+接口到实现的map的key,特意声明一下它是为了方便使用，可以通过语义获得具体key-接口
+
+*** 最简实践
+#+BEGIN_SRC java
+  // 通过类型获得key
+  Key<String> databaseKey = Key.get(String.class);
+#+END_SRC
+
+*** 同类不同实例
+#+BEGIN_SRC java
+  Key<String> englishGreetingKey = Key.get(String.class, English.class);
+  Key<String> spannishGreetingKey = Key.get(String.class, Spanish.class);
+#+END_SRC
+
+** provider
+相当于工厂
+
+*** 接口
+#+BEGIN_SRC java
+  interface Provider<T> {
+    /** Provides an instance of T.**/
+    T get();
+  }
+#+END_SRC
+大多数工程都不直接实现Provider接口，他们用Module来配置injector，然后injector在内部创建provider
+
+*** 两种创建provider的方式
+#+BEGIN_SRC java
+  class DemoModule extends AbstractModule {
+    protected void configure() {//通过配置在injector来使用provider
+      bind(Key.get(String.class, Message.class)).toInstance("hello world");
+    }
+    //声明provider方法
+    @Provides
+    @Count
+    static Integer provideCount() {
+      return 3;
+    }
+  }
+#+END_SRC
+Provider<String> that returns the message "hello world"
+Provider<Integer> that calls the provideCount method and returns 3
+
+*** 可以把Guice想象成一个da的map，Map<key<?>,Provider<?> 
+当然它不是类型安全的，因为通配符并没有匹配
+
+*** Modules
+**** Guice的配置，两种方式添加配置
+1. @Provider
+2. DSL(Domain Specific language)
+**** Map的操作方式
+| Guice DSL syntax	         | Mental model                                            | 含义
+| bind(key).toInstance(value)      | 	map.put(key, () -> value)                       | (instance binding)        |
+| bind(key).toProvider(provider)   | 	map.put(key, provider)                          | (provider binding)        |
+| bind(key).to(anotherKey)         | 	map.put(key, map.get(anotherKey))               | (linked binding)          |
+| @Provides Foo provideFoo() {...} | 	map.put(Key.get(Foo.class), module::provideFoo) | (provider method binding) |
+**** 不是从Guice这个大map中取，而是声明我们想要的依赖
+1. 这是依赖注入的精髓
+2. 这颠覆大多数人对code的看法
+3. it's a more declarative model rather than an imperative one. why IoC
+**** Dependencies form a graph
+1. 当要注入的依赖还依赖于别的依赖时，Guice 递归注入
+
+** module
+fast and side effect free
+用来代替配置文件
+
+*** 不要在module里来做过重的操作
+1. 连接数据库
+2. 启动一个http服务
+
+**** 这可能会带来问题
+1. 连接泄露，module可能并没有stop连接的操作
+2. module应该是对测试友好的，持有太多东西，测试变困难
+3. 考虑继承，module是可继承重写的
+
 * core Guice concepts
 1. @Injuect constructor
 2. Guice modules
 
+* question 
+** 当一个依赖的实现有很多参数的，其中部分参数从配置读，怎么办
+** 插件化rocksdb时，guice如何管理rockddb的依赖

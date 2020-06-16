@@ -322,3 +322,26 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 * Hbase源码
 ** Hbase-RPC 
 - 远程过程调用
+** memstore
+*** 一个图
+#+BEGIN_SRC plantuml :file /Users/wangchao/iosdev/cheepsheets/resource/img/hbase-memstore-seq.png :cmdline -charset utf-8
+  @startuml
+  participant HStore as store
+  participant memstore as mem
+
+  store ->  mem ++: 使用反射，读取配置中的memstorelist生成memstore对象 
+  @enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:/Users/wangchao/iosdev/cheepsheets/resource/img/hbase-memstore-seq.png]]
+** inbox
+1. 
+* test
+#+begin_src plantuml :file tryout.png
+  Alice -> Bob: synchronous call
+  Alice -> Bob: asynchronous call
+#+end_src
+
+#+RESULTS:
+[[file:tryout.png]]

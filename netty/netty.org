@@ -16,6 +16,20 @@
 * RPC
 1. 高效的消息传输
 2.
-** todo 
+** todo
 1. netty的零拷贝是如何做到的？
 2. 加入序列化这一步后又会有什么不一样么？还是零拷贝么？
+* netty HttpServer
+1. 要通过netty处理Http请求，要先进行编解码
+2. 对收到的request用解码器Decoder，对发送的响应用编码器Encoder，注意request也有编码器，response也有解码器。
+* bugs
+** client收不到服务端响应
+- 现象
+  1) 如果服务端在ctx上加了ChannelFutureListener.CLOSE_ON_FAILURE监听器，则服务端会在解码（应该是 猜的）的时候捕捉错误(这个异常最后被掩埋了),并主动关闭此channel，此时客户端还在future.get数据，就会报连接关闭的异常。实际上是因为解码异常导致的连接关闭。
+  2) 如果服务器没有在检测到failure时关闭连接，客户端的表现是阻塞在future.get方法上，因为解码错误，丢失响应数据
+- solution：确认编码解码器，我这里是把response的编码器写成了解码器
+- 一般编码问题报错
+#+begin_example
+java.lang.UnsupportedOperationException
+#+end_example
+
