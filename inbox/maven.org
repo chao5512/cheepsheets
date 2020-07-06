@@ -13,6 +13,40 @@ solution 更改mirrorOf属性
 todo 配置文件的生效顺序
 * build
 [[https://blog.csdn.net/riju4713/article/details/85102471][跳过test]]
+** 打包带依赖，指定主类
+#+BEGIN_SRC xml
+        <plugin>
+           <groupId>org.apache.maven.plugins</groupId>
+           <artifactId>maven-shade-plugin</artifactId>
+           <version>2.4.3</version>
+           <executions>
+                <execution>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>shade</goal>
+                  </goals>
+                  <configuration>
+                    <filters>
+                      <filter>
+                        <artifact>*:*</artifact>
+                        <excludes>
+                          <exclude>META-INF/*.SF</exclude>
+                          <exclude>META-INF/*.DSA</exclude>
+                          <exclude>META-INF/*.RSA</exclude>
+                        </excludes>
+                      </filter>
+                    </filters>
+                    <transformers>
+                      <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                        <mainClass></mainClass>
+                      </transformer>
+                    </transformers>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+
+#+END_SRC
 * geting start
 maven提供清晰的构建套路，mvn可以方便的管理：
 ** builds
@@ -24,6 +58,11 @@ maven提供清晰的构建套路，mvn可以方便的管理：
 ** Releases
 ** Distribution
 * make a project with mvn
+
+** 命令
+#+BEGIN_SRC sh
+  mvn archetype:generate
+#+END_SRC
 ** -B 批量执行命令，不加-B可以交互式的按模板生成项目
 #+BEGIN_SRC sh
   mvn -B archetype:generate \
@@ -42,10 +81,26 @@ maven提供清晰的构建套路，mvn可以方便的管理：
   artifactId - the id of the artifact (project)
   version - the version of the artifact under the specified group
 #+end_example
+*** dependency
+**** scope
+
 ** 继承性
 dependencies
 developers and contributors
 plugin lists (including reports)
 plugin executions with matching ids
 plugin configuration
-resourc
+resources
+
+*** 父工程一般定义打包方式为pom
+
+*** super pom
+像java中所有对象都默认继承Object，maven中所有pom都继承自一个super pom
+
+* setting
+** 两个settings.xml
+*** global
+${maven.home}/conf/settings.xml
+*** user
+${user.home}/.m2/settings.xml
+** 

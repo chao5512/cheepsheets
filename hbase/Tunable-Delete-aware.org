@@ -26,13 +26,35 @@ fast deletion
 3. 和其他文件的重叠部分的大小
 ** KIWI
 key weaving storage Layout,主要为了非主键的范围删除
+*** LSM-Tree Level 
+由一些有序的文件在逻辑上组成sorted run
 *** delete tiles
 1. 每个sorted file 上增加几个delete tiles
 2. 每个delete tiles包含几个data page
 3. 一个delete tile是按照secondary key 排序的
 4. data page 按soted key排序
-*** LSM-Tree Level 
-由几个排序的文件组成
+5. data page上的bloom 过滤器和fence pointers, 使KiWi完成按secondary range 删除delete tiles中的整页, with a constant factor increase in false positives（误报率）.
+* LSM
+** basic
+1. 外存算法
+2. muti-level，level0为内存
+** Buffering Inserts and Updates
+1. 通过周期性的执行full compaction来保证delete persistence
+2. rocksdb实现了基于delete key数目的文件选择策略来最大化delete persistence的效果，以此减小full compaction带来的额外负载
+** compaction策略
+*** leveling
+*** tiering
+分层布置
+*** patial Compaction
+1. 典型的lsm-tree的应用是，使用一部分文件来代替整个level以达到分摊大合并的延迟的目的
+2. 当level-i 超过了某个阈值后，compaction选择一个level-i层的文件来和level-i+1层的文件们合并
+3. 使用什么样的选择策略，取决与目的。
+   1. 侧重写入吞吐的时候，从level-i 选择一个与level-i+1层的文件们重叠最小的文件来合并，已达到最小化写放大和合并时间的目的
+*** query lsm trees
+For tiering, within a level, a lookup moves from the most to the least recent tier
+*** bloom filter & fence pointers
+**** fence pointer
+在内存中持有每个disk page的最小key
 * inbox
 1. out-of-place ：非原地
 2. in-palce

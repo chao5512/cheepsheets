@@ -56,6 +56,20 @@
 [[https://javawind.net/p131][参考]]
 [[https://www.cnblogs.com/dragonsuc/p/5512797.html][更详细的版本]]
 *** 内部命令
+*** linux memory type
+**** 3种内存，还有一种可选
+***** pysical memory
+真实物理内存
+***** swap file
+1. 存modified memory
+2. 存频繁访问的物理内存
+***** virtual memory
+1. 抽象的，没有物理内存的地址和限制
+2. 独立的，不同进程拥有不同的地址空间
+3. sharing，一个引用可以多处使用
+4. 灵活的，assign虚拟地址到文件
+**** 内存管理
+内存被划分为page 经典4k大小
 ** htop
 + 在某个进程上按l: lsof
 ** cat

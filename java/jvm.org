@@ -519,6 +519,15 @@ G1 GC的System.gc()默认还是full GC，也就是serial old GC。只有加上 -
 
 ** UseCompressedClassPointers
 压缩指针
+
+** UseGCOverheadLimit
+1. 1.6引入，当并行收集器花费了98%的时间却只回收了2%的内存时，会抛出ava.lang.OutOfMemoryError：GC overhead limit exceeded这个异常
+2. 如果需要的话，可以使用-XX:UseGCOverheadLimit来disable掉这个特性
+
+** G1
+
+*** G1MixedGCLiveThresholdPercent=65
+如果一个region中存活的部分占整个region的65%，则这个region不会参与到mixed gc收集中
 * OOM
 [[https://www.cnblogs.com/intsmaze/p/9550256.html][为什么使用dump而不是报错日志]]
 
@@ -529,7 +538,7 @@ todo
 2. jconsole HotSpotDiagnosticMXBean
 3. jvm参数
    1) -XX:+HeapDumpOnOutOfMemoryError
-   2) -XX:HeapDumpPath=/home/wangchao/brfs/dump
+   2) -XX:HeapDumpPath=/home/wangchao/brfs/ 这里配置为绝对路径，在路径下生成形如java_pid176692.hprof的dump文件，不要写死文件名
 4. hprof 命令，查看cpu和内存
    1. [[http://docs.oracle.com/javase/8/docs/technotes/samples/hprof.html][参考]]
 

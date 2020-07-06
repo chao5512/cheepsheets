@@ -16,6 +16,11 @@
 + 常与equal一起重写
 * Integer
 + 如果想使用一个Integer的实例，相比于构造方法，应优先使用valueOf方法，因为valueOf方法缓存了-128~127之间的Integer实例
+* Long
+** parseLong 和 valueOf的区别
+1. parseLong将格式正确的字符串转换成10radix的long
+2. valueOf 第一步调用parseLong得到long，然后自动装箱成Long，这里用一个静态内部类LongCache缓存了-128 -- 127 的Long型a对象
+3. 有时候valueOf后面的自动装箱是多余的，使用的时候可以留心
 * 枚举
 + values()和valueOf()
 + 我们定义的枚举类型都是继承自java.lang.Enum类

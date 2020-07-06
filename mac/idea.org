@@ -1,3 +1,6 @@
 #+title: idea备忘
 * 快捷键(C:ctrl)
 - C-j
+* cannot load a jdk class
+1. 暂时用命令行可以启动
+* 
