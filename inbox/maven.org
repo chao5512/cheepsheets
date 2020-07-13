@@ -104,3 +104,13 @@ ${maven.home}/conf/settings.xml
 *** user
 ${user.home}/.m2/settings.xml
 ** 
+* maven进阶
+[[https://www.cnblogs.com/davenkin/p/advanced-maven-multi-module-vs-inheritance.html][Ref]]
+** 多模块和继承
+多模块和继承关闭不比同时存在
+1. 多模块可以将执行顺序推给maven
+2. 继承是用于所有子模块共享父模块的配置，比如junit依赖
+* plugin
+** jacoco
+java code coverage 分析单元测试覆盖率的插件
+[[https://developer.ibm.com/zh/articles/j-lo-jacoco/][eclemama]]

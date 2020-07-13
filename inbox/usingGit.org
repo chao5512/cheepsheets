@@ -199,3 +199,85 @@ Git 自带一个 git config 的工具来帮助设置控制 Git 外观和行为�
 最终我们只会得到最后一次的提交message
 ** TODO 修整gitlog
 ** 
+* branch 
+git branch本质上是指向提交对象的可变指针
+** 创建分支
+只是在当前的提交对象上创建了一个可移动的指针,而这个指针只是一个所指对象校验和（长度为 40 的 SHA-1 值字符串）的文件
+#+BEGIN_SRC sh
+  git branch test
+#+END_SRC
+** 简单查看分支指向的提交对象
+只能在当前分支可见的提交对象上看到各个分支，如果某个分支的提交对象不在当前分支可见，就看不见。可以加--all来全部显示
+#+BEGIN_SRC sh
+  git log --decorate
+#+END_SRC
+** 查看每个分支的最后一次提交
+#+BEGIN_SRC sh
+  git branch -v
+#+END_SRC
+** 删除分支
+#+BEGIN_SRC sh
+  git branch -d test
+#+END_SRC
+** fetch
+git pull = git fetch + git merge
+** rebase
+1. 整合多个分支
+2. 提取另一个分叉的补丁和修改，然后在当前分支上应用一次
+3. rebase过程中可能需要解决冲突
+4. 可以用来把分支a延伸出来的分支b rebase onto master，同时又不合并a回master
+#+BEGIN_SRC sh
+  # 把b1的修改在master上replay
+  git checkout b1
+  git rebase master
+
+  # 省去切分支这一步
+  # git rebase <basebranch> <topicbranch>
+  git rebase b1 master
+#+END_SRC
+* 底层
+** use git as a kv database
+#+BEGIN_SRC sh
+  # -w 告诉git不要只返回key，还要把value存到数据库中
+  ➜  git_kv git:(master) echo 'a new value'|git hash-object -w --stdin
+  12ea6e200ea815faf070a9b8093a8f2c669e6025
+  ➜  git_kv git:(master) find .git/objects -type f                    
+  .git/objects/12/ea6e200ea815faf070a9b8093a8f2c669e6025
+  ➜  git_kv git:(master) git cat-file -p 12ea6e20 
+  a new value
+
+#+END_SRC
+** 一个文件的一次提交
+*** 1. git commit file1
+1. 生成一个blob 对象，记录文件内容
+2. 一个commit对象
+3. 一个tree对象
+#+BEGIN_SRC sh
+  # after the first file commit
+  ➜  git_kv git:(master) find .git/objects -type f
+  .git/objects/08/fe2720d8e3fe3a5f81fbb289bc4c7a522f13da
+  .git/objects/1a/a1a086f4ec2de1dad14b5f7307dc5fcc32ab10
+  .git/objects/37/a465290b7bf12eae525c1f1f5277dabb0af461
+  # 类型
+  ➜  git_kv git:(master) git cat-file -t 08fe272
+  blob
+  ➜  git_kv git:(master) git cat-file -t 1aa1a  
+  commit
+  ➜  git_kv git:(master) git cat-file -t 37a46  
+  tree
+
+  # 查看对象内容
+  ➜  git_kv git:(master) git cat-file -p 08fe272
+  first line
+  ➜  git_kv git:(master) git cat-file -p 1aa1a
+  tree 37a465290b7bf12eae525c1f1f5277dabb0af461
+  author wangchao <543164029@qq.com> 1594103886 +0800
+  committer wangchao <543164029@qq.com> 1594103886 +0800
+
+  first commit
+  ➜  git_kv git:(master) git cat-file -p 37a46
+  100644 blob 08fe2720d8e3fe3a5f81fbb289bc4c7a522f13da 
+#+END_SRC
+*** 2. 修改file1 并提交
+1. 生成一个新的blob对象，对应与修改后的内容
+2. 生成一个新的commit对象，相比与第一次提交，平凡的提交会有一个parent字段指向上一次的commit对象，合并提交对象应该会有两个parent

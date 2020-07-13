@@ -3,4 +3,8 @@
 - C-j
 * cannot load a jdk class
 1. 暂时用命令行可以启动
-* 
+* 配置行间距不起作用 
+1. editor -> font 配置了line spacing， 但是没生效
+2. 这时需要取消code schema -> color schema font :取消勾选use color schema instead default
+* 使用C-/注释一行缩进4个空格
+打开设置界面，依次选择Editor-Code Style-Java，选择Code Generation，取消Line comment at first column和Block comment at first column的选中即可
