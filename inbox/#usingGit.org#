@@ -1,0 +1,284 @@
+* git备忘录
+[[https://blog.csdn.net/gcc_sky/article/details/14047687][参考]]
+** 连接github
+#+BEGIN_SRC sh
+  1. 本地生成ssh key
+  ssh-keygen -t rsa -C "your_email@youremail.com"
+
+  2. 添加sshkey for github
+  Account Settings ->左侧 SSH Keys ->  Add SSH key
+
+  3. test connecting to github
+  ssh -T git@github.com
+
+  4. 修改本地ssh remote url
+  #上面虽然设置了免密 但是使用https方式还是会每次要求输入账户密码 可用如下密令查看url格式
+  git remote -v
+  #更改url为ssh方式
+  git remote set-url origin git@github.com:chao5512/cheepsheets.git
+
+  5. enjoy git!
+#+END_SRC
+** git工作流
++ 切换分支前要提交修改
+** 两个remote branch
+对一个feature分支来说，push的目的branch和merge的目的branch应该是不一样
+*** upstream-主流分支
+merge目的branch
+*** push-remote 
+** git使用场景
+*** 版本回退
+与github相连，在某次提交（增加很多文件）后，想要回退到之前的版本，将文件用增量的方式慢慢加入git
+#+BEGIN_SRC sh
+  #1. 找到回退到哪次提交id
+  git log
+  #2. 本地回退
+  git reset -hard {id}
+  #3. 推送到远程
+  git push -f -u origin master
+#+END_SRC
+*** 推送到远程
+#+BEGIN_SRC sh
+  git remote add origin addressOfMyRepo
+  git push -u origin master
+#+END_SRC
+
+* my old git
+** git osxkeychain for mac
+   it for a HTTPS clone
+   1. Set git to use the osxkeychain credential helper
+   git config --global credential.helper osxkeychain
+
+   2. use keychain of my mac
+   open spotlight and type keychain.app
+
+
+** create a repo
+   to put your project upon Github,you need create a repo for
+   it to live in.
+   1. a license file determines how to share.
+** fork a repo
+   use to propose changes to other's project
+   or as a starting point of our idea.
+   1. sync your fork repo with the upstrem repo
+      git remote -v
+      git remote add upstream https://github.com/pezydata-ai/stretch.git
+   2. syncing a fork
+      git fetch upstream
+      git checkout master
+      git merge upstream/master
+   3. commit to github
+      git push origin master
+   4. about tag
+      git log
+      git tag <name> a47b3d36e
+      git push origin <name>
+      git tag
+      git tag -d <name>
+      git push origin :<name>
+
+
+
+
+
+
+
+
+** TODO to learn.
+1. https://opensource.guide/
+2. https://lab.github.com/
+3. https://help.github.com/articles/creating-a-commit-with-multiple-authors
+
+* 表严肃
+checkout id前七位 穿越到指定后悔药
+git log -p[ache]
+modify---staged---commit
+git add && git commit -m ""  命令的连接
+git log --oneline --graph
+git tag -a[notation] v1 -m "备注"
+git tag 列出所有标签
+git的合并工具
+git remote add 地址
+git remote -v 查看
+
+git pull = git fetch + git merge
+
+* git 是基于ssh的
+
+** ssh 配置
+.ssh/config
+*** ssh命令详解 
+**** ssh-keygen
+用来生成，管理，转换ssh的秘钥的工具
+1. -t : 指定秘钥类型，默认rsa
+2. -C : 指定user@host 默认为系统的
+3. 通常工具会询问一个文件位置来存放私钥，公钥就是私钥append一个.pub
+4. 还会询问一个密码，设置为空就好
+** 配置多个git远程仓库
+*** 在~/.ssh 目录下划分好各仓库目录
+#+BEGIN_SRC sh
+  cd ~/.ssh
+  mkdir github
+  mkdir gitlab
+  mkdir gitee
+#+END_SRC
+*** 使用ssh-keygen工具生成ssh的私钥和公钥
+#+BEGIN_SRC sh
+  ssh-keygen -C "" -f ~/.ssh/gitee/id_rsa
+  ssh-keygen -C "" -f ~/.ssh/github/id_rsa
+  ssh-keygen -C "" -f ~/.ssh/gitlab/id_rsa
+#+END_SRC
+
+*** 配置
+[[https://blog.csdn.net/Daiwood/article/details/50561306][配置非22端口]]
+#+BEGIN_SRC sh
+  vim ~/.ssh/config
+
+  # 添加如下内容
+
+  #github的配置
+  Host github.com
+  HostName github.com
+  IdentityFile ~/.ssh/github/id_rsa
+  User git
+  # gitlab的配置
+  # 直接配置ip的例子
+  Host 192.168.1.1
+  # 配置非22端口的例子
+  Port 2226
+  IdentityFile ~/.ssh/gitlab/id_rsa
+  User git
+  #码云的配置
+  Host gitee.com
+  HostName gitee.com
+  IdentityFile ~/.ssh/gitee/id_rsa
+  User git
+#+END_SRC
+*** 去远端仓库添加公钥
+1. for github ： https://github.com/settings/keys -》 new ssh 添加刚刚生成的给github的公钥
+*** connect test
+有些服务器添加公钥认证会比较慢，所以如果失败了可以确认服务器是否已经添加成功了，一般会有邮件通知
+#+BEGIN_SRC sh
+  ssh git@github.com
+#+END_SRC
+* git for aur
+** git config
+Git 自带一个 git config 的工具来帮助设置控制 Git 外观和行为的配置变量。 这些变量存储在三个不同的位置：
+
+1. /etc/gitconfig 文件: 包含系统上每一个用户及他们仓库的通用配置。 如果在执行 git config 时带上 --system 选项，那么它就会读写该文件中的配置变量。 （由于它是系统配置文件，因此你需要管理员或超级用户权限来修改它。）
+
+2. ~/.gitconfig 或 ~/.config/git/config 文件：只针对当前用户。 你可以传递 --global 选项让 Git 读写此文件，这会对你系统上 所有 的仓库生效。
+
+3. 当前使用仓库的 Git 目录中的 config 文件（即 .git/config）：针对该仓库。 你可以传递 --local 选项让 Git 强制读写此文件，虽然默认情况下用的就是它。。 （当然，你需要进入某个 Git 仓库中才能让该选项生效。）
+*** 优先级local > user > etc
+#+BEGIN_SRC sh
+  # 查看配置和所在文件
+  git config --list --show-origin
+#+END_SRC
+** first step 
+*** 配置用户信息
+#+BEGIN_SRC sh
+  # 使用git config 工具配置，保存在当前用户配置文件下
+  git config --global user.name "wangchao"
+  git config --global user.email 543164029@qq.com
+#+END_SRC
+*** 配置默认editor
+在输入git信息 比如commit message的时候使用
+#+BEGIN_SRC sh
+  git config --global core.editor emacs
+#+END_SRC
+* 使用场景
+** 不小心提交了不该提交的文件到暂存区，而且这个文件本地还要用
+#+BEGIN_SRC sh
+  git rm --cached README
+#+END_SRC
+** 有时候我们提交完了才发现漏掉了几个文件没有添加，或者提交信息写错了。 此时，可以运行带有 --amend 选项的提交命令来重新提交
+#+BEGIN_SRC sh
+  git commit --amend
+#+END_SRC
+最终我们只会得到最后一次的提交message
+** TODO 修整gitlog
+** 
+* branch 
+git branch本质上是指向提交对象的可变指针
+** 创建分支
+只是在当前的提交对象上创建了一个可移动的指针,而这个指针只是一个所指对象校验和（长度为 40 的 SHA-1 值字符串）的文件
+#+BEGIN_SRC sh
+  git branch test
+#+END_SRC
+** 简单查看分支指向的提交对象
+只能在当前分支可见的提交对象上看到各个分支，如果某个分支的提交对象不在当前分支可见，就看不见。可以加--all来全部显示
+#+BEGIN_SRC sh
+  git log --decorate
+#+END_SRC
+** 查看每个分支的最后一次提交
+#+BEGIN_SRC sh
+  git branch -v
+#+END_SRC
+** 删除分支
+#+BEGIN_SRC sh
+  git branch -d test
+#+END_SRC
+** fetch
+git pull = git fetch + git merge
+** rebase
+1. 整合多个分支
+2. 提取另一个分叉的补丁和修改，然后在当前分支上应用一次
+3. rebase过程中可能需要解决冲突
+4. 可以用来把分支a延伸出来的分支b rebase onto master，同时又不合并a回master
+#+BEGIN_SRC sh
+  # 把b1的修改在master上replay
+  git checkout b1
+  git rebase master
+
+  # 省去切分支这一步
+  # git rebase <basebranch> <topicbranch>
+  git rebase b1 master
+#+END_SRC
+* 底层
+** use git as a kv database
+#+BEGIN_SRC sh
+  # -w 告诉git不要只返回key，还要把value存到数据库中
+  ➜  git_kv git:(master) echo 'a new value'|git hash-object -w --stdin
+  12ea6e200ea815faf070a9b8093a8f2c669e6025
+  ➜  git_kv git:(master) find .git/objects -type f                    
+  .git/objects/12/ea6e200ea815faf070a9b8093a8f2c669e6025
+  ➜  git_kv git:(master) git cat-file -p 12ea6e20 
+  a new value
+
+#+END_SRC
+** 一个文件的一次提交
+*** 1. git commit file1
+1. 生成一个blob 对象，记录文件内容
+2. 一个commit对象
+3. 一个tree对象
+#+BEGIN_SRC sh
+  # after the first file commit
+  ➜  git_kv git:(master) find .git/objects -type f
+  .git/objects/08/fe2720d8e3fe3a5f81fbb289bc4c7a522f13da
+  .git/objects/1a/a1a086f4ec2de1dad14b5f7307dc5fcc32ab10
+  .git/objects/37/a465290b7bf12eae525c1f1f5277dabb0af461
+  # 类型
+  ➜  git_kv git:(master) git cat-file -t 08fe272
+  blob
+  ➜  git_kv git:(master) git cat-file -t 1aa1a  
+  commit
+  ➜  git_kv git:(master) git cat-file -t 37a46  
+  tree
+
+  # 查看对象内容
+  ➜  git_kv git:(master) git cat-file -p 08fe272
+  first line
+  ➜  git_kv git:(master) git cat-file -p 1aa1a
+  tree 37a465290b7bf12eae525c1f1f5277dabb0af461
+  author wangchao <543164029@qq.com> 1594103886 +0800
+  committer wangchao <543164029@qq.com> 1594103886 +0800
+
+  first commit
+  ➜  git_kv git:(master) git cat-file -p 37a46
+  100644 blob 08fe2720d8e3fe3a5f81fbb289bc4c7a522f13da 
+#+END_SRC
+*** 2. 修改file1 并提交
+1. 生成一个新的blob对象，对应与修改后的内容
+2. 生成一个新的commit对象，相比与第一次提交，平凡的提交会有一个parent字段指向上一次的commit对象，合并提交对象应该会有两个parent
+3. 生成一个新的tree对象
