@@ -114,3 +114,44 @@ ${user.home}/.m2/settings.xml
 ** jacoco
 java code coverage 分析单元测试覆盖率的插件
 [[https://developer.ibm.com/zh/articles/j-lo-jacoco/][eclemama]]
+* in action
+
+** logback error - multipul bindings 
+[[https://www.jianshu.com/p/9342d313e01a][Ref]]
+*** logs
+#+BEGIN_SRC sh
+  SLF4J: Class path contains multiple SLF4J bindings.
+  SLF4J: Found binding in [jar:file:/Users/x/.m2/repository/org/slf4j/slf4j-log4j12/1.7.25/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+  SLF4J: Found binding in [jar:file:/Users/x/.m2/repository/ch/qos/logback/logback-classic/1.1.2/logback-classic-1.1.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+  SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+#+END_SRC
+*** solution 1
+使用桥接器
+*** solution 2
+借助mvn
+**** take a look of all dependencies
+#+BEGIN_SRC sh
+  dependency:tree
+#+END_SRC
+**** exclution the 多余 bindings
+#+BEGIN_SRC xml
+  <dependency>
+    <groupId>com.facebook.airlift</groupId>
+    <artifactId>bootstrap</artifactId>
+    <version>0.186</version>
+    <exclusions>
+      <exclusion>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-jdk14</artifactId>
+      </exclusion>
+      <exclusion>
+        <groupId>org.slf4j</groupId>
+        <artifactId>log4j-over-slf4j</artifactId>
+      </exclusion>
+      <exclusion>
+        <groupId>org.slf4j</groupId>
+        <artifactId>jcl-over-slf4j</artifactId>
+      </exclusion>
+    </exclusions>
+  </dependency>
+#+END_SRC
