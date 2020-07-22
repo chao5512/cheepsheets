@@ -144,15 +144,29 @@
 + 整一个只有一个method的接口，用来“传method"
 + 在一个接口上加上注解@FunctionalInterface时，编译器帮我们检查该接口是否符合函数式接口
 + 一个满足函数式接口定义的接口，编译器也还是会把接口看做一个函数式接口
-
+**** lambda表达式和方法引用
+如果 lambda 表达式的目的仅是将一个形参传递给实例方法，那么可以将它替换为实例上的方法引用。如果传递表达式要传递给静态方法，可以将它替换为类上的方法引用。
+#+BEGIN_SRC java
+  // lambda
+  .map(e -> System.out.println(e))；
+   // 方法引用
+      .map(System::out)
+    
+#+END_SRC
+*** 级联lambda
+返回函数的函数即为级联lambda表达式
+*** 与闭包的比较
+[[https://developer.ibm.com/zh/articles/j-java8idioms10/][Ref]]
 ** 接口中的默认方法
 ** joda-time
 + 不可变对象
 + 标准UTC时间:2014-11-04T09:22:54.876Z
 + 传输按上面的形式来传，没有歧义
-** 静态推导
+** 静态推导（类型推断）
+java8是java第一个支持类型推断的版本
 ** Optional
-针对空指针异常，即当你明确带访问的对象中是非null的，使用Optional避免无意义的空指针异常
+1. 针对空指针异常，即当你明确带访问的对象中是非null的，使用Optional避免无意义的空指针异常
+2. orElseGet(supplier) ,如果supplier提供了值作为备用值 
 ** Stream
 *** 概念
 1. 一个源+ Optional中间操作+终止操作
@@ -160,6 +174,10 @@
    1. lazy 求值
    2. 及早求值
 ** Functional interface
+*** 三条法则
+1. 一个函数接口只有一个抽象方法，任何满足单一抽象方法的接口都会被是做函数接口
+2. 在 Object 类中属于公共方法的抽象方法不会被视为单一抽象方法。
+3. 函数接口可以有默认方法和静态方法。
 *** 四种基本形式
 1. Function T到R的一元函数
 2. Consumer T到void的一元函数
@@ -178,6 +196,19 @@
 *** 参数To返回值前缀
 IntToDoubleFunction
 *** 如果所有参数到显示的指定类型，那么arity前缀是多余的
+*** 内置函数接口Functional
+**** Function
+1. 用于map()
+**** Predicate
+1. 用于filter()
+**** consumer
+1. 实现accept方法，消费接到的值
+2. 用于forEach
+**** supplier
+实现get方法，提供值。例如：用与给Optional提供值
+*** 自定义函数接口
+1. 使用 @FunctionalInterface 注释该接口，这是 Java 8 对自定义函数接口的约定。
+2. 确保该接口只有一个抽象方法。
 ** time
 1. time 包中参照ISO标准定义了一些时间相关的类,都是不可变、线程安全的
 2. 所有的date time都是由暴露创建接口的字段们组成，如果想要直接访问字段，查阅子包temporal中的
