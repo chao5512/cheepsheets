@@ -156,7 +156,7 @@
 *** 级联lambda
 返回函数的函数即为级联lambda表达式
 *** 与闭包的比较
-[[https://developer.ibm.com/zh/articles/j-java8idioms10/][Ref]]
+[[https://developer.ibm.com/zh/articles/j-java8idioms10/][Ref]]k
 ** 接口中的默认方法
 ** joda-time
 + 不可变对象
@@ -241,13 +241,6 @@ IntToDoubleFunction
 在构造中设置asyncMode为true，意味着pool适用于基于事件不用去join的task
 ** ForkJoinTask
 一个ForkJoinTask类似于线程，但是比线程更轻量，是一个轻量的Future
-* inbox
-+ 静态方法只能继承，不能重写。
-+ final修饰引用类型变量，则这个变量不能修改指针，但是指向的对象内部是可以改变的,修饰的数组长度可变么
-+ 静态代码块只能执行一次
-+ java.lang.包不需要导入
-+ 常量池，看一下老年代被取消后它跑哪去了
-+ instance方法判断是不是某类对象或者是不是实现了某个接口
 * java中的设计模式
 ** 单例模式
 ** 策略模式
@@ -381,4 +374,16 @@ Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够�
 * lang3
 ** toString
 [[https://blog.csdn.net/z69183787/article/details/76146728][参考]]
-
+* inbox
++ 静态方法只能继承，不能重写。
++ final修饰引用类型变量，则这个变量不能修改指针，但是指向的对象内部是可以改变的,修饰的数组长度可变么
++ 静态代码块只能执行一次
++ java.lang.包不需要导入
++ 常量池，看一下老年代被取消后它跑哪去了
++ instance方法判断是不是某类对象或者是不是实现了某个接口
+** cow 
+copy on write
+1. 写时复制，无锁读
+2. 适用场景，读多写少，且集合整体较小
+3. 优点：读时无锁，性能高
+4. 缺点: 写入性能差，iterater中看到的数据无法保证实时性，内存消耗翻倍
