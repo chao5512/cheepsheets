@@ -28,7 +28,9 @@
 + 每个枚举的成员本质上就是枚举类型的一个实例，在编译时就确定下来的，运行时无法新添加了
 + [[https://blog.csdn.net/qq_21870555/article/details/82769721][使用枚举类型来代替你的常量们]]
 * 反射
-+ 通过反射访问私有成员方法，应该用Method#setAccessible(true);
+** Class
+1. Class.getMethods（） 获取的时所有 *pulbic* 方法
+2. 通过反射访问私有成员方法，应该用instance.getClass().getDeclaredMethods和Method#setAccessible(true);
 * Annotation
 帮助尽早发现bug
 
@@ -387,3 +389,6 @@ copy on write
 2. 适用场景，读多写少，且集合整体较小
 3. 优点：读时无锁，性能高
 4. 缺点: 写入性能差，iterater中看到的数据无法保证实时性，内存消耗翻倍
+** NavigatableMap
+1. 可以取近似key的值，导航至最接近给定目标的能力
+** 
