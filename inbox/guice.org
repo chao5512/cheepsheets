@@ -324,6 +324,17 @@ fast and side effect free
 1. @Injuect constructor
 2. Guice modules
 
+* scope
+1. 默认的，guice每次提供的依赖都是一个新的实例。
+2. 可以使用scope来让guice记住某个实例，以遍复用它
+3. 你应该考虑实例的声明周期，然后在必要情况下定义合适的scope来复用实例同时又能及时回收它
+
+** 优先级
+在类上注解的scope和provider上注解的scope的优先级低于调用bind()方法的优先级，这样设计以便在bind动作发生时调整scope。bind时你可以任意调整scope，甚至是使用Scope.NO_SCOPE去掉他的scope
 * question 
 ** 当一个依赖的实现有很多参数的，其中部分参数从配置读，怎么办
 ** 插件化rocksdb时，guice如何管理rockddb的依赖
+* bindings
+** 集合绑定
+集合绑定：可在不同的Module内向同一个集合分别去绑定自己所要支持的内容，当然喽也可以在同一个Module内
+
