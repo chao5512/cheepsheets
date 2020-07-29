@@ -159,14 +159,41 @@ nc -l 5001 > /dev/null
 pacman是archlinux的一个主要特性，旨在管理所有包，不论是官方的还是用户的
 
 ** 中文输入法
+*** ibus
 1. 配置系统的语言环境
 2. 查看中文支持:locale locale-gen
 3. 安装ibus
 4. 配置开机启动
 
-*** 简体
+**** 简体
 ~/.config/ibus/rime/build/luna_pinyin.schema.yaml
 找到simplification reset：1
+*** fcitx
+**** 安装fcitx
+[[zhuanlan.zhihu.com/p/74931620][Ref]]
+fcitx-im包组已经取消了fcitx-qt4包，搜狗输入法Linux版是基于QT4的，少了这个包，搜狗输入法就无法正常启动
+#+BEGIN_SRC sh
+  # 删除就fcitx 因为这里没有qt4
+  sudo pacman -Rsn fcitx-im fcitx-configtool
+
+  # 安装fcitx-lilydjwg-git 代替原有的fcitx
+  yaourt -S fcitx-lilydjwg-git fcitx-sogoupinyin
+
+  #安装qt5的依赖
+  sudo pacman -S kcm-fcitx
+#+END_SRC
+**** 环境变量
+#+BEGIN_SRC sh
+  #~/.xprofile
+
+  export GTK_IM_MODULE=fcitx
+  export QT_IM_MODULE=fcitx
+  export XMODIFIERS="@im=fcitx"
+#+END_SRC
+**** 安装搜狗输入法后 idea不能输入中文
+1. which idea 找到python脚本（pacman 管理的软件都会有在上层整个管理脚本，找到idea软件位置）
+2. 位置 /opt/intellij-idea-ultimate-edition/bin/
+3. 在idea.sh 中添加环境变量
 ** wine
 ** 声音
 1. 安装alsa-ustils
