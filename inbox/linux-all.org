@@ -204,6 +204,16 @@ fcitx-im包组已经取消了fcitx-qt4包，搜狗输入法Linux版是基于QT4�
   defaults.ctl.card 1
   defaults.pcm.card 1
 #+END_SRC
+** 使用dwm 打开idea idea无法显示主界面
+[[https://wiki.gentoo.org/wiki/Dwm#Troubleshooting][trouble-shooting]]
+q: 因为不明确的vm，导致部分java程序的gui显示异常
+a: 使用vmname工具制定vm
+#+BEGIN_SRC sh
+  pacman -S vmname
+  vmname LG3D
+  try again
+
+#+END_SRC
 * vim
 宏录制
 #+BEGIN_SRC sh
