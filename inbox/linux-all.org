@@ -133,7 +133,34 @@ nc -l 5001 > /dev/null
 3. 安装dhcpcd
 4. 重启，打开archlinux 动态获取ip
 5. ping
+** 改键
+[[https://www.zouyesheng.com/xmodmap-usage.html][Ref]]
+1. 键盘产生的信号为keycode
+2. 使用xev查看某个按键的keycode
+3. 在xorg层面，绑定keycode到keysys
+*** 交换win键和alt键
+#+BEGIN_SRC sh
+  # 1. xev 查看alt键keycode为64
+  # KeyPress event, serial 32, synthetic NO, window 0x1a00001,
+  #    root 0x1e6, subw 0x0, time 2691388, (1552,553), root:(1553,573),
+  #    state 0x10, keycode 64 (keysym 0xffe9, Alt_L), same_screen YES,
+  #    XLookupString gives 0 bytes: 
+  #    XmbLookupString gives 0 bytes: 
+  #    XFilterEvent returns: False
 
+  # 在自定义xmodemap文件中
+  # 2. 将alt 按键绑定到Alt_L方法
+  keycode 64 = Super_L
+  keycode 133 = Alt_L
+
+  # 3. 移除原有的mod1(代表alt修饰符)中的原来的Alt_L（这里的Alt_L在加入修饰符组后会替换成keysys，所以要移除旧的Alt_L）
+  remove mod1 = Alt_L
+  remove mod4 = Super_L
+
+  # 4. 添加刚刚定义的方法
+  add mod1 = Alt_L
+  add mod4 = Super_L
+#+END_SRC
 ** 空投
 1. [[https://blog.csdn.net/superstar_zbt/article/details/100883570][pacman 404]]
 ** 内存管理
@@ -195,6 +222,11 @@ fcitx-im包组已经取消了fcitx-qt4包，搜狗输入法Linux版是基于QT4�
 2. 位置 /opt/intellij-idea-ultimate-edition/bin/
 3. 在idea.sh 中添加环境变量
 ** wine
+*** 向windows程序传递参数
+*** 环境变量
+1. WINEPREFIX ：默认.wine 相当于一个windows系统，重新指定将是一个新的系统
+2. WINESERVER ：默认/usr/bin/winserver
+3. 
 ** 声音
 1. 安装alsa-ustils
 2. 使用alsamixer 来解除静音：方向键移动，按m借出静音
@@ -210,10 +242,17 @@ q: 因为不明确的vm，导致部分java程序的gui显示异常
 a: 使用vmname工具制定vm
 #+BEGIN_SRC sh
   pacman -S vmname
+  # 这不是永久的，所以你可以把它写进.xinitrc。
   vmname LG3D
   try again
 
 #+END_SRC
+** dwm
+*** 自定义
+通过c语言头文件 config.h来自定义dwm，通过config.mk来定义make方式
+** 邮箱
+thunderbird
+
 * vim
 宏录制
 #+BEGIN_SRC sh
