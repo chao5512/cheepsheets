@@ -95,6 +95,21 @@ In other words, queries that solely aggregate metrics based on filters do not ne
 **** 列格式
 1. jackson序列化的列描述符
 2. 二进制的列值表
+*** metadata
+**** druid.metadata.storage.tables.segments表
+1. 存储所有的used segment
+2. coordinator使用这个表来决定可查询的segment
+3. 主要的功能列有两列，剩下的主要用于indexing
+   1. used： 标识segment是否应该可用
+   2. payload ：一个json串，存储这个segment的元数据
+**** rule table
+segment的分配规则
+**** config table
+配置表，运行时修改配置的入口
+**** Task-related tables
+用于overload和middlemanager来保存任务信息
+**** Audit table
+历史审计表
 *** lifeCycle
 用来管理需要start和stop的对象
 **** stages
