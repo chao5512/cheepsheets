@@ -89,6 +89,13 @@ g/re/p
 #+BEGIN_SRC sh
 swapoff -a && swapon -a
 #+END_SRC
+** nmap
+#+BEGIN_SRC sh
+  # 使用nmap查看远端ip的端口状态
+  nmap ip -p port'
+#+END_SRC
+** privoxy
+
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
@@ -252,7 +259,57 @@ a: 使用vmname工具制定vm
 通过c语言头文件 config.h来自定义dwm，通过config.mk来定义make方式
 ** 邮箱
 thunderbird
+** shadowsocks
+*** 服务端 
+1. 安装shadowsocks 
+2. 配置
+#+BEGIN_SRC sh
+  # 配置
+  {
+      "server":"0.0.0.0",
+      "server_port":2020,
+      "local_address":"127.0.0.1",
+      "local_port":1080,
+      "password":"xxxxxx",
+      "timeout":5000, // 超时时间别设置太短
+      "method":"aes-256-cfb",
+      "fast_open":false
+  }
+  # 运行服务
+  ssserver -c /etc/shadowsocks.json -d start
+#+END_SRC
+*** 客户端
+**** sslocal
+1. pacman -S shadowsocks
+2. 配置
+#+BEGIN_SRC sh
+  {
+        "server":"ssserver ip",
+        "server_port":2020,
+        "local_address":"127.0.0.1",
+        "local_port":1080,
+        "password":"xxxxxx",
+        "timeout":5000, // 超时时间别设置太短
+        "method":"aes-256-cfb",
+        "fast_open":false
+    }
+#+END_SRC
+**** privoxy 转发http为socks5
+#+BEGIN_SRC sh
 
+  # 配置 /etc/privoxy/config
+  # 以socks5 的形式转发到127.0.0.1:8080上
+  forward-socks5   /               127.0.0.1:1080 .
+  # 默认listen 8118端口
+  export http_proxy="127.0.0.1:8118"
+
+#+END_SRC
+**** chrome
+为chrome设置代理，注意这个是本机的sslocal的ip和端口，127.0.0.1:1080
+*** 使用
+1. 启动sslocal作为客户端
+2. 在终端中访问ssserver，启动privoxy来把http请求转换成socks5，发给sslocal
+3. 在chrome中访问ssserver，使用代理插件发给本地sslocal
 * vim
 宏录制
 #+BEGIN_SRC sh
