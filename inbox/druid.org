@@ -131,7 +131,11 @@ web 控制台由router进程维护
 [[http://hbasefly.com/2018/06/19/timeseries-database-8/][hbaseFly]]
 * utils
 ** lifecycle
-
+** NativeIO
+ruid依赖linux的页缓存来缓存segment，但这两种情况的segment是不应该对页缓存产生大的占用的
+1. 从deep storage 拉取segment
+2. 只是为了rebalence segment而分配来的segment
+优化： 使用sync_file_range来代替fsync来加速
 * 用到的工具
 ** jackson
 [[https://developer.ibm.com/zh/articles/jackson-advanced-application/][ibm-ref]]
