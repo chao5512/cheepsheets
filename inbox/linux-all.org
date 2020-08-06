@@ -293,6 +293,9 @@ thunderbird
         "method":"aes-256-cfb",
         "fast_open":false
     }
+
+  # 启动
+  sslocal -c /etc/shadowsocks/config.json
 #+END_SRC
 **** privoxy 转发http为socks5
 #+BEGIN_SRC sh
@@ -307,8 +310,8 @@ thunderbird
 **** chrome
 为chrome设置代理，注意这个是本机的sslocal的ip和端口，127.0.0.1:1080
 *** 使用
-1. 启动sslocal作为客户端
-2. 在终端中访问ssserver，启动privoxy来把http请求转换成socks5，发给sslocal
+1. 启动sslocal作为客户端 : sslocal -c /etc/shadowsocks/config.json
+2. 在终端中访问ssserver，启动privoxy来把http请求转换成socks5，发给sslocal : systemctl start privoxy
 3. 在chrome中访问ssserver，使用代理插件发给本地sslocal
 * vim
 宏录制
@@ -368,4 +371,38 @@ thunderbird
 #+END_SRC
 - ~/.zshrc : 用户配置文件
 *** do 配置
-
+* 一些系统调用
+** sync_file_range()
+sync一个文件的制定范围到磁盘，
+*** sync_file_range 与 fsync的区别
+1. sync_file_range有一个标志位可以决定异步sync，而fsync都是同步的。因而你可以频繁的使用sync_file_range(SYNC_FILE_RANGE_WRITE)来把写缓存页刷到磁盘。但是要注意，使用sync_file_range时的io error是无法捕获的。
+2. 事实上sync_file_range并不总是异步的，有时它也会等待writeback
+3. sync_file_range()可以以缓存页为单位（例如：在一个缓存页大小为4k的系统中，调用sync_file_range(fd,333,444,flag),会把fd所描述的文件的第一个缓存页sync）指定sync范围，而fsync会把一个文件的所有脏页sync。
+4. 同步sync_file_range(SYNC_FILE_RANGE_WRITE|SYNC_FILE_RANGE_WAIT_AFTER) 不会等待元数据的flush，即便是file size变了。而fsync会等待数据和元数据都flush。因而sync_file_range不保证file在crash后能够revocer，而fsync和fdatasync保证
+*** 高度依赖内核版本和文件系统
+1. 在支持neighbor page flushing 的xfs系统中，除了指定范围的页，也会flush相邻的脏页
+2. ext3和ext4不支持邻页刷新
+*** 更快但不能保证durability 尤其是文件大小发生变化时
+在想要减少脏页同时又不需要完整的文件durability时可以考虑sync_file_range
+* 命令 
+** 文件
+*** fallocate
+用来为一个文件预分配或回收空间，比创建的一个文件，填充0快。
+#+BEGIN_SRC sh
+  fallocate -l 10G dummy.img
+#+END_SRC
+*** 小众命令 vmtouch
+很多linux发行版不带这个命令，arch也不带
+**** 编译安装之
+#+BEGIN_SRC sh
+  $ git clone https://github.com/hoytech/vmtouch.git
+  $ cd vmtouch
+  $ make
+  $ sudo make install
+#+END_SRC
+**** 能干啥
+1. 看看缓存中都有那些文件
+2. 精准缓存\驱逐一个文件或文件的一个region
+3. 锁定一个文件，不让缓存将其换出
+4. 绘制文件系统缓存随时间的使用情况
+5. 还有3左右没看明白[[https://hoytech.com/vmtouch/][Ref]]
