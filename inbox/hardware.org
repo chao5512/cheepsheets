@@ -1,0 +1,15 @@
+#+title: 硬件常识
+* 机械硬盘的读写速度
+[[https://zhuanlan.zhihu.com/p/38847308][知乎]]
+1. 转速是主轴电机每分钟能够完成多少转,在存储密度相同的硬盘中,转速越快,读写越快
+2. 存储密度大的相对存储密度小的更有优势
+* CPU SIMD
+Single instruction, Multiple Data
+[[https://cloud.tencent.com/developer/article/1350938][讲硬件不错的系列文章]]
+** 检查当前cpu是否支持sse
+#+BEGIN_SRC sh
+grep -q sse4_2 /proc/cpuinfo && echo "SSE 4.2 supported" || echo "SSE 4.2 not supported"
+#+END_SRC
+** 总结
+cpu提供的指令级别的并行处理,多数应用都没有用上这一特性.可以在代码层面去利用sse来在指令级别将计算并行化
+
