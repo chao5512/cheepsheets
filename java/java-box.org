@@ -294,80 +294,156 @@ java中怎么调用c++
   Socket socket = new Socket( "localhost",port);
   socket.connect();
 #+END_SRC
-* io
-阻塞io
-** 核心是流
-*** 分类
-**** 按功能
+* 文件io
+[[https://www.cnkirito.moe/file-io-best-practise/][徐婧峰@ali]]
+** java中的io分类
+*** 1. io
+位于java.io, 普通io
+**** 核心是流
+***** 分类
+****** 按功能
 1. 输入流
 2. 输出流
-**** 按结构
+****** 按结构
 1. 字节流
    1. InputStream
    2. OutputStream
 2. 字符流
    1. Writer
    2. Reader
-**** 按继承关系
+****** 按继承关系
 1. 节点流：直接连设备
 2. 过滤流：另外一个流的包装，使用的是装饰模式
-*** 流是单向的
-** 使用步骤(面向流的编程)
+***** 流是单向的
+**** 使用步骤(面向流的编程)
 1. 打开一个流
 2. (optional:组合功能到一个流链)
 3. 循环从/向流中读/写数据
 4. 关闭流
-* nio
-非阻塞io
-** 核心
+*** 2. nio
+java.nio,不全都是非阻塞io，fileChanel就可以阻塞
+**** 核心
 1. Selector：一个线程根据事件来选择不同的Channel
 2. Channel
    1. 只能通过Buffer来读写
    2. 双向的（linux底层也是双向的）
 3. Buffer
    1. 原生数据类型(除了Boolean)都有自己的Buffer
-** 通信过程
+**** 通信过程
 
 #+DOWNLOADED: https://img-blog.csdn.net/20141213161210309?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvcm9iaW5qd29uZw==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center @ 2019-12-04 17:59:48
 [[file:nio/2019-12-04_17-59-48_20141213161210309.png]]
 
-** Buffer源码
+**** Buffer
 + 是一个特殊原生类型的容器。
 + buffer不能断点续读
 + 不是线程安全的
 + byteBuffer可以存其他各种原生类型
-*** 重要属性
+***** 重要属性
 1. capacity ： buffer的容量
 2. limit ：读到哪，buffer中第一个不能被读写的位置
 3. position ： buffer中下次用于读写的位置
-*** slice方法
+***** slice方法
 返回一个buffer的子序列为新的buffer，底层共享同一份数组，但是有4个独立的标志位
-*** DirectBuffer
+***** DirectBuffer
 + 使用Unsafe来分配内存，读写内存。每个DirectBuffer有一个自己的回收器DeAllocator
 + Buffer中有一个表示堆外内存地址的long型address
 + 因为这个buffer是要和硬件打交道的，所以直接分配到操作系统内存中，省掉了一步从堆copy到系统内存。即零拷贝。更快
-*** MappedByteBuffer
+***** MappedByteBuffer
 + 映射文件的内存。这不是emacs的buffer？
 + 把文件的某一部分缓存到内存中，可以直接在内存中写，由操作系统决定怎么写回文件。
-*** 文件锁
+***** 文件锁
 fileLock
-*** scattering
+***** scattering
 比如，从文件中读到多个buffer。天然的适配解析具有一定格式的数据
-*** Gathering
+***** Gathering
 比如, 从多个buffer向一个文件写
-** Selector
+***** ByteBuffer
+用来提供底层存储(数组)的一种视图,来方便读写内容,but how?
+****** 使用实例
+******* 两种创建方式
+1. wrap一个已经存在的byte[] 作为ByteBuffer
+2. allocate指定大小的ByteBuffer
+#+BEGIN_SRC java
+  // 写
+  byte[] data = new byte[4096];
+  long position = 1024L;
+  // 指定 position 写入 4kb 的数据
+  fileChannel.write(ByteBuffer.wrap(data), position);
+  // 从当前文件指针的位置写入 4kb 的数据
+  fileChannel.write(ByteBuffer.wrap(data));
+
+  // 读
+  ByteBuffer buffer = ByteBuffer.allocate(4096);
+  long position = 1024L;
+  // 指定 position 读取 4kb 的数据
+  fileChannel.read(buffer,position)；
+  // 从当前文件指针的位置读取 4kb 的数据
+  fileChannel.read(buffer);
+#+END_SRC
+******* 按底层存储分类
+******** 1. 直接内存
+使用allocateDirecct或者map创建
+******** 2。非直接内存
+******* 如何转换成array
+自带array方法,但此方法放回的是底层存储的引用,所以如果想得到数组的副本,使用这作为上层,自己实现
+1. 使用duplicate
+2. 使用Arrays.copyOf()
+******* 基操
+1. clear : limit = capacity; position = 0; 初始化
+2. put :
+3. flip : limit = position; position = 0;
+4. get :
+5. rewind : position = 0; 读之后再读一遍
+
+
+****** 和byte array的区别
+1. Bytebuffer相较于ByteArray,他的hashcode()/equal()是有意义的,只要两个ByteBuffer在position和limit之间的byte[]值是相等的,ByteBuffer就是相等的
+2. 在获取子集场景下,ByteBuffer提供了一种零拷贝的方式,也就是只创建新的ByteBuffer实例而不是底层存储的拷贝.
+3. ByteBuffer拥有堆外实现
+4. ByteBuffer提供一些字节数组之上的附加状态,这使得通过ByteBuffer更容易进行相对位置IO操作
+5. 提供了各种原始类型的IO操作
+******* 总结
+相较于Byte Array, NIO更需要一种高效率(获取子集时零拷贝),可以更方便的使用相对位置进行Byte Array 读写操作的数据结构-ByteBuffer
+****** 关键属性
+1. capacity 不变
+2. limit 读写的边界
+3. position 读或写的起点.显然ByteBuffer只能处于读或写一种状态
+***** Netty ByteBuf
+网络传输的最小单位是byte
+****** 为什么不用nio中ByteBuffer
+1. 读写公用一个pos索引
+2. 不支持动态扩展
+****** 读写索引
+1. 读 readIndex
+2. 写 writeIndex
+****** CompositeByteBuf
+提供了零拷贝的组合ByteBuf的方法
+****** 
+**** Selector
 Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够知晓通道是否为诸如读写事件做好准备的组件。这样，一个单独的线程可以管理多个channel，从而管理多个网络连接
 
-*** 概念
+***** 概念
 + registrations
 + register 使用selector为channel注册
 + cancel 方法在cancelled-key上同步
 + selection 
-*** 三个key set
+***** 三个key set
 1. key set
 2. select-key set
-3. cancelled-key
-* 为什么系统不能直接访问java堆上的内容呢?
+   1. cancelled-key
+**** FileChannel
+***** 使用方式
+#+BEGIN_SRC java
+  FileChannel fileChannel = new RandomAccessFile(new File("db.data"), "rw").getChannel();
+#+END_SRC
+
+*** 3. MMAP
+FileChinnel 已经很快了，mmap是怎么更快的
+
+**** 原理
+将文件映射到虚拟内存上，在需要的时候根据缺页加载的机制加载
+*** 为什么系统不能直接访问java堆上的内容呢?
 [[https://www.bilibili.com/video/av33707223?p=38][参考]]
 1. jvm上的对象在GC时可能会发生移动，操作系统访问内存的方式是固定的地址。这样在GC的时候，虽然jvm内对移动对象的访问有jvm控制以保证合法，但是JNI的方法不会因为GC而停下，这时内存出现错乱。
 2. 操作系统来控制硬件和内存之间的交互，如1所说，现在操作系统直接操作jvm的堆上对象可能会发生错误。那怎么解决呢？

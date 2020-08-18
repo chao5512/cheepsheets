@@ -43,6 +43,8 @@
   #查询系统CPU是否启用超线程：
   cat /proc/cpuinfo | grep -e "cpu cores"  -e "siblings" | sort | uniq
 #+END_SRC
+*** 获取cpu核数
+nproc
 ** how to kill a program
 [[https://itsfoss.com/how-to-find-the-process-id-of-a-program-and-kill-it-quick-tip/][参考]]
 *** find pid by name
