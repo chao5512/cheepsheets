@@ -126,6 +126,25 @@ segment的分配规则
 web 控制台由router进程维护
 *** storage
 [[https://blog.bcmeng.com/post/druid-storage.html][Ref]]
+**** segment存储
+***** segment的实际存储文件有3个
+****** 1. version.bin
+4byte的二进制文件记录了segment的内部版本号
+0000 0009 当前为v9
+****** 2. meta.smooth 
+一个列式存储文件
+#+BEGIN_SRC sh
+  #版本号,该文件所能存储的最大值(2G),smooth文件数
+  v1,2147483647,1
+  # 列名,文件名,起始偏移量,结束偏移量
+  __time,0,0,154
+  city,0,306,577
+  gmv,0,154,306
+  index.drd,0,841,956
+  metadata.drd,0,956,1175
+  sex,0,577,841
+#+END_SRC
+****** 
 * 算法
 ** bitmap
 [[http://hbasefly.com/2018/06/19/timeseries-database-8/][hbaseFly]]
@@ -139,3 +158,52 @@ ruid依赖linux的页缓存来缓存segment，但这两种情况的segment是不
 * 用到的工具
 ** jackson
 [[https://developer.ibm.com/zh/articles/jackson-advanced-application/][ibm-ref]]
+* develop
+** start point
+数据存在segment的列中,可以从Column.java(在#5957中重命名为ColumnHolder.java)和继承它的类入手来了解存储格式.
+** segment creation
+1. IncrementalIndex.java 摄取数据
+2. IndexMerger.java 创建segment
+** storage engine
+segment使用IndexIO.java映射内存,并为查询提供数据
+** query engine
+query逻辑去Query* 类看. 可以从QueryResouse.java下手
+** coordination
+1. historical的协调逻辑从DruidCoordinator.java下手
+2. 实时摄取的协调逻辑从OverloadResource.java下手
+** real-time ingestion
+1. druid使用FirehoseFactory.java类来加载数据
+2. hand-off 逻辑 RealtimePlumber.java
+** hadoop-based batch ingestion
+1. 决定创建多少segment  HadoopDruidDetermineConfigurationJob.java
+2. 创建segment HadoopDruidIndexerJob.java
+* paper
+** 实时节点
+*** 数据流动的4个阶段
+1. ingest
+2. persist
+3. merge -> segment
+4. hand off
+*** 窗口
+最小化丢数据的风险
+1. 在窗口末尾去merge所有的persist index并执行hand off
+2. 一旦这个窗口内的数据在historical节点可查了,刷出窗口内的所有信息,并撤销当前节点对这个窗口的server
+** message bus
+1. 用作消息事件的缓存,以便在failure和recover场景下正确消费消息
+2. 统一的数据来源,多个消费节点可以冗余消费提升灾备能力或者分区消费提升消费速度
+** 历史节点
+遵循shared-nothing architecture
+1. historical 彼此不认识
+2. 只知道load, drop, server immutable segment
+3. 和实时节点一样,通过zk发布服务状态和服务的数据
+*** 分层
+对historical分组,加载不同要求的segment.可以用来做冷热分离,配合规则
+** 代理(broker)节点
+理解zk上的segment信息,代理收到的查询,到正确的节点上收集数据,并汇总出最终结果.响应查询
+*** LRU
+用来缓存从历史节点查询指定segment的结果,不缓存从实时节点来的数据
+** 协调节点
+** mysql
+1. 存需要由historical 节点接管的segment
+2. 存规则,关于segment怎么创建? 怎么销毁? 怎么保存副本?
+
