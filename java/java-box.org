@@ -432,11 +432,14 @@ Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够�
 1. key set
 2. select-key set
    1. cancelled-key
-**** FileChannel
-***** 使用方式
+**** Channel
+***** FileChannel
+****** 使用方式
 #+BEGIN_SRC java
   FileChannel fileChannel = new RandomAccessFile(new File("db.data"), "rw").getChannel();
 #+END_SRC
+***** ServerSocketChannel
+一个可select的面向流的socket监听channel
 
 *** 3. MMAP
 FileChinnel 已经很快了，mmap是怎么更快的

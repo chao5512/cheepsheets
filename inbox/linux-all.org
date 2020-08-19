@@ -97,7 +97,20 @@ swapoff -a && swapon -a
   nmap ip -p port'
 #+END_SRC
 ** privoxy
-
+** 解压
+*** tar.gz
+#+BEGIN_SRC sh
+  tar -zxvf xx.tar.gz
+#+END_SRC
+** 磁盘占用
+#+BEGIN_SRC sh
+  #一层一层排查
+  du -s /root/* | sort -nr
+  #查看一个文件夹里内容的大小
+  du -h –max-depth=1
+  # 检查是否真的被删除了
+  lsof | grep deleted
+#+END_SRC
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
