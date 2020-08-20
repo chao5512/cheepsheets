@@ -21,6 +21,48 @@ cause by [[https://blog.csdn.net/lovewebeye/article/details/80060410?utm_source=
 solution 更改mirrorOf属性
 ** 配置国内源
 todo 配置文件的生效顺序
+** 阿里仓库也有不全的时候
+*** replay
+1. 通过mvn clean install 编译incubator-doris项目,成功下载java-cup-runtime和cup-maven-plugin到本地仓库
+2. 为了学习jflex和cup,新建了一个项目,把cup和jflex的依赖语句抄过来.
+3. cup相关的依赖无法找到依赖.
+4. 检查本地仓库,步骤3中提示的依赖确实是存在的
+5. 远程仓库为阿里仓库,阿里仓库中没有cup的插件和cup-runtime插件
+6. 此时就算本地仓库是有的,在第一步verrify时候还是要从远程仓库检查这个包的信息做验证.此时就会导致验证过不了,下载也下不了
+*** 总结
+1. 问题一: 多设置几个源,覆盖更多的依赖
+2. 问题而: 使用profile动态配置
+*** 使用动态配置(profiles)
+在某个阶段,动态加入某个特殊仓库
+#+BEGIN_SRC xml
+  <profiles>
+          <profile>
+              <id>general-env</id>
+              <!--激活时机-->
+              <activation>
+                <!--property是使用-D参数来决定激活否-->
+                <property>
+                  <!--如果mvn clean install -Denv.CUSTOM_MAVEN_REPO=anyvalue,只要这个参数为空,就激活此profile-->
+                      <name>!env.CUSTOM_MAVEN_REPO</name>
+                  </property>
+              </activation>
+              <repositories>
+                  <!-- for java-cup -->
+                  <repository>
+                      <id>cloudera-thirdparty</id>
+                      <url>https://repository.cloudera.com/content/repositories/third-party/</url>
+                  </repository>
+              </repositories>
+              <pluginRepositories>
+                  <!-- for cup-maven-plugin -->
+                  <pluginRepository>
+                      <id>spring-plugins</id>
+                      <url>https://repo.spring.io/plugins-release/</url>
+                  </pluginRepository>
+              </pluginRepositories>
+          </profile>
+      </profiles>
+#+END_SRC
 * build
 [[https://blog.csdn.net/riju4713/article/details/85102471][跳过test]]
 ** 打包带依赖，指定主类
