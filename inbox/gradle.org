@@ -1,0 +1,46 @@
+#+title: gradle
+* inbox
+1. 可以使用build cache来重新build
+2. 基于java,可以使用java来配置build
+* in action
+** 查看所有可用task
+#+BEGIN_SRC sh
+  ./gradlew tasks
+#+END_SRC
+** 指定远程仓库
+*** 在.gradle下的init.gradle中
+init.gradle是在所有gradle build前执行的
+#+BEGIN_SRC sh
+  allprojects {
+      repositories {
+          def ALIYUN_REPOSITORY_URL = 'http://maven.aliyun.com/nexus/content/groups/public'
+          def ALIYUN_CENTRAL = 'http://maven.aliyun.com/nexus/content/repositories/central'
+          mavenLocal()
+          all { ArtifactRepository repo ->
+                  if(repo instanceof MavenArtifactRepository){
+                          def url = repo.url.toString()
+                          if (url.startsWith('https://repo.maven.apache.org/maven2')) {
+                                  project.logger.lifecycle "Repository ${repo.url} replaced by $ALIYUN_REPOSITORY_URL."
+                                  remove repo
+                          }
+                  }
+              }
+          # 名 {url}
+          maven { url ALIYUN_REPOSITORY_URL}
+          maven { url ALIYUN_CENTRAL}
+      }
+  }
+
+#+END_SRC
+*** 对某一个项目
+在build.gradle文件中对repositories做上述配置即可
+#+BEGIN_SRC sh
+  # 查看仓库
+  task showRepos {
+      doLast {
+          println "All repos:"
+          println repositories.collect { it.name }
+          println repositories.collect { it.url}
+      }
+  }
+#+END_SRC
