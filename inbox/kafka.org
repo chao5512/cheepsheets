@@ -67,4 +67,9 @@
 * All About Producer
 ** KafkaProducer
 负责接收用户消息,投递给指定topic分区
-
+* in action
+** 配置kafka集群在zk上的根目录
+在serve.properties文件中
+#+BEGIN_SRC sh
+  zookeeper.connect=localhost:2181/chao-kaf
+#+END_SRC
