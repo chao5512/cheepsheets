@@ -329,7 +329,7 @@ thunderbird
 2. 在终端中访问ssserver，启动privoxy来把http请求转换成socks5，发给sslocal : systemctl start privoxy
 3. 在chrome中访问ssserver，使用代理插件发给本地sslocal
 * vim
-宏录制
+** 宏录制
 #+BEGIN_SRC sh
   # start
   q a
@@ -341,6 +341,35 @@ thunderbird
   # replay
   @a
 
+#+END_SRC
+** 折叠
+*** 折叠操作
+1. zf 折叠
+2. zo 打开折叠
+
+3. zc 从段落开始折叠到当前行
+
+4. ap 段落
+#+BEGIN_SRC sh
+  # 可以在zf后面指定折叠对象
+  zfap #ap 为段落
+
+  # 可以用可视模式选中想折叠的部分,然后按zf
+
+  # 可以先按zf,然后传入要折叠的行数和方向
+  zf4j # 向下折叠4行
+  zf4k # 向上折叠4行
+#+END_SRC
+*** 手动折叠
+#+BEGIN_SRC sh
+  # 更改折叠模式为手动折叠
+  set foldmethod=manual
+
+  # 在一个段落内(代码中大括号内)
+  zfap
+
+  # 打开折叠块
+  zo
 #+END_SRC
 * zsh
 ** 配置文件的读取顺序
