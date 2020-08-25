@@ -67,6 +67,27 @@
 * All About Producer
 ** KafkaProducer
 负责接收用户消息,投递给指定topic分区
+** 拦截器
+[[https://www.jianshu.com/p/7873b76842c0][Ref]] 有点像hbase的协处理器
+1. 利用interceptor,使用者可以在消息发送前或者producer回调前(写入成功或失败后)定制功能
+   1. 发送前在每个producerRecoder的value前添加当前时间
+   2. 利用回调前的定制功能,统计发送成功的消息数
+*** 使用
+1. 实现ProducerInterceptor接口
+   1. onSend为发送前的拦截点
+   2. onAcknowledgement为回调前的拦截点
+   3. configure
+2. 在producer中配置该拦截器
+#+BEGIN_SRC java
+
+  List<String> interceptors = new ArrayList<>();
+  // 两个拦截器
+  interceptors.add("com.test.kafka.interceptor.TimeInterceptor");
+  interceptors.add("com.test.kafka.interceptor.CounterInterceptor");
+  // 到时通过反射拿到实例
+  props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
+
+#+END_SRC
 * in action
 ** 配置kafka集群在zk上的根目录
 在serve.properties文件中
