@@ -73,3 +73,17 @@
 #+BEGIN_SRC sh
   zookeeper.connect=localhost:2181/chao-kaf
 #+END_SRC
+** kafka-logs目录下的meta.properties文件中记录cluster id
+1. cluster id 什么时候增长
+2. cluster id干啥用的
+3. 存在meta.paoperties中一份,zk的/cluster/id中一份
+* zk在kafka中的作用
+[[https://blog.csdn.net/maoyeqiu/article/details/102715254][Ref]]
+** 选举
+controller节点存储这leader broker的信息
+#+BEGIN_SRC sh
+  [zk: localhost:2181(CONNECTED) 25] get /chao-kaf/controller
+  {"version":1,"brokerid":0,"timestamp":"1598320825173"}
+#+END_SRC
+** 生产负载均衡
+** 消费负载均衡
