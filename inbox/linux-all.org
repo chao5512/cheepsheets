@@ -259,6 +259,7 @@ fcitx-im包组已经取消了fcitx-qt4包，搜狗输入法Linux版是基于QT4�
   defaults.pcm.card 1
 #+END_SRC
 ** 使用dwm 打开idea idea无法显示主界面
+*** 过期的解决办法
 [[https://wiki.gentoo.org/wiki/Dwm#Troubleshooting][trouble-shooting]]
 q: 因为不明确的vm，导致部分java程序的gui显示异常
 a: 使用vmname工具制定vm
@@ -269,6 +270,20 @@ a: 使用vmname工具制定vm
   try again
 
 #+END_SRC
+*** 新的办法
+1. 添加环境变量 命令行启动有界面,但是dmenu没界面
+#+begin_src sh
+  # 但是dmenu吃不到这个环境变量,有可能是我没重启机器,但是最根本的解决办法是把idea的启动脚本中添加这个环境变量
+  # 这样做两个隐患
+  # 1. idea启动时这个环境变量更改可能对其他依赖这个环境变量的程序产生影响
+  # 2. idea更新的时候会覆盖我们添加到idea.sh中的环境变量
+  export _JAVA_AWT_WM_NONREPARENTING=1
+#+end_src
+
+2. 改idea.sh
+#+begin_src sh
+  export _JAVA_AWT_WM_NONREPARENTING=1
+#+end_src
 ** dwm
 *** 自定义
 通过c语言头文件 config.h来自定义dwm，通过config.mk来定义make方式
