@@ -13,3 +13,12 @@
 2. 去IpAddress.com搜一下这个rul的ip
 3. 在/etc/host下添加 ip url
 4. sudo hostname url // 令刚刚配置的host生效
+* BaiduPCS-Go
+** 安装
+pacman -S baidupcs-go
+** 使用
+#+begin_src sh
+  baidupcs-go
+  # 输入账号密码即可
+#+end_src
+
