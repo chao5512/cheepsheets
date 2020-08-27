@@ -352,5 +352,16 @@ false 和ture
 (or a b)
 #+end_src
 ** TODO 全文搜索
+** emacs加载机制和use-package
+[[https://www.dazhuanlan.com/2020/02/26/5e55db68c177c/][Ref]]
+
 * Lisp Interaction mode
 - M-TAB : 补全lisp表达式
+
+* org
+1. q:org 更新到9.3后无法是<s补全代码
+[[https://orgmode.org/Changes.html][changlog]]
+2. solution
+#+begin_src lisp
+  (requrie 'org-tempos)
+#+end_src
