@@ -15,6 +15,41 @@
           <maven.compiler.target>1.8</maven.compiler.target>
       </properties>
 #+END_SRC
+** 检查commpile语言级别
+#+begin_src xml
+  <!-- 使用maven-enforcer-plugin -->
+  <build>
+          <plugins>
+              <plugin>
+                  <artifactId>maven-enforcer-plugin</artifactId>
+                  <version>1.4.1</version>
+                  <executions>
+                      <execution>
+                          <id>env-check</id>
+                          <goals>
+                              <goal>enforce</goal>
+                          </goals>
+                          <phase>validate</phase>
+                          <configuration>
+                              <rules>
+                                  <requireJavaVersion>
+                                      <message>
+                                          <![CDATA[You are compiling an older version of Java. This application requires at least JDK ${java.version}.]]>
+                                      </message>
+                                      <version>[1.8,)</version>
+                                  </requireJavaVersion>
+                              </rules>
+                          </configuration>
+                      </execution>
+                  </executions>
+              </plugin>
+          </plugins>
+      </build>
+#+end_src
+#+begin_src shell
+  # 如上配置便会在validate阶段附加一个compile检查
+  mvn validata
+#+end_src
 * repository
 ** 配置公司仓库不生效
 cause by [[https://blog.csdn.net/lovewebeye/article/details/80060410?utm_source=blogxgwz5][私有仓库不生效]]
