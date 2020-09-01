@@ -7,7 +7,40 @@
 
    2. 计算基于(默认)mr
 
+   3. 使用yarn来调度资源
+
 3. 提供sql-like查询
 4. 将sql转化为mr任务
+** 优缺点
+*** 缺点
+1. 迭代式运算无法表达,太慢
+* 组件
 
+** 内建的
+1. 解析器
+2. 编译器
+3. 优化器
+4. 执行器
+
+** 外部依赖的
+1. metastore (derby or mysql)
+2. hdfs
+3. mr
+
+* 建表
+todo 
+
+* 数据导入
+
+** 直接导入hdfs
+#+begin_src sh
+  # 1. load
+  load data local inpath '/xxx/xxx' into table student;
+  # 2. put
+  # 3. 直接从hdfs导入
+  # 直接put到 /user/hive/wirehouse
+#+end_src
+
+* aaa
+sss
 
