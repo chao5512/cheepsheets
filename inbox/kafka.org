@@ -67,6 +67,8 @@
 * All About Producer
 ** KafkaProducer
 负责接收用户消息,投递给指定topic分区
+1. 由producer指定将数据写入到那个partition
+2. 配合key和分区器和元数据,来做partition选择
 ** 拦截器
 [[https://www.jianshu.com/p/7873b76842c0][Ref]] 有点像hbase的协处理器
 1. 利用interceptor,使用者可以在消息发送前或者producer回调前(写入成功或失败后)定制功能
@@ -88,6 +90,45 @@
   props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
 
 #+END_SRC
+** Partitioner
+*** 面向的业务不同
+1. 有的业务需要自己控制消息追加到某一partition上
+2. 有的业务不关心追加到那个partition上
+*** ProducerRecorder
+代表要被追加的消息
+1. 可以指定分区信息,producer优先向指定的分区上追加消息
+2. 如果没有指定分区消息就使用到partitioner
+** RecorderAccumulator
+
+*** 考虑线程安全
+1. 有一个业务线程向accumulator中追加消息
+2. 有一个sender线程在满足条件时消费消息
+** arch
+#+BEGIN_SRC artist
+  +--------------------------------------------------------------------------------------------+
+  | 主线程                                                                                      |
+  | +-----------------+       +-------------------+     +------------+         +-------------+ |
+  | |  KafkaProducer  |------>| KafkaInterceptors |---->| Serializer |-------->| Partitioner | |
+  | +-----------------+       +-------------------+     +------------+         +-------------+ |
+  +--------------------------------------------------------------------------------------------+
+
+
+
+
+
+
+
+
+
+#+END_SRC
+* metadata
+producer缓存集群中的信息,可以根据这些信息做负载均衡.但如何保证缓存的时效性?失败重试?
+** Abstraction
+*** Metadata
+1. 用于client的分区
+2. 用于client sender
+3. 维护了topic的子集,当request一个尚未缓存的topic将会触发元数据更新
+4. consumer 端不需要metadata过期时间, producer端需要过期时间
 * in action
 ** 配置kafka集群在zk上的根目录
 在serve.properties文件中
@@ -98,6 +139,8 @@
 1. cluster id 什么时候增长
 2. cluster id干啥用的
 3. 存在meta.paoperties中一份,zk的/cluster/id中一份
+** kafka的broker是不是无状态的?
+
 * zk在kafka中的作用
 [[https://blog.csdn.net/maoyeqiu/article/details/102715254][Ref]]
 ** 选举
