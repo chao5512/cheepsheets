@@ -21,4 +21,6 @@ pacman -S baidupcs-go
   baidupcs-go
   # 输入账号密码即可
 #+end_src
+* gflags
+命令行参数处理工具
 
