@@ -68,7 +68,7 @@ todo 配置文件的生效顺序
 1. 问题一: 多设置几个源,覆盖更多的依赖
 2. 问题而: 使用profile动态配置
 *** 使用动态配置(profiles)
-在某个阶段,动态加入某个特殊仓库
+**** 在某个阶段,动态加入某个特殊仓库
 #+BEGIN_SRC xml
 
   <profiles>
@@ -99,6 +99,7 @@ todo 配置文件的生效顺序
           </profile>
       </profiles>
 #+END_SRC
+**** 
 * profiles
 动态配置
 ** 用处
@@ -385,3 +386,48 @@ java code coverage 分析单元测试覆盖率的插件
     </exclusions>
   </dependency>
 #+END_SRC
+* Lifecycle
+lifecycle 可以理解为一个宏图,phase为完成这个宏图的具体阶段,plugin是有特定功能(goal)的工具,可以在某个阶段顺序执行
+** build-in
+*** default
+可以完成项目部署
+*** clean
+
+*** site
+负责发布文档的创建
+** 一个lifecycle由一些phase组成
+*** defaul lifecycle由这些阶段组成
+1. validate :检查项目正确性,以来信息是否可用
+2. initialize :初始化build状态,例如:设置属性,创建文件
+3. generateSourcce :
+4. process-sources :
+5. generate-resources : 生成resource文件
+6. process-resources : 复制到dest dir
+7. compile :compile 源码
+8. process-class : 相当于post-compile,在这里可以做java的字节码增强
+9. generate-test-sources : 生成测试源码
+10. process-test-sources :
+11. generate-test-resources : 生成测试resource
+12. process-test-resources : 复制到dest dir
+13. test-compile : 编译test代码到dest dir
+14. process-test-class : 相当于post-test-compile
+15. test : 运行测试用例检查项目功能
+16. prepare-package: 打包前
+17. package :将compile 后的代码打包成一种发布格式(jar war .eg)
+18. pre-intergration-test: 集成测试前
+19. intergration-test : 集成测试
+20. post-intergration-test
+21. verify :对集成测试的结果做一些检查,.eg checkstyle
+22. install :把这个artifact安装到本地仓库
+23. deploy :发布到远程仓库
+** 一个phase由一些可配置的plugin组成
+** 规划一个属于你的Lifecycle
+*** 1.使用packaging属性
+根据packageing的不同值  maven为各个阶段分配了默认的goal
+*** 2.使用plugins
+**** 步骤
+1. 生命plugin
+2. 将goal分配到某写phase上
+**** <extention>
+可以用来更好的控制goal执行顺序
+
