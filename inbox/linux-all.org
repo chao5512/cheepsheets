@@ -22,7 +22,10 @@
 #+END_SRC
 *** 查看linux内核信息
 #+BEGIN_SRC sh
-  uname －a 
+  # 输出所有内核信息
+  uname －a #Linux wangchao-arch 5.8.3-arch1-1 #1 SMP PREEMPT Fri, 21 Aug 2020 16:54:16 +0000 x86_64 GNU/Linux
+  # 输出内核名称
+  uname -s # Linux
 #+END_SRC
 *** 查看操作系统版本信息？
 #+BEGIN_SRC sh
@@ -45,6 +48,8 @@
 #+END_SRC
 *** 获取cpu核数
 nproc
+*** 挂载一个磁盘分区
+[[https://blog.csdn.net/a1766855068/article/details/84942745][参考]]
 ** how to kill a program
 [[https://itsfoss.com/how-to-find-the-process-id-of-a-program-and-kill-it-quick-tip/][参考]]
 *** find pid by name
@@ -105,12 +110,13 @@ swapoff -a && swapon -a
 ** 磁盘占用
 #+BEGIN_SRC sh
   #一层一层排查
-  du -s /root/* | sort -nr
+  du -s /root/* | sort -nr|head
   #查看一个文件夹里内容的大小
   du -h –max-depth=1
   # 检查是否真的被删除了
   lsof | grep deleted
 #+END_SRC
+** 
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
