@@ -1,0 +1,40 @@
+#+title: hadoop
+* 源码
+** 项目概览
+
+** 编译
+protoc希望版本是2.5 本机版本为3
+#+end_src
+*** 本机安装多个版本的protoc
+**** 编译protoc-2.5
+#+begin_src shell
+  # 从github下载指定版本
+  wget https://github.com/protocolbuffers/protobuf/archive/v2.5.0.tar.gz
+
+  # 解压
+  tar -zxvf v2.5.o.tar.gz
+
+  cd protobuf-2.5.0
+  ./autogen.sh
+
+
+  # 替换墙内的下载地址
+   22   wget https://github.com/google/googletest/archive/release-1.5.0.tar.gz
+   23   tar xzvf release-1.5.0.tar.gz        
+   24   mv googletest-release-1.5.0 gtest
+
+   # 编译
+   ./configure
+   make
+ 
+#+end_src
+**** maven插件hadoop-maven-plugins
+可以指定protoc 的path来指定
+#+begin_src xml
+  # pom.xml (hadoop)
+  <!--    <protoc.path>${env.HADOOP_PROTOC_PATH}</protoc.path>-->
+  <protobuf.version>2.5.0</protobuf.version>
+  <protoc.path>/home/wangchao/env/protobuf-2.5.0/src/protoc</protoc.path>
+#+end_src
+
+
