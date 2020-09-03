@@ -116,7 +116,11 @@ swapoff -a && swapon -a
   # 检查是否真的被删除了
   lsof | grep deleted
 #+END_SRC
-** 
+** 输出重定向
+#+begin_src shell
+  # 将stdout和stderr合并输出到某个文件
+  sh build.sh > build.log 2>&1
+#+end_src
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
