@@ -12,6 +12,16 @@ Editor>>General>>Show quick documentation on mouse move
 + Editor >> General >> auto import，勾上下面这两项
   1. Add unambiguous imports on the fly，自动导包
   2. Optimize imports on the fly (for current project)，去除没用的包
+** sync settings
+#+begin_src shell
+  #本质上是同步这个文件夹
+  .config/JetBrains/IntelliJIdea2020.2/settingsRepository/repository
+
+#+end_src
+1. settings repostories
+2. 填写github上生成的token
+3. 同步到远程仓库
+
 * 快捷键 
 约定 C ：control，s : command,  S : shift, A:option
 + s-A/S-S : 查找，可以查操作可以查类
@@ -57,3 +67,7 @@ Editor>>General>>Show quick documentation on mouse move
 * 未安装的pluagins
  [[https://www.geek-share.com/detail/2776227576.html][插件介绍]]
 ** 1. find-bugs
+* 注释正确缩进
+进入 Settings -> Code Style -> Java ，在右边选择 “Code Generation” Tab，然后找到 Comment Code 那块，
+把 Line comment at first columnBlock comment at first column两个前面的复选框去掉就可以了。
+
