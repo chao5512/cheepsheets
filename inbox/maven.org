@@ -345,6 +345,13 @@ ${user.home}/.m2/settings.xml
 ** jacoco
 java code coverage 分析单元测试覆盖率的插件
 [[https://developer.ibm.com/zh/articles/j-lo-jacoco/][eclemama]]
+** maven-antrun-plugin
+用来兼容ant任务的
+** maven-gpg-plugin
+签名认证
+** maven-clover2-plugin
+检查代码覆盖率
+1. 使用clover2需要先获得license
 * in action
 
 ** logback error - multipul bindings 
@@ -430,4 +437,6 @@ lifecycle 可以理解为一个宏图,phase为完成这个宏图的具体阶段,
 2. 将goal分配到某写phase上
 **** <extention>
 可以用来更好的控制goal执行顺序
+* license
+通常license只是项目本身的license,不包括项目的依赖
 
