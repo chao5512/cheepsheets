@@ -50,6 +50,14 @@
   # 如上配置便会在validate阶段附加一个compile检查
   mvn validata
 #+end_src
+** 跳过测试两个命令的区别
+#+begin_src shell
+  # 跳过junit执行, 但是会编译测试代码
+  mvn clean install -DskipTests
+
+  # 跳过junit执行和编译
+  mvn clean install  -Dmaven.test.skip=true
+#+end_src
 * repository
 ** 配置公司仓库不生效
 cause by [[https://blog.csdn.net/lovewebeye/article/details/80060410?utm_source=blogxgwz5][私有仓库不生效]]
