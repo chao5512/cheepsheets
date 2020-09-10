@@ -23,4 +23,9 @@ pacman -S baidupcs-go
 #+end_src
 * gflags
 命令行参数处理工具
+* pprof
+* grip
+本地预览github格式的md文件
+1. 默认会读当前目录下的readme文件
+2. grip 需要用github api来渲染,看看有没有办法使用本地
 
