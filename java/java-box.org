@@ -458,6 +458,26 @@ FileChinnel 已经很快了，mmap是怎么更快的
 2. 操作系统来控制硬件和内存之间的交互，如1所说，现在操作系统直接操作jvm的堆上对象可能会发生错误。那怎么解决呢？
 3. 要么让对象不动，那就得禁止GC。java没了GC！！！没得玩了
 4. 要么不让系统直接操作堆上内存。由jvm先安全的copy出一份到堆外内存来，然后系统来调度读写。这个过程中由jvm保证这块堆外内存的正确性。这基于内存拷贝非常快。一方面，jvm的检查一致性压力没那么大，一方面相比于与硬件的交互，这个copy动作非常快，所以性能也还可以
+** in action
+*** 覆盖写文件和追加写
+#+begin_src java
+  // 覆盖
+  try {
+           BufferedWriter out = new BufferedWriter(new FileWriter("outfilename"));
+           out.write("aString");
+           out.close();
+  } catch (IOException e) {
+  }
+
+  // 追加
+  try {
+           BufferedWriter out = new BufferedWriter(new FileWriter("filename", true));
+           out.write("aString");
+           out.close();
+  } catch (IOException e) {
+  }
+#+end_src
+
 * lang3
 ** toString
 [[https://blog.csdn.net/z69183787/article/details/76146728][参考]]
@@ -477,3 +497,14 @@ copy on write
 ** NavigatableMap
 1. 可以取近似key的值，导航至最接近给定目标的能力
 ** 
+* jodatime
+** concept
+*** instant
+instant由ReadableInstant接口表示,它的四种实现
+1. Instant: 一个不可变的UTC时区的时间,is intended for time zone and calendar neutral data transfer
+2. DateTime: 带有日历和时区的不可变实现
+3. MutableDateTime :带有日历和时区的可变实现
+4. DateMidnight : 
+*** Chronology 年表
+*** Partial
+
