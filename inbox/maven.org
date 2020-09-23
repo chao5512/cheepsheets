@@ -360,6 +360,11 @@ java code coverage 分析单元测试覆盖率的插件
 ** maven-clover2-plugin
 检查代码覆盖率
 1. 使用clover2需要先获得license
+** Maven Release Plugin
+1. 更改版本
+2. 上传到私库
+3. 打tag
+
 * in action
 
 ** logback error - multipul bindings 
@@ -401,6 +406,7 @@ java code coverage 分析单元测试覆盖率的插件
     </exclusions>
   </dependency>
 #+END_SRC
+** 跳过依赖中冲突的包
 * Lifecycle
 lifecycle 可以理解为一个宏图,phase为完成这个宏图的具体阶段,plugin是有特定功能(goal)的工具,可以在某个阶段顺序执行
 ** build-in
