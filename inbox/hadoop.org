@@ -37,4 +37,17 @@ protoc希望版本是2.5 本机版本为3
   <protoc.path>/home/wangchao/env/protobuf-2.5.0/src/protoc</protoc.path>
 #+end_src
 
+** 启动
+
+*** namenode
+
+** distcp
+
+*** 跨版本迁移的时候跳过crc检查
+#+begin_src shell
+  hadoop distcp -update -skipcrccheck src dest
+#+end_src
+
+* todo
+fs#rename 语义
 
