@@ -52,7 +52,7 @@
 #+end_src
 ** 跳过测试两个命令的区别
 #+begin_src shell
-  # 跳过junit执行, 但是会编译测试代码
+  # 跳过junit执行, 但编译测试用例类生成相应的class文件至target/test-classes下。
   mvn clean install -DskipTests
 
   # 跳过junit执行和编译
