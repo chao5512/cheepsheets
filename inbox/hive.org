@@ -11,6 +11,8 @@
 
 3. 提供sql-like查询
 4. 将sql转化为mr任务
+5. extract/transform/load (ETL)
+
 ** 优缺点
 *** 缺点
 1. 迭代式运算无法表达,太慢
@@ -41,6 +43,42 @@ todo
   # 直接put到 /user/hive/wirehouse
 #+end_src
 
-* aaa
-sss
+* sql
+
+** 删除有表的数据库
+#+begin_src sql
+  drop table tablename cascade;
+#+end_src
+
+** 更改表的列
+#+begin_src sql
+
+
+#+end_src
+
+** DML
+
+*** load
+#+begin_src sql
+  LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename [PARTITION (partcol1=val1, partcol2=val2 ...)]
+  # filepath
+  ## 1. 相对路径
+  ## 2. 绝对路径
+  ## 3. 完整的uri 包括schema和权限
+  LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename [PARTITION (partcol1=val1, partcol2=val2 ...)] [INPUTFORMAT 'inputformat' SERDE 'serde'] (3.0 or later)
+#+end_src
+1. target load的目标可以是table或者partition,如果表指定了分区,那么这个导入必须指定分区
+2. filePath 可以是file/dir
+3. 指定LOCAL的意思是,从本地文件系统找
+4. 不指定LOCAL
+   1. 当schema和权限没有指定的时候,从hive配置的hadoopconf里面找fs.default.name
+5. OVERWRITE, 覆盖原来hive分区中的内容
+6. additional ops after hive3.0
+
+**** 摘要
+3.0之前的load操作只是简单把数据文件copy/move到hive表能找到的存储位置上
+
+* todo
+
+** 传统数仓和OLAP\OLTP的区别
 
