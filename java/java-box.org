@@ -269,6 +269,22 @@ IntToDoubleFunction
 2. concrete component -->FileInputStream
 3. decorator --> FilterInputStream
 4. concrete decorator --> BufferedInputStream
+* Collections
+** list
+*** 线程安全的list
+#+begin_src java
+  /**
+   ,* 本实例演示ArrayList升级为线程安全的List
+   ,*/
+  public class SyncArrayList {
+      public static void main(String[] args) {
+          List<Integer> list= Collections.synchronizedList(new ArrayList<>());
+          list.add(1);
+          System.out.println(list.get(0));
+      }
+  }
+#+end_src
+
 * native
 java中怎么调用c++
 * 网络编程 
@@ -496,7 +512,13 @@ copy on write
 4. 缺点: 写入性能差，iterater中看到的数据无法保证实时性，内存消耗翻倍
 ** NavigatableMap
 1. 可以取近似key的值，导航至最接近给定目标的能力
-** 
+*** 
+** java 获取properties属性值的6种方法
+[[https://blog.csdn.net/a491857321/article/details/51512585][Ref]]
+** 定时
+*** quartz
+
+
 * jodatime
 ** concept
 *** instant
@@ -507,4 +529,7 @@ instant由ReadableInstant接口表示,它的四种实现
 4. DateMidnight : 
 *** Chronology 年表
 *** Partial
+* todo
+** parallelStream
+** joda time
 

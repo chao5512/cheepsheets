@@ -359,3 +359,9 @@ ExecutorService 的工厂类
 
 * ThreadLocal
 
+* inaction
+
+** ConcurrentModificationException
+迭代的时候对list有修改操作
+
+

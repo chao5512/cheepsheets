@@ -50,6 +50,17 @@ todo
   drop table tablename cascade;
 #+end_src
 
+** 查看表
+#+begin_src sql
+  show tables
+  show tables from database_name
+#+end_src
+
+** 查看表的数据位置
+#+begin_src sql
+  desc formatted student;
+#+end_src
+
 ** 更改表的列
 #+begin_src sql
 

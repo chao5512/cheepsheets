@@ -205,5 +205,7 @@ query逻辑去Query* 类看. 可以从QueryResouse.java下手
 ** 协调节点
 ** mysql
 1. 存需要由historical 节点接管的segment
-2. 存规则,关于segment怎么创建? 怎么销毁? 怎么保存副本?
+* dump segments
+2. 存规则,关于segment怎么创建? 怎么销毁? 怎么保存副本?[
+[https://xixuebin.github.io/2019-04-01-092732-ch.html][使用DruidAPI dump Druid数据]]
 
