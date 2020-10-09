@@ -32,6 +32,11 @@
 * 建表
 todo 
 
+** 查看建表语句
+#+begin_src sql
+  show create table tablename;
+#+end_src
+
 * 数据导入
 
 ** 直接导入hdfs
@@ -88,6 +93,11 @@ todo
 
 **** 摘要
 3.0之前的load操作只是简单把数据文件copy/move到hive表能找到的存储位置上
+
+* in action
+
+** 关键字作为字段
+使用``括起来,例如`timestamp`
 
 * todo
 
