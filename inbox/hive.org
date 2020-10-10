@@ -195,6 +195,23 @@ todo
 
 #+end_src
 
+** 时间戳timestamp
+#+begin_src sql
+  # 建表
+  create table foo (`time` timestamp) stored as parquet;
+
+  # insert
+  insert into table foo select '2014-01-17 00:17:13';
+
+  # schema and group
+  schema:message hive_schema {
+    optional int96 bar;
+  }
+
+  bar: Int96Value{Binary{12 constant bytes, [0, 26, 35, -113, 83, 53, 0, 0, 98, 124, 37, 0]}}
+
+#+end_src
+
 * sql
 
 ** 删除有表的数据库
