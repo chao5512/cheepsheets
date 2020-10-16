@@ -1,4 +1,24 @@
 #+title: jvm
+* hotspot由来
+JIT编译器在运行时创建方法使用文件，然后一步一步的优化每一个方法，有时候会主动的优化应用的行为。这些优化技术，比如积极的分支预测（optimistic branch prediction），如果不先分析应用就不能有效的使用。这样将频繁调用的部分提取出来，编译成本地代码，也就是在应用中构建某种热点（即HotSpot，这也是HotSpot JVM名字的由来）。使用
+* jvm类型
+以下两种是不同的虚拟机
+** client
+** server
+具备更高级的优化算法的虚拟机
+* jvm工作模式
+** -Xint
+强制JVM以解释方式执行所有的字节码
+** -Xcomp
+JVM在第一次使用时会把所有的字节码编译成本地代码
+** -Xmixed
+对于字节码中多次被调用的部分，JVM会将其编译成本地代码以提高执行效率；而被调用很少（甚至只有一次）的方法在解释模式下会继续执行，从而减少编译和优化成本
+** 代码中获取jvm工作模式
+#+begin_src java
+  System.out.println(System.getProperty("java.vm.name")); //获取JVM名字和类型
+  System.out.println(System.getProperty("java.vm.info")); //获取JVM的工作模式
+#+end_src
+
 * 垃圾回收
 ** 简介
 + 垃圾收集器跟踪所有正在使用的对象,并把其余部分当做垃圾
