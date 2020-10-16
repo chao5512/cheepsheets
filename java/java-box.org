@@ -8,8 +8,9 @@
   + String类型的变量的赋值，如果使用字面量赋值，那么jvm会现在常量池中找这个字面量对应的String对象，存在则直接指向
   + 如果使用new方式赋值，会在堆上创建对象，并保证在常量池中也存该字面量对应的一个对象
 + StringBuilder 普通数组，实现了扩容策略，允许追加
-+ StringBuffer 与StringBuilder相同，当时append方法加了锁，是线程安全的
++ StringBuffer 线程安全的可变字符串序列,与StringBuilder相同，append方法加了class锁，是线程安全的
 ** intern
+用来显式的向字符串常量池中添加字符串
 + “xxx”.intern()，如果字符串池中已经有与xxx equal()的值得时候，直接返回字符串池中的对象，如果没有，则在池中创建一个
 * hash
 + hashcode 一个对象的标识，用来配合hash表使用
