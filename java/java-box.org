@@ -464,6 +464,28 @@ Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够�
 1. blocking mode下 当前线程要等待当前channel上的io完成(成功或者失败).
 2. non-blocking mode 当channel上的io不能立即完成时,将控制权返回给当前线程,可能会在将来的某个时刻再次考察io的结果,这可能造成某一刻会读出来比你预想的要小的数据
 3. 使用selector 的多路复用需要配合non-blocking mode使用
+**** FileLock
+相当于一个file中的一块region的lock
+*****  autoclose
+1. 申请这个lock的channel关闭
+2. jvm关闭
+3. 显式的release
+***** 可以独占可以共享
+****** 共享锁
+1. 允许多线程访问共享锁定的部分
+2. 不允许访问被独占锁定的部分
+****** 独占锁
+1. 不允许访问被独占锁定的部分
+****** 一些平台不支持共享锁
+自动转换为独占锁
+***** 用处
+可以用来锁定进程独占的工作目录
+hdfs的storage下可以有多个StorageDirectory目录,每个目录就是使用filelock来标示其属于那个datanode进程
+1. 进程启动的时候,检查配置的storageDir.
+2. 在每个dir中,创建in_use.lock,文件内容为jvmname,这个文件上加了FileLock,因此即使dn不能主动释放这个文件的锁,lock也会随着dn的退出而release
+
+
+
 *** 3. MMAP
 FileChinnel 已经很快了，mmap是怎么更快的
 
@@ -518,7 +540,16 @@ copy on write
 [[https://blog.csdn.net/a491857321/article/details/51512585][Ref]]
 ** 定时
 *** quartz
-
+...
+* ThreadLocal
+** ThreadLocalRandom 
+线程隔离的随机数生成器
+*** usage
+#+begin_src java
+  ThreadLocalRandom
+      .current()
+      .nextX(...) (where X is Int, Long, etc)
+#+end_src
 
 * jodatime
 ** concept
