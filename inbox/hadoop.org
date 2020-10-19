@@ -48,6 +48,59 @@ protoc希望版本是2.5 本机版本为3
   hadoop distcp -update -skipcrccheck src dest
 #+end_src
 
+** 块汇报
+** Block
+hadoop文件系统e的原始类型
+
+*** inbox
+1. prefix = blk_
+2. meta extension = .meta
+
+** datanode
+
+*** Storage
+
+**** StorageDirectory
+1. in_use.lock 用来绑定目录到datanode进程,因为datanode是依赖目录结构的,两个datanode都处理同一个目录,可能会出现无法预料的情况
+
+**** BlockPoolSlice
+
+***** 构造
+1. 创建元数据目录
+2. 初始化dfsUsage,用来统计磁盘volumn使用情况
+3. 初始化 addReplicPool
+4. 设置一个shutdownHook
+
+**** 布局
+
+***** hdfs-8791
+#+begin_src java
+  // @ DatanodeUtil.java
+
+  public static File idToBlockDir(File root, long blockId) {
+     - int d1 = (int)((blockId >> 16) & 0xff);
+     - int d2 = (int)((blockId >> 8) & 0xff);
+     + int d1 = (int) ((blockId >> 16) & 0x1F);
+     + int d2 = (int) ((blockId >> 8) & 0x1F);
+      String path = DataStorage.BLOCK_SUBDIR_PREFIX + d1 + SEP +
+          DataStorage.BLOCK_SUBDIR_PREFIX + d2;
+      return new File(root, path);
+    }
+#+end_src
+
+****** 问题
+1. 0xff = 255
+2. 一个bp有256*256个子文件
+3. 过多的文件导致没有一个稳定的文件cache
+4. 文件扫面退化为磁盘上的随机读
+
+****** 解决方式
+将256 * 256 缩小为32 * 32
+
+****** 为什么要采用256 * 256 布局
+因为磁盘进步速度高于cpu和网络进步速度,所以需要放弃将所有blk meta缓存于内存的设计.
+这种布局提供仅仅根据blk id计算存储位置,来找到blk的方法.
+
 * todo
 fs#rename 语义
 
