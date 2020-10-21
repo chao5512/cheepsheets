@@ -56,6 +56,41 @@ hadoop文件系统e的原始类型
 1. prefix = blk_
 2. meta extension = .meta
 
+*** Hdfs-4645
+block id 由随机生成改为顺序生成
+
+**** why
+1. 随机生成的id没有格式,不能携带更多信息,比如让给块池几位或者在id上附带block类型
+2. 随机生成的id不能够保证一定是唯一的,为什么不能保证是唯一的?在生成后检查是否已经存在,以此来保证block id唯一性,
+但当一个dn在长时间的offline后重新连入集群,那么它可能携带了大量的冲突的block id.
+
+**** 
+
+*** hdfs-898
+block id 随机生成转顺序生成的motivation
+
+**** problem
+
+***** 碰撞则重新生成
+1. block 生成的时候,随机一个64位id,(由namendoe在block-map中)检查是否碰撞.若碰撞则重新生成并检查
+2. 问题是,当一个offline很久的dn带回了一些prehistoric block.这些block的id可能已经被namenode分配给了其他的block.这里就出现了冲突.当一切顺利时,使用生成stamps可以辨识是否为prehistoric block, 但是极端情况下还是会无法分辨
+   1. 生成戳尚未更新,offline dn带回了一个被删除的block,此时blockid碰撞, 且nn无法区分出谁为过时的
+   2. 在生成戳之前的old块没有办法区分
+   3. 上面这两点还要再看
+
+**** motivation
+1. 在hdfs-512中,namenode中的blockmap把blockid 当做key,过时的block会有更老的生成stamps.这减少了块损坏的机会.但依然存在prehistoric block的问题
+2. 如果使用顺序生成,我们能够确定blockid不会碰撞.这样每个文件的生成stamps所需的bits可以减少(64-32)
+3. 更前瞻的,如果将来支持多个namenode,那么将不会存在不好检查碰撞的问题
+
+**** solution
+1. 假设有一个拥有64 million个block,2^26.block id是64位,可以表示2^64个block. 那么其实blockid是相当稀疏的,而如果生成的时候就是连续的,那么n未使用的block id也是连续的.
+2. 所以这个方案是,在64位的blockid 中寻找一个连续的段,来使用这个段来为新的block 分配id
+3. 在每次文件创建的时候 or block 写入失败的时候生成stamps.
+
+*** hdfs-512
+
+
 ** datanode
 
 *** Storage
@@ -72,7 +107,7 @@ hadoop文件系统e的原始类型
 4. 设置一个shutdownHook
 
 **** 布局
-
+[[https://www.cnblogs.com/aaronwxb/archive/2012/09/16/2687587.html][参考]]
 ***** hdfs-8791
 #+begin_src java
   // @ DatanodeUtil.java
