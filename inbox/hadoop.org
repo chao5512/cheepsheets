@@ -61,8 +61,7 @@ block id 由随机生成改为顺序生成
 
 **** why
 1. 随机生成的id没有格式,不能携带更多信息,比如让给块池几位或者在id上附带block类型
-2. 随机生成的id不能够保证一定是唯一的,为什么不能保证是唯一的?在生成后检查是否已经存在,以此来保证block id唯一性,
-但当一个dn在长时间的offline后重新连入集群,那么它可能携带了大量的冲突的block id.
+2. 随机生成的id不能够保证一定是唯一的,为什么不能保证是唯一的?在生成后检查是否已经存在,以此来保证block id唯一性,但当一个dn在长时间的offline后重新连入集群,那么它可能携带了大量的冲突的block id.
 
 **** 
 
@@ -93,18 +92,50 @@ block id 随机生成转顺序生成的motivation
 
 ** datanode
 
+
 *** Storage
+**** DataStorage
+用来管理磁盘目录,federation架构
 
 **** StorageDirectory
 1. in_use.lock 用来绑定目录到datanode进程,因为datanode是依赖目录结构的,两个datanode都处理同一个目录,可能会出现无法预料的情况
 
 **** BlockPoolSlice
-
+federation 结构下,一个dn上的一个块池对应一个命名空间,也就是一个namenode
 ***** 构造
 1. 创建元数据目录
 2. 初始化dfsUsage,用来统计磁盘volumn使用情况
 3. 初始化 addReplicPool
 4. 设置一个shutdownHook
+
+
+**** FsVolumeSpi
+用户配置的一个存储目录,管理这个目录下的所有块.包含所有的块池
+
+**** FsVolumeList
+用户配置的所有存储目录
+
+**** FsDatasetSpi
+用来管理一个datanode的所有block
+
+**** ReplicaMap
+保存了datanode上所有的replica的信息
+
+***** hdfs-8859
+使用GSet替换jdk的实现,节省了45%的内存占用
+
+**** ReplicaInfo
+
+***** 2.8.0的时候去掉了unlinkBlock
+- hdfs-8860 去掉了copy on write of a block.那么去掉以后是怎么实现append的
+- 答: 8860是意外删除的这个逻辑,见hdfs-9589
+
+**** 集中式缓存
+1. hadoop-2.3.0中加入了集中式缓存管理.用户可以通过'hdfs cacheadmin'命令或api将hdfs上的某个文件或者某个目录放到集中式缓存中.
+2. 集中式缓存由dn上的堆外内存组成,被nn管理
+
+**** 块汇报
+1. dn在启动的时候会通过DatanodeProtocal.blockReport()方法向nn汇报dn上管理的属于该命令空间的所有数据块副本的信息,也就是nn对应的块池在当前dn上的所有数据块副本的信息
 
 **** 布局
 [[https://www.cnblogs.com/aaronwxb/archive/2012/09/16/2687587.html][参考]]
