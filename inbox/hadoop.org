@@ -167,6 +167,44 @@ federation 结构下,一个dn上的一个块池对应一个命名空间,也就�
 因为磁盘进步速度高于cpu和网络进步速度,所以需要放弃将所有blk meta缓存于内存的设计.
 这种布局提供仅仅根据blk id计算存储位置,来找到blk的方法.
 
+** namenode
+
+*** inode
+
+**** InodeWithAdditionFields
+附加了这些属性id, name, permission, access time and modification time.
+
+***** permission
+
+****** permission
+使用一个long来user,group,mode
+
+****** PermissionStatusFormat
+用来解析long型的permission
+
+****** LongBitFormat
+hdfs中大量使用一个long型来记录信息,header中的replicas,acl和permission等
+
+***** feature
+hadoop 2.6以后将磁盘配额,快照,正在构建等抽象成inode 的feature
+
+***** InodeDirectory
+1. 相比于其父类InodeWithAdditionFields 多了一个字段childrens
+2. hdfs2.6以后引入了快照功能,当我们在任意一个directory上建立snapshot后,任何对于该目录的子项的操作都要记录在快照中,以便日后恢复   
+
+***** InodeFile
+InodeFile为hdfs文件的抽象,记录了文件的两个重要信息
+1. header 文件头
+
+   1. 当前文件有多少副本
+
+   2. 数据块的大小
+
+2. blocks 文件对应的数据块
+
+   1. BlockInfo类型的数组,从BlockInfo可以获得所属的InodeFile,也可以获得该数据块所在数据节点
+
+
 * todo
 fs#rename 语义
 
