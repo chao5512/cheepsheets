@@ -28,6 +28,10 @@
 + 枚举类中的成员变量都是public static
 + 每个枚举的成员本质上就是枚举类型的一个实例，在编译时就确定下来的，运行时无法新添加了
 + [[https://blog.csdn.net/qq_21870555/article/details/82769721][使用枚举类型来代替你的常量们]]
+** 枚举类型的内置方法
+1. values() //将枚举量转换为枚举数组,方便遍历
+hdfs权限模型中大量使用values将权限枚举u转换为数组,并通过数组下标与long permission对应
+
 * 反射
 ** Class
 1. Class.getMethods（） 获取的时所有 *pulbic* 方法
