@@ -130,11 +130,11 @@ federation 结构下,一个dn上的一个块池对应一个命名空间,也就�
 - hdfs-8860 去掉了copy on write of a block.那么去掉以后是怎么实现append的
 - 答: 8860是意外删除的这个逻辑,见hdfs-9589
 
-**** 集中式缓存
+*** 集中式缓存
 1. hadoop-2.3.0中加入了集中式缓存管理.用户可以通过'hdfs cacheadmin'命令或api将hdfs上的某个文件或者某个目录放到集中式缓存中.
 2. 集中式缓存由dn上的堆外内存组成,被nn管理
 
-**** 块汇报
+*** 块汇报
 1. dn在启动的时候会通过DatanodeProtocal.blockReport()方法向nn汇报dn上管理的属于该命令空间的所有数据块副本的信息,也就是nn对应的块池在当前dn上的所有数据块副本的信息
 
 **** 布局
@@ -167,11 +167,67 @@ federation 结构下,一个dn上的一个块池对应一个命名空间,也就�
 因为磁盘进步速度高于cpu和网络进步速度,所以需要放弃将所有blk meta缓存于内存的设计.
 这种布局提供仅仅根据blk id计算存储位置,来找到blk的方法.
 
+*** 修块
+[[https://blog.cloudera.com/hdfs-datanode-scanners-and-disk-checker-explained/][参考]]
+**** 扫描
+
+***** 要求
+1. 区分出坏块以便删除或重新复制错误的块,以维护数据完整性并减少client遇到错误的机会
+2. 尽可能少的占用资源
+3. 快速
+
+***** block分类
+1. suspicious block, 在读的过程中报错的的块,需要尽快被扫描
+2. regular block, 常规块,定期被扫描
+
+***** BlockScanner & VolumeScanner
+1. 一个Datanode拥有一个BlockScanner
+2. 一个BlockScanner拥有多个VolumeScanner
+
+****** VolumeScanner
+1. 扫描当前Volume中所有的Block,定义为Regular scan,消耗一定的IO,因为要完整的读Block
+2. 维护一个suspicious block 列表
+3. 维护一个近期修复过的suspicious block 列表,防止重复扫描
+4. 周期持久化一个cursor,这样即便是扫描被中断了,重新扫描时也不至于回退太多
+
+1. 当dn提供服务的时候不活了
+***** which block need to scan
+1. 当dn提供服务的时候,捕获到除网络错误的IOException时,报错的block添加到suspicious blocks中
+   1. socket timeout
+   2. broken pipe
+   3. connection reset
+2. 周期扫描所有的块,在每次迭代的时候先检查是否有suspicious块,先扫描suspicious
+***** 配置
+1. dfs.block.scanner.volume.bytes.per.second限制扫描带宽 默认1M,设置为0意为关闭block scanner
+2. dfs.datanode.scan.period.hours 常规扫描周期 默认3weeks, 0=默认值,负数为关闭
+***** 相关issue
+1. HDFS-7430 enhances the block scanner to use O(1) memory and enables each volume scanner to run on a separate thread.
+   1. 只在内存中保存上一次扫描的block的状态,而不是所有扫描过的
+   2. 为每个volume分配一个线程
+   3. 增加贷款限制
+
+
+2. HDFS-7686 allows fast rescan of suspicious blocks.
+
+3. HDFS-10512 fixes an important bug that a race condition could terminate the volume scanner.
+**** 坏块被发现的时机
+1. 常规扫描 BlockSender发送block至一个空流
+2. 发送数据 Datanode之间的DataTransfer
+3. read block时 DataXceiver 
+**** 坏块原因
+1. 磁盘坏道
+2. block meta header损坏
+3. sender block的时候发生的各种与期望不符
+**** DirectoryScanner : dn 中block在内存和磁盘的状态同步
+只会检查FsDataSetImpl中保存的block信息和Finalize block的信息
+**** 手动修块和自动修块
+[[https://ruozedata.github.io/2019/06/06/%E7%94%9F%E4%BA%A7HDFS%20Block%E6%8D%9F%E5%9D%8F%E6%81%A2%E5%A4%8D%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5(%E5%90%AB%E6%80%9D%E8%80%83%E9%A2%98)/][参考]]
+
 ** namenode
 
 *** inode
 
-**** InodeWithAdditionFields
+**** INodeWithAdditionFields
 附加了这些属性id, name, permission, access time and modification time.
 
 ***** permission
@@ -203,6 +259,21 @@ InodeFile为hdfs文件的抽象,记录了文件的两个重要信息
 2. blocks 文件对应的数据块
 
    1. BlockInfo类型的数组,从BlockInfo可以获得所属的InodeFile,也可以获得该数据块所在数据节点
+
+**** INodeReference
+Hdfs中的文件可能存在多条访问路径,INodeReference和子类就是为了表示这个情况
+1. 某个快照中的文件被移动或者重命名后就会存在多条访问路径
+
+*** Feature
+hdfs-2.6后,加入feature,根接口位于INode.Feature
+
+**** AclFeature
+**** FileUnderConstructionFeature (org.apache.hadoop.hdfs.server.namenode)
+**** XAttrFeature (org.apache.hadoop.hdfs.server.namenode)
+**** DirectoryWithSnapshotFeature (org.apache.hadoop.hdfs.server.namenode.snapshot)
+
+**** DirectoryWithQuotaFeature (org.apache.hadoop.hdfs.server.namenode)
+**** FileWithSnapshotFeature (org.apache.hadoop.hdfs.server.namenode.snapshot)
 
 
 * todo
