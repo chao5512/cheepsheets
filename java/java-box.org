@@ -520,6 +520,8 @@ FileChinnel 已经很快了，mmap是怎么更快的
   } catch (IOException e) {
   }
 #+end_src
+*** atomic move
+
 
 * lang3
 ** toString
