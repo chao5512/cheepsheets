@@ -359,6 +359,21 @@ ExecutorService 的工厂类
 
 * ThreadLocal
 
+* Thread
+
+** 是否中断
+#+begin_src java
+  public boolean isInterrupted() {
+         return isInterrupted(false);
+     }
+
+     /**
+      ,* 判断该线程是否被标记为中断
+      ,* 根据ClearInterrupted 来决定是否reset 中断标记
+      ,*/
+     private native boolean isInterrupted(boolean ClearInterrupted);
+#+end_src
+
 * inaction
 
 ** ConcurrentModificationException
