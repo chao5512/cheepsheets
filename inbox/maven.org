@@ -364,6 +364,43 @@ java code coverage 分析单元测试覆盖率的插件
 1. 更改版本
 2. 上传到私库
 3. 打tag
+** os-maven-plugin
+用于更好的适应各种平台os,目前是生成proto需要
+#+begin_src xml
+  <project>
+    <build>
+      <extensions>
+        <extension>
+          <groupId>kr.motd.maven</groupId>
+          <artifactId>os-maven-plugin</artifactId>
+          <version>1.6.1</version>
+        </extension>
+      </extensions>
+    </build>
+  </project>
+#+end_src
+** protobuf-maven-plugin
+用来生成proto对应的java文件
+#+begin_src xml
+  <plugin>
+                  <groupId>org.xolstice.maven.plugins</groupId>
+                  <artifactId>protobuf-maven-plugin</artifactId>
+                  <version>0.6.1</version>
+                  <executions>
+                      <execution>
+                          <goals>
+                              <goal>compile</goal>
+                              <goal>test-compile</goal>
+                          </goals>
+                      </execution>
+                  </executions>
+                  <configuration>
+                      <protocArtifact>com.google.protobuf:protoc:3.4.0:exe:${os.detected.classifier}</protocArtifact>
+                      <outputDirectory>${basedir}/src/main/java</outputDirectory>
+                      <clearOutputDirectory>false</clearOutputDirectory>
+                  </configuration>
+              </plugin>
+#+end_src
 
 * in action
 
