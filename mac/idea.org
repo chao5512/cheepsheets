@@ -10,3 +10,10 @@
 打开设置界面，依次选择Editor-Code Style-Java，选择Code Generation，取消Line comment at first column和Block comment at first column的选中即可
 * build with no error check and use eclipes compile style 
 [[https://www.cnblogs.com/happyflyingpig/p/10075144.html][Ref]]
+* file size exceeds configured limit
+类明明存在,但是引包引不到, 把Hadoop源码导入IDEA中后，其中有个ClientNamenodeProtocolProtos文件代码高达82997行，IDEA直接就不把它当java类看了，报file size exceeds configured limit错误
+** 解决方案
+1. arch下的idea安装目录为/usr/share/idea/bin
+2. 调大单个java文件的最大容量 idea.max.intellisense.filesize=2500 改大点
+
+
