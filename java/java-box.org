@@ -36,6 +36,18 @@ hdfs权限模型中大量使用values将权限枚举u转换为数组,并通过�
 ** Class
 1. Class.getMethods（） 获取的时所有 *pulbic* 方法
 2. 通过反射访问私有成员方法，应该用instance.getClass().getDeclaredMethods和Method#setAccessible(true);
+*** getInterfaces
+由一个实例获得由该类实现的所有的接口
+*** public <A extends Annotation> A getAnnotation(Class<A> annotationClass)
+获取一个类的指定注解实例
+*** getName
+#+begin_src java
+  String.class.getName();
+  //returns "java.lang.String"
+  byte.class.getName(); //returns "byte"
+  (new Object[3]).getClass().getName();//returns "[Ljava.lang.Object;"
+  (new int[3][4][5][6][7][8][9]).getClass().getName(); //returns "[[[[[[[I"
+#+end_src
 * Annotation
 帮助尽早发现bug
 
