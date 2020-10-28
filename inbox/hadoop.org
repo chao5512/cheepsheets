@@ -320,9 +320,19 @@ RPC.getProtocolProxy(被代理的client protocol), 意为获得一个能够帮�
 RPC.buider.build()
 
 *** 使用
-
+**** RPC
+定义了Hadoop RPC的一些基础
+**** ProtocolInfo
+protocol的名字,用在client和server沟通时.默认为类名.为什么要实现增加这个实现以有机会覆盖默认值?当同一个protocol有多个实现的时候,也就是有多个版本的时候可以加以区分
 **** ClientProtocol
 定义了与nn交互的所有接口,但是由于protocol中的参数是无法直接进行网络传输的,需要先序列化,为方便序列化,又定义了ClientNamenodeProtocolPB协议,它包含了ClientProtocol中的所有方法,但是参数是序列化后的参数
+
+**** ClientNamenodeProtocolTranslatorPB
+作用在客户端,实现了ClientProtocol, 用来把ClientProtocol 的接口适配成ClientNamenodeProtocolPB
+1. 持有一个ClientNamenodeProtocolPB对象,暂定为cb,当调用rename(String, String)时,ClientNamenodeProtocolTranslatorPB生成一个RenameRequestProto对象,暂定为rrp,并调用cb.rename(rrp)来发送到远程服务端
+
+**** ClientNamenodeProtocolServerSideTranslatorPB
+作用在服务端,实现了ClientNamenodeProtocolPB,
 
 * todo
 fs#rename 语义
