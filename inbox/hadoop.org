@@ -274,7 +274,55 @@ hdfs-2.6后,加入feature,根接口位于INode.Feature
 
 **** DirectoryWithQuotaFeature (org.apache.hadoop.hdfs.server.namenode)
 **** FileWithSnapshotFeature (org.apache.hadoop.hdfs.server.namenode.snapshot)
+** RPC
 
+*** 通信模块
+**** Client
+发送Writable请求到远程服务器
+**** Server
+接收请求
+1. 采用Reactor的时间驱动IO模型
+2. 当Server收到一个完整的Rpc请求后,会调用call来响应请求
+**** 客户端Stub
+将程序的Rpc调用序列化,并调用Client.call()将请求发送到远程服务器
+***** 通用性
+1. 允许使用不同的序列化框架
+2. 但请求类型只能是Writable
+***** 请求序列化 
+hadoop-2默认使用protobuf作为序列化工具,为支持不同的序列化工具,定义了一个Rpc序列化接口RpcEngine
+***** RpcEngine 
+
+****** 方法
+
+******* getProxy()
+获得一个本地协议(protocol)代理 ProtocolProxy
+
+******* getServer()
+获得一个RpcServer对象,服务端用这个对象监听从客户端发来的请求
+****** 子类
+******* WritableRpcEngine
+******** Invoker
+InvocationHandler的子类,代理类的处理逻辑,可以在被代理对象的方法调用前后增加包装,封装一个Invocation,调用client.call()将请求发送到远程服务器
+******** Invocation
+Writable对象的封装
+******** Server
+Server的子类,监听socket上的rpc请求,已经被标记为弃用
+********* WritableRpcInvoker
+Server的子类,用于响应client的请求,
+1. 反序列化
+2. 根据请求信息反射调用服务
+3. 将响应结果包装为一个Writable对象返回
+******* ProtobufRpcEngine
+***** 客户端如何获得ClientStub
+RPC.getProtocolProxy(被代理的client protocol), 意为获得一个能够帮我完成这个protocol里面的方法(意图)的代理.也就是这个代理有能力做protocol中定义的这些事情
+**** 服务端Stub
+***** 服务端获取Stub
+RPC.buider.build()
+
+*** 使用
+
+**** ClientProtocol
+定义了与nn交互的所有接口,但是由于protocol中的参数是无法直接进行网络传输的,需要先序列化,为方便序列化,又定义了ClientNamenodeProtocolPB协议,它包含了ClientProtocol中的所有方法,但是参数是序列化后的参数
 
 * todo
 fs#rename 语义
