@@ -29,12 +29,18 @@ protoc希望版本是2.5 本机版本为3
  
 #+end_src
 **** maven插件hadoop-maven-plugins
-可以指定protoc 的path来指定
+真正的插件位置为hadoop-common的pom.可以指定protoc 的path来指定
 #+begin_src xml
   # pom.xml (hadoop)
   <!--    <protoc.path>${env.HADOOP_PROTOC_PATH}</protoc.path>-->
   <protobuf.version>2.5.0</protobuf.version>
   <protoc.path>/home/wangchao/env/protobuf-2.5.0/src/protoc</protoc.path>
+#+end_src
+**** 方便源码阅读
+在hadoop-maven-plugins插件中传入一个新的参数,通过在github上看这个插件的源码得知
+#+begin_src xml 
+  <!-- 默认为build目录下, 源码阅读的时候还是找不到 -->
+  <output>${basedir}/src/main/java</output>
 #+end_src
 
 ** 启动
