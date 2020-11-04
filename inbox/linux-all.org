@@ -396,6 +396,10 @@ thunderbird
   # 打开折叠块
   zo
 #+END_SRC
+** 按16进制查看文件
+#+begin_src shell
+  :%!xxd
+#+end_src
 * zsh
 ** 配置文件的读取顺序
 1. /etc/zsh/zshenv     or /etc/zshrc
