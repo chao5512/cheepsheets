@@ -1,1 +1,55 @@
 #+title: Apache Curator
+* 服务发现
+** 基本需求
+1. 注册
+2. 定位一个服务的一个实例
+3. 服务的实例发生状态变更的时候，及时通知
+** curator discovery
+*** ServiceInstance
+代表一个服务实例
+*** ServiceProvider
+按照provider strategy来选取某个服务中的实例
+**** strategy
+1. Round Robin
+2. Random
+3. Sticky (always selects the same one).
+**** ServiceProviderBuilder
+从ServiceDiscovery中获取builder，用builder构建serviceProvider
+**** 使用
+使用前start(),使用后close()
+#+begin_src java
+  // 获取一个可用的服务实例，调用这不应该hold这个返回的实例，每次使用应该返回一个新的实例
+  public ServiceInstance<T> getInstance() throws Exception
+#+end_src
+**** service provider objects 重用
+在Curator 2.x (Zookeeper 3.4.x)下，重用service provider是必要的，因为zk 3.4不能在创建NamespaceWatcher后删除，如果每次调用都重新创建该对象，内存泄露
+*** ServiceDiscovery
+使用ServiceDiscoveryBuilder构建，开始于start(),结束与stop()
+**** 实例不可用的反馈
+当一个服务实例发生io异常后，你应该调用ServiceProvider.noteError()来反馈这个实例有可能是不可用的。serviceProvider使用DownInstancePolicy来决定是否down一个实例
+*** Service Cache
+缓存服务实例们，用watcher来更新实例列表
+#+begin_src java
+  // 使用这个方法获得的实例列表是缓存的服务列表，它可能落后于位于zk上的实际版本一两个窗口时间
+  public Collection<ServiceInstance<T>> getInstances()
+#+end_src
+**** Watcher
+service cache提供一个listener在实际列表状态改变的时候以做相应的通知
+#+begin_src java
+  /**
+   ,* Listener for changes to a service cache
+   ,*/
+  public interface ServiceCacheListener extends ConnectionStateListener
+  {
+      /**
+       ,* Called when the cache has changed (instances added/deleted, etc.)
+       ,*/
+      public void cacheChanged();
+  }
+#+end_src
+* frame
+** ConnectionState
+* zookeeper
+** SESSIONEXPIRED
+连接断了之后，ZK不会马上移除临时数据，只有当之后，才会把这个会话建立的临时数据移除。因此，用户需要谨慎设置Session_TimeOut
+
