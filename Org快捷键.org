@@ -194,6 +194,7 @@ note that，there is  a bug when we hava a treemacs window
 - C-x t B : 使用标签快速定位
 - C-c C-p : 项目相关
 - C-c pp : 切换项目
+- w　：　从新调整treemacs　宽度
 ** magit
 *** 帮助文档，
 - ? - key
