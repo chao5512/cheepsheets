@@ -212,6 +212,11 @@ git branch本质上是指向提交对象的可变指针
 #+BEGIN_SRC sh
   git branch test
 #+END_SRC
+** 推送新分支到远程仓库
+#+begin_src sh
+  ＃远程仓库为origin 推送本地分支c-read 到远程c-read
+  git push orign c-read:c-read
+#+end_src
 ** 简单查看分支指向的提交对象
 只能在当前分支可见的提交对象上看到各个分支，如果某个分支的提交对象不在当前分支可见，就看不见。可以加--all来全部显示
 #+BEGIN_SRC sh
