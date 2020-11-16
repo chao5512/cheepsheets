@@ -3,6 +3,7 @@
 ** 项目概览
 
 ** 编译
+
 protoc希望版本是2.5 本机版本为3
 #+end_src
 *** 本机安装多个版本的protoc
@@ -42,8 +43,18 @@ protoc希望版本是2.5 本机版本为3
   <!-- 默认为build目录下, 源码阅读的时候还是找不到 -->
   <output>${basedir}/src/main/java</output>
 #+end_src
+*** exec-maven-plugin:1.3.1:exec
+找不到ensure-jars-have-correct-contents.sh
+**** 暂时的解决方法,把验证jar包的逻辑去掉
+删掉pom中涉及到check-jar-contents的部分,3.2.1中client下的两个模块
 
 ** 启动
+
+*** 部分类找不到的问题
+**** 原因 
+hdfs项目依赖于hadoop-client-project和hadoop-common-project下的部分模块,在整体编译的时候使用的provider scope,在idea中运行的时候先进性build是没有将这些依赖打到hdfs包中,所以运行是就找不到common和client下的类
+**** 解决办法
+在idea中调试运行的时候,将需要的依赖scope从provider替换为compile
 
 *** namenode
 
@@ -289,6 +300,8 @@ hdfs-2.6后,加入feature,根接口位于INode.Feature
 接收请求
 1. 采用Reactor的时间驱动IO模型
 2. 当Server收到一个完整的Rpc请求后,会调用call来响应请求
+***** Call
+
 **** 客户端Stub
 将程序的Rpc调用序列化,并调用Client.call()将请求发送到远程服务器
 ***** 通用性
