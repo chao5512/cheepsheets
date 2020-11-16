@@ -18,6 +18,8 @@ Intercepting Filter Pattern
 4. Filter Manager : 管理过滤器链和过滤器,实际上在小型项目或者不那么追求解耦的时候,可以没有这个manager,并且 FilterChain也可以简单的用个List代替(Kafka producer interceptor就是这么干的)
 5. client : 客户,调用Target的方法.或者说是向target发送请求的角色,如此targe便可以通过filter对请求和响应做额外的处理
 * Reactor
+Reactor模式应用于服务端,是一种基于事件驱动的设计模式
+
 * 代理模式
 当无法直接访问某个对象或不应该直接访问某个对象时可以通过一个代理对象来间接访问，为了保证客户端使用的透明性，所访问的真实对象与代理对象需要实现相同的接口。
 ** 静态代理
