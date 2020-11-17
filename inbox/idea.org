@@ -64,6 +64,9 @@ Editor>>General>>Show quick documentation on mouse move
 2. 暗化括号外内容 : M-M2
 3. 取消选定
 ** 5. Key promoter X
+** 6. Check Style
+1. settings -> editor -> code style -> java -> import idea code style xml
+2. settings -> check style > import check.xml
 * 未安装的pluagins
  [[https://www.geek-share.com/detail/2776227576.html][插件介绍]]
 ** 1. find-bugs
