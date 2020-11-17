@@ -1,0 +1,10 @@
+#+title: Finding a needle in Haystack: Facebook’s photo storage
+* Long Tail Effect
+** 统计学概念
+1. head 正态分布曲线中间凸起的部分,主流
+2. tail 正态分布曲线两边常常的尾巴,非主流
+** 一个现象
+非主流加在一起会比主流还要多
+* NFS-base Design
+缓存所有文件句柄,在kernel中添加系统调用openbyfilehandle.用这个call直接读
+
