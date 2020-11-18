@@ -12,29 +12,15 @@
 接口对外暴露的方法应该尽可能的少
 ** 迪米特法则
 类间的依赖应该尽可能的少
-
-* 工厂模式
+* 1. 单例模式
+* 2. 工厂模式
 [[https://juejin.im/post/6844903608266293255][Ref]]
 ** 分类
 *** 工厂方法
 *** （精简）简单/静态工厂
 常用，JUC包中的Excutors就是一个简单/静态工厂
 *** （增强）抽象工厂
-* 拦截器模式
-Intercepting Filter Pattern
-** 用处
-1. 对请求或者响应做预处理/后处理
-2. 实例:认证\授权\记录日志
-** 角色
-1. filter/interceptor : 需要添加的预处理动作
-2. Filter Chain : 过滤器链,内含多个filter,保证filter的插入顺序
-3. Target : 被添加动作的目标
-4. Filter Manager : 管理过滤器链和过滤器,实际上在小型项目或者不那么追求解耦的时候,可以没有这个manager,并且 FilterChain也可以简单的用个List代替(Kafka producer interceptor就是这么干的)
-5. client : 客户,调用Target的方法.或者说是向target发送请求的角色,如此targe便可以通过filter对请求和响应做额外的处理
-* Reactor
-Reactor模式应用于服务端,是一种基于事件驱动的设计模式
-
-* 代理模式
+* 3. 代理模式
 当无法直接访问某个对象或不应该直接访问某个对象时可以通过一个代理对象来间接访问，为了保证客户端使用的透明性，所访问的真实对象与代理对象需要实现相同的接口。
 ** 静态代理
 #+begin_src java
@@ -90,6 +76,24 @@ Reactor模式应用于服务端,是一种基于事件驱动的设计模式
 ***** Proxy
 *** 实例
 Hadoop Rpc中各种协议的动态代理
+* 4. 原型模式
+1. clonable
+2. 浅拷贝和深拷贝
+
+* 拦截器模式
+Intercepting Filter Pattern
+** 用处
+1. 对请求或者响应做预处理/后处理
+2. 实例:认证\授权\记录日志
+** 角色
+1. filter/interceptor : 需要添加的预处理动作
+2. Filter Chain : 过滤器链,内含多个filter,保证filter的插入顺序
+3. Target : 被添加动作的目标
+4. Filter Manager : 管理过滤器链和过滤器,实际上在小型项目或者不那么追求解耦的时候,可以没有这个manager,并且 FilterChain也可以简单的用个List代替(Kafka producer interceptor就是这么干的)
+5. client : 客户,调用Target的方法.或者说是向target发送请求的角色,如此targe便可以通过filter对请求和响应做额外的处理
+* Reactor
+Reactor模式应用于服务端,是一种基于事件驱动的设计模式
+
 * 适配器模式
 用来把一类接口转换为另一类接口,来满足实际需求
 ** 实例
