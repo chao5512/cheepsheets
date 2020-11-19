@@ -69,26 +69,7 @@ merge目的branch
       git merge upstream/master
    3. commit to github
       git push origin master
-   4. about tag
-      git log
-      git tag <name> a47b3d36e
-      git push origin <name>
-      git tag
-      git tag -d <name>
-      git push origin :<name>
-
-
-
-
-
-
-
-
-** TODO to learn.
-1. https://opensource.guide/
-2. https://lab.github.com/
-3. https://help.github.com/articles/creating-a-commit-with-multiple-authors
-
+   
 * 表严肃
 checkout id前七位 穿越到指定后悔药
 git log -p[ache]
@@ -246,6 +227,32 @@ git pull = git fetch + git merge
   # git rebase <basebranch> <topicbranch>
   git rebase b1 master
 #+END_SRC
+* tag
+   #+begin_src shell
+     git log
+     # 创建一个tag
+     git tag <name> a47b3d36e
+     # 推送tag到remote
+     git push origin <name>
+     # 查看本地tag
+     git tag
+     # 删除一个tag
+     git tag -d <name>
+
+   #+end_src
+
+
+
+
+
+
+
+
+** TODO to learn.
+1. https://opensource.guide/
+2. https://lab.github.com/
+3. https://help.github.com/articles/creating-a-commit-with-multiple-authors
+
 * 底层
 ** use git as a kv database
 #+BEGIN_SRC sh
