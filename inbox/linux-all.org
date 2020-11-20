@@ -121,6 +121,29 @@ swapoff -a && swapon -a
   # 将stdout和stderr合并输出到某个文件
   sh build.sh > build.log 2>&1
 #+end_src
+** ssh
+*** 跳板机
+[[https://morland96.github.io/2017/10/31/ssh-jump/][参考]]
+#+begin_src shell
+  # linux终端中使用命令行登录跳板机
+  ssh -i xxx/jumpserver.pem -p <jumpserver port> wangchao@<jump-server>
+
+  # 使用命令行做隧道
+  ssh -L 2222:<remote-host>:22  user@<jump-server>
+  # 该命令语法为
+  # ssh -L local-port:remote-address:remote-port user@ssh-host
+  ssh -L 9100:目标ip:8100 -i xxx/jumpserver.pem -p <jumpserver port> wangchao@<jump-server>
+#+end_src
+** 按进程号查看进程启动位置
+[[https://blog.csdn.net/summerhust/article/details/7334554][参考]]
+#+begin_src shell
+  # 查看进程号
+  jcmd
+  # 每个进程启动之后在 /proc下面有一个于pid对应的路径
+  ll /proc/<pid>
+  # 观察cwd指向的文件
+#+end_src
+
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
