@@ -124,6 +124,7 @@ swapoff -a && swapon -a
 ** ssh
 *** 跳板机
 [[https://morland96.github.io/2017/10/31/ssh-jump/][参考]]
+**** 命令行操作
 #+begin_src shell
   # linux终端中使用命令行登录跳板机
   ssh -i xxx/jumpserver.pem -p <jumpserver port> wangchao@<jump-server>
@@ -134,6 +135,30 @@ swapoff -a && swapon -a
   # ssh -L local-port:remote-address:remote-port user@ssh-host
   ssh -L 9100:目标ip:8100 -i xxx/jumpserver.pem -p <jumpserver port> wangchao@<jump-server>
 #+end_src
+**** 配合配置文件 和ssh-agent
+***** 利用ssh-agent来缓存密码
+[[https://wiki.archlinux.org/index.php/SSH_keys_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)#SSH_agents][参考]]
+#+begin_src shell
+  # 1. 启动ssh-agent
+  eval $(ssh-agent)
+
+  # 2. 缓存秘钥和密码
+  ssh-add ~/.ssh/id_ecdsa
+
+
+#+end_src
+***** 配置跳板机
+#+begin_src shell
+
+#跳板机
+Host dev
+    HostName <jumpserver>
+    Port <jumpserver port>
+    IdentityFile xxx/jumpserver.pem
+    User <username>
+#+end_src
+
+
 ** 按进程号查看进程启动位置
 [[https://blog.csdn.net/summerhust/article/details/7334554][参考]]
 #+begin_src shell
