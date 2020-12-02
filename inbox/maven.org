@@ -59,10 +59,17 @@
   mvn clean install  -Dmaven.test.skip=true
 #+end_src
 ** SCM
-software comfiguration management
-*** 开发流程
-一般开发，基于一个snapshot版本开发，开发完以后，发一个对应的release的包，然后再将代码版本更新为下一个snapshot版本。这些工作当然可以纯手工完成，但是可能比较痛苦，这里介绍的release插件就是干这个的。
-*** 
+software comfiguration management。
+*** 可以用来配置远程代码仓库(如gitlab)
+#+begin_src xml
+  <scm>
+    <connection>scm:git:http://gitlab.com/xxx.git</connection>
+    <developerConnection>scm:git:http://gitlab.com/xxx.git</developerConnection>
+    <url>http://gitlab.com/xxx.git</url>
+    <tag>HEAD</tag>
+  </scm>
+
+#+end_src
 
 * repository
 ** 配置公司仓库不生效
@@ -360,7 +367,7 @@ resources
 *** super pom
 像java中所有对象都默认继承Object，maven中所有pom都继承自一个super pom
 
-* setting
+* #+setupfile: ting
 ** 两个settings.xml
 *** global
 ${maven.home}/conf/settings.xml
@@ -426,7 +433,8 @@ java code coverage 分析单元测试覆盖率的插件
               </plugin>
 #+end_src
 ** maven-release-plugin
-用来release项目,分为两步
+*** 开发流程
+一般开发，基于一个snapshot版本开发，开发完以后，发一个对应的release的包，然后再将代码版本更新为下一个snapshot版本。这些工作当然可以纯手工完成，但是可能比较痛苦，这里介绍的release插件就是干这个的。
 *** prepare
 prepare步骤
 1. 确保本地所有改变都已提交
@@ -458,7 +466,37 @@ prepare步骤
 2. project.artifactId which corresponds to the project's artifactId.
 3. project.version which corresponds to the project's release version.
 *** perform
+perform 步骤
+1. 从scm中配置的remote checkout出代码(可以配置tag)
+2. 运行预定义的maven goals (默认为deploy site-deploy)
+**** release的时候使用指定的动态配置项
+#+begin_src xml
+  <profiles>
+          <profile>
+              <id>release</id>
+              <properties>
+                  <!-- tests run in the preparation step of the release -->
+                  <skipTests>true</skipTests>
+              </properties>
+              <build>
+                  <plugins>
+                      <!-- requires a javadoc jar. Build one when releasing. -->
+                      <plugin>
+                          <groupId>org.apache.maven.plugins</groupId>
+                          <artifactId>maven-javadoc-plugin</artifactId>
+                      </plugin>
+                      <!-- Sign artifacts using gpg for oss upload -->
+                      <plugin>
+                          <groupId>org.apache.maven.plugins</groupId>
+                          <artifactId>maven-gpg-plugin</artifactId>
+                      </plugin>
+                  </plugins>
+              </build>
+          </profile>
+      </profiles>
 
+  <releaseProfiles>release</releaseProfiles>
+#+end_src
 
 * in action
 
