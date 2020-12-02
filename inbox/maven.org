@@ -427,8 +427,37 @@ java code coverage 分析单元测试覆盖率的插件
 #+end_src
 ** maven-release-plugin
 用来release项目,分为两步
-1. prepare
-2. perform
+*** prepare
+prepare步骤
+1. 确保本地所有改变都已提交
+2. 确保没有snapshot依赖
+3. 在pom中 把版本从xxx-snapshot 改为指定的release版本
+4. 引用scm中配置的项目远程仓库地址
+5. 因为改动了pom,运行测试已确保一切ok
+6. commit pom改变
+7. 对当前代码打一个tag,在maven-release-plugin中,这是一个交互式过程
+8. 在pom中指定下一个snapshot 版本用于开发
+9. commit
+**** 再次执行
+当再次执行 mvn release:prepare时,release插件会默认从上次退出的地方继续执行,如果你想要从头开始,这提供两种方式
+#+begin_src shell
+  # 1
+  mvn release:prepare -Dresume=false
+
+  # 2
+  mvn release:clean release:prepare
+#+end_src
+**** 对于多模块项目
+为了避免挨个询问各个模块的版本号,你可以使用这个配置
+#+begin_src xml
+<autoVersionSubmodules>true</autoVersionSubmodules>
+#+end_src
+**** 可以使用tagNameFormat配置tagname
+可以使用的变量如下
+1. project.groupId which corresponds to the project's groupId.
+2. project.artifactId which corresponds to the project's artifactId.
+3. project.version which corresponds to the project's release version.
+*** perform
 
 
 * in action
