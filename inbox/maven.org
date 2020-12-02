@@ -58,6 +58,12 @@
   # 跳过junit执行和编译
   mvn clean install  -Dmaven.test.skip=true
 #+end_src
+** SCM
+software comfiguration management
+*** 开发流程
+一般开发，基于一个snapshot版本开发，开发完以后，发一个对应的release的包，然后再将代码版本更新为下一个snapshot版本。这些工作当然可以纯手工完成，但是可能比较痛苦，这里介绍的release插件就是干这个的。
+*** 
+
 * repository
 ** 配置公司仓库不生效
 cause by [[https://blog.csdn.net/lovewebeye/article/details/80060410?utm_source=blogxgwz5][私有仓库不生效]]
@@ -108,6 +114,9 @@ todo 配置文件的生效顺序
       </profiles>
 #+END_SRC
 **** 
+** repository & distributionManagement
+[[https://blog.csdn.net/hellojoy/article/details/79991767][参考]]
+
 * profiles
 动态配置
 ** 用处
@@ -416,6 +425,11 @@ java code coverage 分析单元测试覆盖率的插件
                   </configuration>
               </plugin>
 #+end_src
+** maven-release-plugin
+用来release项目,分为两步
+1. prepare
+2. perform
+
 
 * in action
 
