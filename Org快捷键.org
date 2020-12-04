@@ -306,6 +306,11 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 ** apropos
 - 用来询问相关变量或者方法的。
 - M-x 只能找到被定义为interactive的方法
+** load-path
+依赖加载的路径列表
+*** 加载顺序
+当同一个文件的源文件(\*.el)和编译后的字节文件(\*.elc)都在load-path中时,优先加载elc文件,因此在更改某个依赖源代码后,要么重新编译,要么就干脆一个elc都别编译
+
 ** 自定义函数
 - parameter 和 argument的区别
   - parameter用在函数定义时
