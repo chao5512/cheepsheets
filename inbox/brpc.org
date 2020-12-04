@@ -1,0 +1,6 @@
+#+title: brpc
+* 编译
+** 依赖
+1. gflags: 广泛的用于定义全局选项
+2. protobuf: 序列化消息,提供服务的借口
+3. leveldb: 被rpcz用于trace rpcs
