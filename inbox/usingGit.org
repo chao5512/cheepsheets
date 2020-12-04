@@ -227,6 +227,9 @@ git pull = git fetch + git merge
   # git rebase <basebranch> <topicbranch>
   git rebase b1 master
 #+END_SRC
+** merge
+
+
 * tag
    #+begin_src shell
      git log

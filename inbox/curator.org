@@ -4,6 +4,9 @@
 1. 注册
 2. 定位一个服务的一个实例
 3. 服务的实例发生状态变更的时候，及时通知
+** 参与角色
+1. 服务发布方
+2. 使用服务方
 ** curator discovery
 *** ServiceInstance
 代表一个服务实例
@@ -52,4 +55,26 @@ service cache提供一个listener在实际列表状态改变的时候以做相�
 * zookeeper
 ** SESSIONEXPIRED
 连接断了之后，ZK不会马上移除临时数据，只有当之后，才会把这个会话建立的临时数据移除。因此，用户需要谨慎设置Session_TimeOut
+
+* 源码
+** CuratorFrameWork
+*** CuratorFrameworkState
+1. LATENT，创建了还为start
+2. STARTED
+3. STOPED
+*** ConnectionStateManager
+用来在curator内部来管理连接
+**** 重要属性
+1. QUEUE_SIZE: 可以使用-DConnectionStateManagerSize=20在启动jvm时传入。
+2. eventQueue: 一个 ArrayBlockingQueue
+3. clien : CuratorFramework
+
+** ServiceDiscovery
+
+*** ServiceDiscoveryImpl
+
+** curator-client
+
+*** ConnectionState implements org.apache.zookeeper.Watcher
+
 

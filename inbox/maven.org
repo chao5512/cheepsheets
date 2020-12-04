@@ -497,6 +497,9 @@ perform 步骤
 
   <releaseProfiles>release</releaseProfiles>
 #+end_src
+*** rollback
+确保没有使用release:clean 清除前一阶段生成的release描述文件和备份文件,rollback需要依赖这些文件来完成
+**** 步骤
 
 * in action
 

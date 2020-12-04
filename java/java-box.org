@@ -275,6 +275,7 @@ IntToDoubleFunction
 *** 静态代理
 真实对象是实现存在的
 *** 动态代理
+[[https://www.zhihu.com/question/20794107][参考]]
 + 一个接口 ：invocationHandler
 + 一个类 : Proxy 动态代理类
 + 范式，使用Proxy.newProxyInstance(谁,干什么,handler(怎么干))来动态生成一个代理类，然后调用代理被托管的那个真实角色的方法，同静态方法。
@@ -327,7 +328,25 @@ java中怎么调用c++
   Socket socket = new Socket( "localhost",port);
   socket.connect();
 #+END_SRC
-* 文件io
+** 算法
+*** Nagle's algorithm 
+#<<nagle's algorithm>>
+
+** java socket
+*** ServerSocket
+*** SocketImplFactory
+SocketImpl工厂类
+*** SocketImpl
+*** SocketOptions
+1. TCP_NODELAY ： 禁用[[nagle's algorithm][nagle's algorithm]]
+
+** in action
+[[https://www.cnblogs.com/yiwangzhibujian/p/7107785.html][参考]]
+*** 如何做到echo，即如何让对端知道我发送完了，并接收对端消息？
+1. 约定结束符
+2. 先发送长度，在发送数据
+
+* io
 [[https://www.cnkirito.moe/file-io-best-practise/][徐婧峰@ali]]
 ** java中的io分类
 *** 1. io
@@ -513,6 +532,15 @@ FileChinnel 已经很快了，mmap是怎么更快的
 2. 操作系统来控制硬件和内存之间的交互，如1所说，现在操作系统直接操作jvm的堆上对象可能会发生错误。那怎么解决呢？
 3. 要么让对象不动，那就得禁止GC。java没了GC！！！没得玩了
 4. 要么不让系统直接操作堆上内存。由jvm先安全的copy出一份到堆外内存来，然后系统来调度读写。这个过程中由jvm保证这块堆外内存的正确性。这基于内存拷贝非常快。一方面，jvm的检查一致性压力没那么大，一方面相比于与硬件的交互，这个copy动作非常快，所以性能也还可以
+** api
+*** OutputStream & InputStream
+**** [[https://blog.csdn.net/testcs_dn/article/details/78941546][JDK的OutputStream为什么方法write(int b)的入参类型是int呢？]]
+
+*** DataOutputStream & DataInputStream
+data out put stream 帮助你将java原始类型用适当的方式写入一个流中，然后你可以用 data input stream从该流中读出相应的类型
+*** BufferedOutputStream & BufferedInputStream
+*** Selector
+
 ** in action
 *** 覆盖写文件和追加写
 #+begin_src java

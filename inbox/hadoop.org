@@ -57,7 +57,6 @@ hdfs项目依赖于hadoop-client-project和hadoop-common-project下的部分模�
 在idea中调试运行的时候,将需要的依赖scope从provider替换为compile
 
 *** namenode
-
 ** distcp
 
 *** 跨版本迁移的时候跳过crc检查
@@ -108,8 +107,23 @@ block id 随机生成转顺序生成的motivation
 
 
 ** datanode
-
-
+*** hdfs 逻辑架构
+**** 1.x
+***** 逻辑上分为两层
+1. 命名空间管理层: 提供命名空间和目录树的管理和使用
+2. 数据块存储管理层:
+   1. 数据块管理: dn和数据块的管理和使用
+   2. 存储管理: dn上的物理存储和数据块的管理和使用
+***** 实现上
+1. nn实现了以上逻辑结构的两部分
+2. dn实现了存储管理
+**** 单一nn的缺陷
+1. nn内存中需要保存目录树和数据块元信息,非常吃内存,如此,nn的重启非常耗时,有时能长达几个小时
+2. 读写都要与nn交互,hdfs吞吐量收nn单点限制
+3. nn作为文件系统的中心节点,没有物理上的数据隔离
+4. nn单点故障,靠zkfc来恢复
+5. 设计角度上,nn同时实现了数据块和目录树的管理,使这两个中能高度耦合,难以让其他服务单独使用数据块管理服务(为啥要单独使用?)
+**** 2.x 和Federation
 *** Storage
 **** DataStorage
 用来管理磁盘目录,federation架构
@@ -355,4 +369,5 @@ protocol的名字,用在client和server沟通时.默认为类名.为什么要实
 
 * todo
 fs#rename 语义
+
 
