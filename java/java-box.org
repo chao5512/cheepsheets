@@ -375,12 +375,14 @@ SocketImpl工厂类
 *** 2. nio
 java.nio,不全都是非阻塞io，fileChanel就不可以非阻塞
 **** 核心
-1. Selector：一个线程根据事件来选择不同的Channel
-2. Channel
-   1. 只能通过Buffer来读写
-   2. 双向的（linux底层也是双向的）
-3. Buffer
-   1. 原生数据类型(除了Boolean)都有自己的Buffer
+1. Selector：只需要使用一个线程根据事件来选择不同的Channel
+2. 标准的IO编程接口是面向字节流和字符流的。而NIO是面向通道和缓冲区的，数据总是从通道中读到buffer缓冲区内，或者从buffer写入到通道中。
+   1. Channel
+      1. 只能通过Buffer来读写
+      2. 双向的（linux底层也是双向的）
+   2. Buffer
+      1. 原生数据类型(除了Boolean)都有自己的Buffer
+3. Java NIO使我们可以进行非阻塞IO操作。比如说，单线程中从通道读取数据到buffer，同时可以继续做别的事情，当数据读取到buffer中后，线程再继续处理数据。写数据也是一样的。
 **** 通信过程
 
 #+DOWNLOADED: https://img-blog.csdn.net/20141213161210309?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvcm9iaW5qd29uZw==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center @ 2019-12-04 17:59:48
@@ -391,9 +393,45 @@ java.nio,不全都是非阻塞io，fileChanel就不可以非阻塞
 + buffer不能断点续读
 + 不是线程安全的
 + byteBuffer可以存其他各种原生类型
+***** 使用定式
+#+begin_src java
+  /*
+  1. 写入数据到buffer: buffer会记录写入数据的大小
+  2. buffer.flip(): 从写模式转换到读模式
+  3. 从buffer中读出数据
+  4. buffer.clear或者buffer.compact(): clear清空整个buffer.compact只清空已读数据,未读数据被移动到buffer的开始位置
+  ,*/
+  // 创建一个48字节的buffer
+  ByteBuffer buf = ByteBuffer.allocate(48);
+  // 创建一个1024个字符的buffer
+  // CharBuffer buf = CharBuffer.allocate(1024);
+
+  // 写入数据到buffer
+  // 1. 手动写
+  buf.put(127);
+  // 2. 冲一个channel中把数据读入buffer
+   int bytesRead = inChannel.read(buf); //read into buffer.
+
+  // 翻转 : 从写模式转换到读模式 limit = position; position = 0;
+  buf.flip();
+
+  // 从buffer中读出数据
+  // 1. 从buffer读数据写入channel
+  int bytesWritten = inchannel.write(buf);
+  // 2. 手动读
+  byte aByte = buf.get();
+
+  // 反复读取块数据,使用rewind将position置零,然后就可以反复读这块数据了
+  buf.rewind();
+
+  // 使用mark标记一个位置,然后使用reset把position置为标记的位置
+#+end_src
 ***** 重要属性
+limit和position的具体含义取决于现在所处的模式(读/写)
 1. capacity ： buffer的容量
-2. limit ：读到哪，buffer中第一个不能被读写的位置
+2. limit ：
+   1. 读上限:读模式下buffer中第一个不能被读写的位置
+   2. 写上限:写模式下buffer的写上限
 3. position ： buffer中下次用于读写的位置
 ***** slice方法
 返回一个buffer的子序列为新的buffer，底层共享同一份数组，但是有4个独立的标志位
@@ -471,7 +509,7 @@ fileLock
 2. 写 writeIndex
 ****** CompositeByteBuf
 提供了零拷贝的组合ByteBuf的方法
-****** 
+******* 
 **** Selector
 Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够知晓某个通道准备好了某个时间。这样，一个单独的线程可以管理多个channel，从而做到一个线程来接收请求并分发
 
@@ -532,17 +570,26 @@ Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够�
 2. select-key set
    1. cancelled-key
 **** Channel
-***** FileChannel
-****** 使用方式
+***** channel和流
+1. 流是单向的,channel既可以读也可以写
+2. channel可以异步读写
+3. channel的读写总是对于buffer来做的
+***** 主流channel
+****** FileChannel
+******* 使用方式
 #+BEGIN_SRC java
   FileChannel fileChannel = new RandomAccessFile(new File("db.data"), "rw").getChannel();
 #+END_SRC
-***** ServerSocketChannel
-一个SelectableChannel,面向流的socket监听的channel
-***** SelctableChannel
+****** SocketChannel
+Tcp的数据读写
+****** ServerSocketChannel
+监听TCP链接请求,为每个请求创建一个SocketChannel
+****** DatagramChannel
+用于UDP的读写
+****** SelctableChannel
 可以通过Selector实现多路复用的channel
 1. 为了实现多路复用,此类的实例必先实现register方法
-****** BlockingMode
+******* BlockingMode
 1. blocking mode下 当前线程要等待当前channel上的io完成(成功或者失败).
 2. non-blocking mode 当channel上的io不能立即完成时,将控制权返回给当前线程,可能会在将来的某个时刻再次考察io的结果,这可能造成某一刻会读出来比你预想的要小的数据
 3. 使用selector 的多路复用需要配合non-blocking mode使用
