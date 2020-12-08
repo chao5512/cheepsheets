@@ -373,7 +373,7 @@ SocketImpl工厂类
 3. 循环从/向流中读/写数据
 4. 关闭流
 *** 2. nio
-java.nio,不全都是非阻塞io，fileChanel就可以阻塞
+java.nio,不全都是非阻塞io，fileChanel就不可以非阻塞
 **** 核心
 1. Selector：一个线程根据事件来选择不同的Channel
 2. Channel
@@ -473,13 +473,60 @@ fileLock
 提供了零拷贝的组合ByteBuf的方法
 ****** 
 **** Selector
-Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够知晓通道是否为诸如读写事件做好准备的组件。这样，一个单独的线程可以管理多个channel，从而管理多个网络连接
+Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够知晓某个通道准备好了某个时间。这样，一个单独的线程可以管理多个channel，从而做到一个线程来接收请求并分发
 
+***** 使用定式
+1. 创建并注册
+#+begin_src java
+  // 1. 创建一个selector
+  Selector selector = Selector.open();
+
+  // 2. 准备感兴趣的事件
+  int interst = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
+
+  // 3. 把对一个非阻塞的selectable channel感兴趣的事件注册到selector上
+  channel.configureBlocking(false);
+  SelectionKey key = channel.register(selector, interst);
+
+
+#+end_src
+2. 获得就绪的方法
+#+begin_src java
+  /** Selector的select方法
+   ,* 返回值是表示有多少个channel触发了注册的事件,应该是1
+   ,* 1. int select() 阻塞直到至少有一个时间准备好了
+   ,* 2. int select(long timeout) 阻塞但是带个时间限制
+   ,* 3. int selectNow() 不阻塞返回现在的状态
+  ,*/
+  while (running) {
+      try {
+          selector.select();
+          Iterator<SelectionKey> iter = selector.selectedKeys().iterator();
+            while (iter.hasNext()) {
+              key = iter.next();
+              iter.remove();
+              try {
+                if (key.isValid()) {
+                  if (key.isAcceptable())
+                    doAccept(key);
+                }
+              } catch (IOException e) {
+              }
+              key = null;
+            }
+      } catch(OutOfMemoryError e) {
+          // 1. 关闭链接
+          // 2. 停止循环
+      } catch(Exception e) {
+      }
+  } 
+#+end_src
 ***** 概念
-+ registrations
-+ register 使用selector为channel注册
-+ cancel 方法在cancelled-key上同步
-+ selection 
+注意上面的使用定式最后一步得到的是一个selectionkey,其有四种重要的属性
+1. Interst Set: 感兴趣的事件集合
+2. Ready Set: 准备好的事件
+3. channel + selector : 可以直接从selection key操作他们,这样看起来selection key相当于是channel和selector的一个绑定关系
+4. Attaching Object : 可附加对象
 ***** 三个key set
 1. key set
 2. select-key set
