@@ -306,10 +306,26 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 ** apropos
 - 用来询问相关变量或者方法的。
 - M-x 只能找到被定义为interactive的方法
-** load-path
+** 常见变量
+*** load-path
 依赖加载的路径列表
-*** 加载顺序
+**** 加载顺序
 当同一个文件的源文件(\*.el)和编译后的字节文件(\*.elc)都在load-path中时,优先加载elc文件,因此在更改某个依赖源代码后,要么重新编译,要么就干脆一个elc都别编译
+*** default-directory
+当前buffer的默认目录,工作空间?
+** 语法
+*** 内建函数
+**** autoload -- 延迟加载
+autoload机制允许你注册方法或红但是直到第一次调用这个方法才加载其相关lib
+***** 使用autoload的两种方式
+****** 调用autoload
+Function: autoload function filename &optional docstring interactive type
+1. filename 不需要完整路径和后缀(.el\.elc)
+2. 可选的doc 如果指定了doc 可以在不加载文件之前使用doc
+3. interactive 在加载前,是否可以在交互式(M-x)中补全
+4. type 可以延迟加载一个macro或者keymap
+****** 使用注解 ;;;###autoload
+1. 使用(interactive)来添加交互式特性
 
 ** 自定义函数
 - parameter 和 argument的区别
