@@ -347,6 +347,7 @@ SocketImpl工厂类
 2. 先发送长度，在发送数据
 
 * io
+[[https://wiki.jikexueyuan.com/project/java-nio-zh/java-nio-buffer.html][参考]]
 [[https://www.cnkirito.moe/file-io-best-practise/][徐婧峰@ali]]
 ** java中的io分类
 *** 1. io
