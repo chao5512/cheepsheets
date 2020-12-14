@@ -386,52 +386,62 @@ java code coverage 分析单元测试覆盖率的插件
 [[https://developer.ibm.com/zh/articles/j-lo-jacoco/][eclemama]]
 ** maven-antrun-plugin
 用来兼容ant任务的
-** maven-gpg-plugin
-签名认证
 ** maven-clover2-plugin
 检查代码覆盖率
 1. 使用clover2需要先获得license
-** Maven Release Plugin
-1. 更改版本
-2. 上传到私库
-3. 打tag
-** os-maven-plugin
-用于更好的适应各种平台os,目前是生成proto需要
+** maven-deploy-plugin
+主要用于把在deploy阶段把你的artifacts发布到版本仓库,供其他项目使用
+*** 前置项
+1. 仓库信息: 地址,传输方式,可选的账户信息
+2. artifacts信息: group, artifact, version, packaging, classifier
+3. a deployer: 一个能够执行部署操作的的实现
+*** goals
+**** deploy:deploy
+这个goals会在deploy阶段被调用,执行mvn deploy 即可
+- 在pom中如下声明
 #+begin_src xml
-  <project>
-    <build>
-      <extensions>
-        <extension>
-          <groupId>kr.motd.maven</groupId>
-          <artifactId>os-maven-plugin</artifactId>
-          <version>1.6.1</version>
-        </extension>
-      </extensions>
-    </build>
-  </project>
+  [...]
+    <distributionManagement>
+      <repository>
+        <id>internal.repo</id>
+        <name>MyCo Internal Repository</name>
+        <url>Host to Company Repository</url>
+      </repository>
+    </distributionManagement>
+  [...]
 #+end_src
-** protobuf-maven-plugin
-用来生成proto对应的java文件
+- 在settings.xml中配置账户信息
 #+begin_src xml
-  <plugin>
-                  <groupId>org.xolstice.maven.plugins</groupId>
-                  <artifactId>protobuf-maven-plugin</artifactId>
-                  <version>0.6.1</version>
-                  <executions>
-                      <execution>
-                          <goals>
-                              <goal>compile</goal>
-                              <goal>test-compile</goal>
-                          </goals>
-                      </execution>
-                  </executions>
-                  <configuration>
-                      <protocArtifact>com.google.protobuf:protoc:3.4.0:exe:${os.detected.classifier}</protocArtifact>
-                      <outputDirectory>${basedir}/src/main/java</outputDirectory>
-                      <clearOutputDirectory>false</clearOutputDirectory>
-                  </configuration>
-              </plugin>
+  [...]
+      <server>
+        <id>internal.repo</id>
+        <username>maven</username>
+        <password>foobar</password>
+      </server>
+  [...]
 #+end_src
+- 如何避免明文密码 [[http://maven.apache.org/guides/mini/guide-encryption.html][透明密码]]
+**** deploy:deploy-file
+这个goal主要用于非maven build的artifact,也就是在没有pom文件的支持下完成发布到版本仓库
+*** 不发布当前的artifact
+#+begin_src xml
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.0.0-M1</version>
+        <configuration>
+          <!--跳过当前artifact的deploy,对应的配置项为 maven.deploy.skip-->
+          <skip>true</skip>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+#+end_src
+
+** maven-gpg-plugin
+签名认证
 ** maven-release-plugin
 *** 开发流程
 一般开发，基于一个snapshot版本开发，开发完以后，发一个对应的release的包，然后再将代码版本更新为下一个snapshot版本。这些工作当然可以纯手工完成，但是可能比较痛苦，这里介绍的release插件就是干这个的。
@@ -500,7 +510,43 @@ perform 步骤
 *** rollback
 确保没有使用release:clean 清除前一阶段生成的release描述文件和备份文件,rollback需要依赖这些文件来完成
 **** 步骤
-
+** os-maven-plugin
+用于更好的适应各种平台os,目前是生成proto需要
+#+begin_src xml
+  <project>
+    <build>
+      <extensions>
+        <extension>
+          <groupId>kr.motd.maven</groupId>
+          <artifactId>os-maven-plugin</artifactId>
+          <version>1.6.1</version>
+        </extension>
+      </extensions>
+    </build>
+  </project>
+#+end_src
+** protobuf-maven-plugin
+用来生成proto对应的java文件
+#+begin_src xml
+  <plugin>
+                  <groupId>org.xolstice.maven.plugins</groupId>
+                  <artifactId>protobuf-maven-plugin</artifactId>
+                  <version>0.6.1</version>
+                  <executions>
+                      <execution>
+                          <goals>
+                              <goal>compile</goal>
+                              <goal>test-compile</goal>
+                          </goals>
+                      </execution>
+                  </executions>
+                  <configuration>
+                      <protocArtifact>com.google.protobuf:protoc:3.4.0:exe:${os.detected.classifier}</protocArtifact>
+                      <outputDirectory>${basedir}/src/main/java</outputDirectory>
+                      <clearOutputDirectory>false</clearOutputDirectory>
+                  </configuration>
+              </plugin>
+#+end_src
 * in action
 
 ** logback error - multipul bindings 
