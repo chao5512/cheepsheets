@@ -386,6 +386,21 @@ java code coverage 分析单元测试覆盖率的插件
 [[https://developer.ibm.com/zh/articles/j-lo-jacoco/][eclemama]]
 ** maven-antrun-plugin
 用来兼容ant任务的
+** maven-assembly-plugin
+将项目合并输出到一个可发布的归档文件中
+*** 两种方式
+1. 使用内建的assembly-descriptor
+#+begin_src xml
+  <descriptorRefs>/<descriptorRef>
+#+end_src
+2. 自定义descriptor来做更适合自己的assembly
+#+begin_src xml
+  <descriptors>/path<descriptor>
+
+#+end_src
+*** 配置
+
+
 ** maven-clover2-plugin
 检查代码覆盖率
 1. 使用clover2需要先获得license
