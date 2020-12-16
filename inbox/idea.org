@@ -21,6 +21,8 @@ Editor>>General>>Show quick documentation on mouse move
 1. settings repostories
 2. 填写github上生成的token
 3. 同步到远程仓库
+** Use breadcrumbs for navigation
+General | Breadcrumbs. 勾选java,开启java文件的文件内部导航(method...)
 
 * 快捷键 
 约定 C ：control，s : command,  S : shift, A:option
