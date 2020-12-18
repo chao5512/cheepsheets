@@ -6,8 +6,11 @@
 ** 了解一台机器 
 *** 磁盘
 #+BEGIN_SRC sh
-  #查看磁盘大小和使用情况
+  # 查看磁盘大小和使用情况
   df -hl
+
+  # 查看文件系统类型
+  df -T
 #+END_SRC
 **** 常见磁盘 
  1. fd：软驱 
@@ -483,31 +486,14 @@ thunderbird
 #+END_SRC
 - ~/.zshrc : 用户配置文件
 *** do 配置
+* 文件系统
+** xfs
 
+** etx4
 
 * 应用
 ** scrot
 截屏用 [[https://blog.csdn.net/zhyh1986/article/details/39831469][参考]]
-
-* zsh
-** 配置文件的读取顺序
-1. /etc/zsh/zshenv     or /etc/zshrc
-2.
-** 更改sh
-#+BEGIN_SRC sh
-  # 查看当前有的sh
-  chsh -l
-  # 改为zsh并保存
-  chsh -s /bin/zsh
-#+END_SRC
-*** 配置文件
-在第一次进入zsh的时候会有引导，选择生成配置文件。
-- /etc/zsh/zprofile : 全局配置文件，用户登录的时候加载。常用语配置一些登陆时要执行的命令。默认是一行加载/etc/profile的命令
-#+BEGIN_SRC sh
-  emulate sh -c 'source /etc/profile'
-#+END_SRC
-- ~/.zshrc : 用户配置文件
-*** do 配置
 * 一些系统调用
 ** sync_file_range()
 sync一个文件的制定范围到磁盘，
