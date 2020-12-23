@@ -366,6 +366,45 @@ protocol的名字,用在client和server沟通时.默认为类名.为什么要实
 
 **** ClientNamenodeProtocolServerSideTranslatorPB
 作用在服务端,实现了ClientNamenodeProtocolPB,
+* 工
+** hdfs审计日志清洗入druid
+使用crontab每天离线做清洗,然后导入druid
+** nn内存外挂
+1. fsimage离线导入数据库
+** block missing
+[[https://blog.51cto.com/xiaolanlan/2071642][暴力恢复]]
+1. 手动触发块汇报
+#+begin_src shell
+  hdfs dfsadmin -triggerBlockReport datanode_ip:port
+#+end_src
+** 修盘
+*** 1. 停止dn
+1.配置exclude：
+#+begin_src xml
+  <!--在/data/hadoop/excludes文件添加要退役的节点ip（可同时退役多个，一个一行）-->
+  <name>dfs.hosts.exclude</name>  
+  <value>/data/hadoop/excludes</value>  
+#+end_src
+2. 配置完后刷新节点
+#+begin_src shell
+HADOOP_HOME/bin/hadoop dfsadmin  -refreshNodes
+#+end_src
+3. 查看各节点状态
+#+begin_src shell
+HADOOP_HOME/bin/hadoop dfsadmin -report  
+#+end_src
+#+begin_src
+进度可在HDFS的50070可视化界面的Decommissioning处查看
+Under replicated blocks	： 有备份的blocks
+Blocks with no live replicas	： 没有存活备份的blocks(存备份的datanode下线了)
+Under Replicated Blocks In files under construction   ： 备份数不够的blocks
+#+end_src
+5.另外有暴力的方式：
+直接停datanode，hadoop的balance机制会自动将备份数不足3份（可配置）的blocks重新备份，注意这个方式只可以一次停一台机器，不然可能会出现missing blocks。
+*** 2. 修盘
+*** 3. 挂载
+*** 4. 格式化文件系统
+*** 
 
 * todo
 fs#rename 语义

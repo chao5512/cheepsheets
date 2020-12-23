@@ -30,7 +30,7 @@
 + [[https://blog.csdn.net/qq_21870555/article/details/82769721][使用枚举类型来代替你的常量们]]
 ** 枚举类型的内置方法
 1. values() //将枚举量转换为枚举数组,方便遍历
-hdfs权限模型中大量使用values将权限枚举u转换为数组,并通过数组下标与long permission对应
+hdfs权限模型中大量使用values将权限枚举转换为数组,并通过数组下标与long permission对应
 
 * 反射
 ** Class
@@ -137,7 +137,7 @@ hdfs权限模型中大量使用values将权限枚举u转换为数组,并通过�
 ** Error
 内存溢出属于Error，所以只捕获Exception是捕获不到的
 * 深拷贝和浅拷贝
-1. 这里的拷贝是对对象的拷贝，所以就设计对象本身和对象引用的对象
+1. 这里的拷贝是对对象的拷贝，所以就涉及对象本身和对象引用的对象
    1. 深拷贝，对象本身和所有引用的对象都复制
    2. 浅拷贝，只复制对象本身
 2. 继承自Object.clone的复制都是浅拷贝
@@ -320,7 +320,7 @@ IntToDoubleFunction
 *** 附加的value类型
 **** OffsetTime 和OffsetDateTime主要用于网络传输和存数据库，因为相比Europe/Paris，+02:00 是更为简单的结构
 * ForkJoin框架
-**  ForkJoinPool
+** ForkJoinPool
 + 与其他Executor Service相比，ForkJoinPool的优势在于，pool中的线程除了处理提交上来的任务外，还会处理pool中其他线程产生的子任务。
 *** 适用于
 1. 有很多小任务
@@ -419,6 +419,7 @@ SocketImpl工厂类
 2. 先发送长度，在发送数据
 
 * io
+** 参考
 [[https://wiki.jikexueyuan.com/project/java-nio-zh/java-nio-buffer.html][参考]]
 [[https://www.cnkirito.moe/file-io-best-practise/][徐婧峰@ali]]
 ** java中的io分类

@@ -404,6 +404,14 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 #+RESULTS:
 [[file:/Users/wangchao/iosdev/cheepsheets/resource/img/hbase-memstore-seq.png]]
 ** inbox
+*** 读取流程
+1. 从zk拿到meta表位置
+2. 加载meta表,按rowkey查找region位置
+3. 向rs发读请求
+4. RegionScanner
+   1. StoreScanner(列族)最小堆
+      1. StoreFileScanner + MemstoreScanner最小堆
+
 * test
 #+begin_src plantuml :file tryout.png
   Alice -> Bob: synchronous call
