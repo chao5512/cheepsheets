@@ -332,6 +332,22 @@ waitset  线程间通信
    2) 不等待已经执行的任务，如果需要等待用awaitTermination
 **** Excutors
 ExecutorService 的工厂类
+* Atomic
+** AtomicReference
+用于无锁更新对象引用
+#+begin_src java
+  AtomicReference reference = new AtomicReference<Object>();
+  Object o1 = new Object();
+  Object o2 = new Object();
+  reference.set(o1);
+  // 多线程更新 reference值
+  reference.compareAndSet(o1, o2);
+
+  // 结果
+  // 只有一个线程可以成功更新reference 为o2
+
+#+end_src
+
 * ThreadPoolExecutor
 1. 可配置为几种线程池的用来执行提交任务的ExecutorService
 2. 通常使用Executors 工厂来配置
