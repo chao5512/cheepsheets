@@ -420,6 +420,13 @@ thunderbird
 1. 启动sslocal作为客户端 : sslocal -c /etc/shadowsocks/config.json
 2. 在终端中访问ssserver，启动privoxy来把http请求转换成socks5，发给sslocal : systemctl start privoxy
 3. 在chrome中访问ssserver，使用代理插件发给本地sslocal
+** 创建热点
+1. ifconfig 查看无线网卡
+2. iw 查看网卡详细信息
+3. 在root下 create_ap wlp4s0 enp3s0 wifi-name wifi-psw
+*** Failed to initialize lock error
+sudo rm /tmp/create_ap.all.lock
+
 * vim
 ** 宏录制
 #+BEGIN_SRC sh
