@@ -372,6 +372,12 @@ protocol的名字,用在client和server沟通时.默认为类名.为什么要实
 ** nn内存外挂
 1. fsimage离线导入数据库
 ** block missing
+只要不是3块都丢了就还有机会抢救
+*** 原因
+1. 块汇报不及时
+2. dn正常么
+3. dn 的dfs.datanode.data.dir下的目录正常么
+*** 恢复
 [[https://blog.51cto.com/xiaolanlan/2071642][暴力恢复]]
 1. 手动触发块汇报
 #+begin_src shell
