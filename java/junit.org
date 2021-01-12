@@ -1,0 +1,20 @@
+#+title: java 测试
+* junit注解
+#+begin_quote
+@Test(timeout =1000)注解：设置当前测试方法在一定的时间内运行完，否则返回错误；
+@Test（expected = Exception.class）注解：设置被测的方法是否有异常抛出，抛出的异常类型为：Exception.class；
+eg: @Test（expected = NullPointException.class）
+@ignore注解：注释掉一个测试方法或一个类，被注释的方法或类，不会被执行；
+@RunWith(Suite.class):执行suite
+@RunWith(Suite.class)
+@Suite.SuiteClasses({JunitTest.class,TestClassDemo.class})
+public class AllTestClass {
+//此类的作用是整合测试也称 打包测试;可以把之前所有的写好的test class类进行集成;
+//如需测试多个类时，只需要把相关的测试类加入到”{}”即可;如果不是同一个包类的class记得加上package名称。
+//@Suite.SuiteClasses({JunitTest.class,TestClassDemo.class})
+}
+点
+————————————————
+版权声明：本文为CSDN博主「happymff」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/happymff/article/details/76945139
+#+end_quote

@@ -1,0 +1,11 @@
+#+title: java 引用
+* 类图
+#+BEGIN_SRC plantuml :file ../resource/img/java-reference-01.png :cmdline -charset utf-8
+  @startuml
+  abstract class Reference{
+
+  }
+  class WeakReference{}
+  Reference <--WeakReference 
+  @enduml
+#+END_SRC
