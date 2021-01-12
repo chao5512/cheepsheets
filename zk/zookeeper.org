@@ -1,0 +1,9 @@
+#+title: zookeeper
+* 节点类型
+1. PERSISTENT 不会因为断掉了连接就删除的节点
+2. PERSISTENT_SEQUENTIAL 
+   1. 不会因为链接断了就自动删除
+   2. 且节点名追加一个单调递增的数
+   3. 这个计数器可以保证在同一个父节点下是唯一的
+3. EPHEMERAL
+4. EPHEMERAL_SEQUENTIAL

@@ -1,0 +1,87 @@
+#+title: curator   -  a keeper of zookeeper
+* 1. 组件
+** curator-framework ：提供zk的连接管理和重试策略
+#+BEGIN_SRC java
+  RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3)
+  CuratorFramework client = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
+  //必须手动start和close
+  client.start();
+  client.create.forpath("my/data", mydata)
+#+END_SRC
+1. CuratorFrameworkFactory提供了工厂模式和建造者模式用来getInstance
+   1. 工厂模式：newClient() 简便
+   2. 建造者模式：可选参数更多，流式API
+2. 命名空间，zk是一个共享环境，namespace可以有效的笔名不同工程的路径冲突
+
+** Recipes
+*** 分布式锁
+#+BEGIN_SRC java
+  InterProcessMutex lock = new InterProcessMutex(client, lockPath);
+  if ( lock.acquire(maxWait, waitUnit) ) 
+  {
+      try 
+      {
+          //要写在临界区的代码’
+      }
+      finally
+      {
+          lock.release();
+      }
+  }
+#+END_SRC
+*** 选举
+#+BEGIN_SRC java
+  LeaderSelectorListener listener = new LeaderSelectorListenerAdapter()
+  {
+      public void takeLeadership(CuratorFramework client) throws Exception
+      {
+          // this callback will get called when you are the leader do whatever leader work you need to and only exit
+          // this method when you want to relinquish leadership
+      }
+  }
+
+  LeaderSelector selector = new LeaderSelector(client, path, listener);
+  selector.autoRequeue();  // not required, but this is behavior that you will probably expect
+  selector.start();
+#+END_SRC
+*** 服务发现
+**** 服务发现要解决的问题
+DNS可以用作服务发现，但对于多变的服务来说，还不够灵活
+1. 服务注册
+2.  寻址
+3.  感知变更
+**** ServiceInstance
+#+begin_example
+base path
+       |_______ service A name
+                    |__________ instance 1 id --> (serialized ServiceInstance)
+                    |__________ instance 2 id --> (serialized ServiceInstance)
+                    |__________ ...
+       |_______ service B name
+                    |__________ instance 1 id --> (serialized ServiceInstance)
+                    |__________ instance 2 id --> (serialized ServiceInstance)
+                    |__________ ...
+       |_______ ...
+#+end_example
+**** ServiceProvider
++ 一个Provider policy 提供从一堆服务实例中选一个的功能
++ 三种选择策略
+  1. Round Robin
+  2. Random and 
+  3. Sticky (always selects the same one)
+#+BEGIN_SRC java
+  //用户不应该持有getInstance的返回，应该每次都新探索一个可用服务
+  public ServiceInstance<T> getInstance()
+                              throws Exception
+
+#+END_SRC
+**** ServiceDiscovery
+ServiceDiscoveryBuilder用来获得一个serviceProvider
+**** lower api
+1. registerService
+2. unregisterService
+3. queryForNames
+4. queryForInstances
+5. queryForInstance
+**** ServiceCache
+缓存service instance 使用Watcher来ServiceCacheListener更新缓存
