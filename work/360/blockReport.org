@@ -1,0 +1,11 @@
+* 块汇报
+** computeTargets
+这个方法是干啥用的，计算副本往哪放？
+
+*** 返回一个DatanodeDescriptor[]
+
+*** 顶层方法
+Instruct the datanode to copy a block to specified target.
+* 文件修复
+** FileFixer
+周期的从namenode上获得corrupt文件，并通过副本copy的方法修复文件

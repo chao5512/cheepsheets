@@ -1,0 +1,209 @@
+* 2018
+** 11-22
+关闭hdfs client客户端缓存
+*** 从reader.out.2018120501 的地628265行向后读100行并输出到zcopychuli文件
+#+BEGIN_SRC sh
+  cat reader.out.20181122-120501 | tail -n +68265 | head -n 100 > zcopychuli
+
+#+END_SRC
+*** 配置文件里有缓存文件系统的的配置
+#+BEGIN_SRC java
+  String var5 = String.format("fs.%s.impl.disable.cache", var2);
+#+END_SRC
+*** 客户端内存
+1967849152  2G
+*** gc error
+此OOM是由于JVM在GC时，对象过多，导致内存溢出，建议调整GC的策略，在一定比例下开始GC而不要使用默认的策略
+*** 读取操作堵住  达7分钟
+日志里看不到有用的信息   看一下栈   怀疑是check对象太多了
+*** jmap
+#+BEGIN_SRC sh
+  jmap -histo:live 8981| head -n 20
+
+  #   5:        181121       10142776  org.apache.hadoop.fs.HarFileSystem$HarStatus
+#+END_SRC
+** 11-28
+*** 添加ugi的表
+**** mysql中加ugi的表
+1. format的时候生成ugi表
+   usermap和groupmap对应一张ugi的表
+   |number|String|type|
+2. init的时候loadUgi
+3. 修改ugimap的时候更新数据库
+   setOwner
+
+***** 问题，setowner时数据库不改变
+修改owner后ugi没有数据
+*** 去掉ugi表 inode里面加user和group字段
+1. format时候修改表结构
+2. setown function
+3. 编译测试
+*** 报错
+ls: could not get get listing for 'hdfs://jl8.sys.lyct.qihoo.net:9000/' : java.io.IOException:
+ java.lang.IllegalStateException: !i2t.containsKey(2), this=max=2,
+1.ls 的时候先检查注册表在load
+*** fsimage是怎么把注册表回复的
+#+BEGIN_SRC java
+  // FSimage.loadINode
+  PermissionStatus permissions = fsNamesys.getUpgradePermission();
+      if (imgVersion <= -11) {
+        permissions = PermissionStatus.read(in);
+      }
+  return INode.newINode2(permissions, blocks, replication, modificationTime, 
+          atime, nsQuota, dsQuota, blockSize, symlink, numBlocks);
+#+END_SRC
+
+1. 每个inode有自己的permissionStatus
+setUser的时候会从注册表中返回新的number然后更新permissionStatus
+*** 修改header
+1. format 更改
+** todo
+*** raid的策略   校验块丢了会不会找回来
+*** 限制job数不生效
+*** mr任务输出按小时分文件输出，0-23
+** 12-05
+*** 排错
+#+BEGIN_SRC text
+  org.apache.hadoop.mapred.lib.CombineFileRecordReader.initNextRecordReader(CombineFileRecordReader.java:142) ... 10 more 
+Caused by: org.apache.hadoop.fs.BlockMissingException: Could not obtain block: blk_-8821308959317783486_3720887745_len=536870912_type=OTHER
+file=/home/cloud/archive/tracedb_scribe/20160628.har/part-170 at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.chooseDataNode(DFSClient.java:3718) 
+
+#+END_SRC
+1. fsck
+#+BEGIN_SRC sh
+  #查这个miss的block
+  fsck /home/cloud/archive/tracedb_scribe/20180628.har/part-170 -files -blocks -locations |grep 882130895931778348
+  #接上步结果找到dn
+  #ssh到dn上找这个块，NS-*是namespace，可以在clustermonitor上找到
+  find  /data*/block/current/NS-551229463/current/ -name "*8821308959317783486*"
+  #结果
+  /data11/block/current/NS-551229463/current/subdir3/subdir18/blk_-8821308959317783486_3720887745.meta
+  /data11/block/current/NS-551229463/current/subdir3/subdir18/blk_-8821308959317783486
+  #这是一个老块 一般不会有问题  看下日志
+  grep "8821308959317783486" hadoop/log/hadoop-work-datanode-hdp3807.safe.lycc.qihoo.net.log.2018-12-05-11 > 1
+  #发现盘符不对
+  #重启dn
+  ./software/java/bin/jps -m
+  ./software/hadoop/bin/hadoop-daemon.sh start datanode
+  #或者
+  ./software/hadoop/bin/hadoop-daemon.sh start avatardatanode
+#+END_SRC
+*** 
+** 12-06
+*** maven 依赖
+#+BEGIN_SRC text
+  <dependency>
+          <groupId>com</groupId>
+          <artifactId>zaxxer</artifactId>
+          <version>2.4.13</version>
+          <scope>system</scope>
+          <systemPath>${project.basedir}/src/main/resources/lib/HikariCP-java7-2.4.13.jar</systemPath>
+      </dependency>
+      <dependency>
+          <groupId>org</groupId>
+          <artifactId>slf4j</artifactId>
+          <version>1.4.3</version>
+          <scope>system</scope>
+          <systemPath>${project.basedir}/src/main/resources/lib/slf4j-api-1.4.3.jar</systemPath>
+      </dependency>
+#+END_SRC
+
+<!-- https://mvnrepository.com/artifact/log4j/log4j -->
+    <dependency>
+        <groupId>log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>1.2.17</version>
+    </dependency>
+*** 测试
+1. format ok
+2. ingestion
+#+BEGIN_SRC sh
+  #测试命令
+  ~/software/java/bin/java -jar ~/software/dbimage/ingestImage.jar format jdbc:mysql://storm02v.sys.shbt.qihoo.net:3306/HAwl i-wanglei p1qaz0okm fsimage
+  #编译命令
+  ~/software/java/bin/javac -Djava.ext.dirs=lib IngestImageIntoDB.java
+  #运行命令
+   ~/software/java/bin/java -Djava.ext.dirs=/home/i-wanglei/software/chao/java/lib IngestImageIntoDB format1 jdbc:mysql://storm02v.sys.shbt.qihoo.net:3306/HAwl i-wanglei p1qaz0okm /home/i-wanglei/fsimage
+#+END_SRC
+*** 报错信息
+Caused by: com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException: Duplicate entry '2604702-input' for key 'PRIMARY'
+	at sun.reflect.GeneratedConstructorAccessor8.newInstance(Unknown Source)
+	at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+	at java.lang.reflect.Constructor.newInstance(Constructor.java:526)
+	at com.mysql.jdbc.Util.handleNewInstance(Util.java:404)
+	at com.mysql.jdbc.Util.getInstance(Util.java:387)
+	at com.mysql.jdbc.SQLError.createSQLException(SQLError.java:932)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3878)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3814)
+	at com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2478)
+	at com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2625)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2547)
+	at com.mysql.jdbc.StatementImpl.executeUpdateInternal(StatementImpl.java:1541)
+	at com.mysql.jdbc.StatementImpl.executeBatchInternal(StatementImpl.java:1023)
+	... 13 more
+18/12/07 21:31:45 INFO IngestImageIntoDB: add more 500 sql 
+java.sql.BatchUpdateException: Duplicate entry '2604702-input' for key 'PRIMARY'
+	at com.mysql.jdbc.SQLError.createBatchUpdateException(SQLError.java:1158)
+	at com.mysql.jdbc.StatementImpl.executeBatchInternal(StatementImpl.java:1049)
+	at com.mysql.jdbc.StatementImpl.executeBatch(StatementImpl.java:959)
+	at com.zaxxer.hikari.pool.ProxyStatement.executeBatch(ProxyStatement.java:131)
+	at com.zaxxer.hikari.pool.HikariProxyStatement.executeBatch(HikariProxyStatement.java)
+	at ImageDBOperator.addtoBatch(ImageDBOperator.java:213)
+	at ImageDBOperator.executeSQL(ImageDBOperator.java:198)
+	at ImageDBOperator.createINodeFile(ImageDBOperator.java:110)
+	at DBImageLoader.processINode(DBImageLoader.java:326)
+	at DBImageLoader.processDirectory(DBImageLoader.java:222)
+	at DBImageLoader.processLocalNameINodes(DBImageLoader.java:199)
+	at DBImageLoader.processINodes(DBImageLoader.java:180)
+	at DBImageLoader.loadImage(DBImageLoader.java:70)
+	at IngestImageIntoDB.go(IngestImageIntoDB.java:45)
+	at IngestImageIntoDB.main(IngestImageIntoDB.java:100)
+
+
+所有sql insert最后的一部分
+*** mingling
+#+BEGIN_SRC sh
+  ~/software/java/bin/java -cp ingestImage-1.0-SNAPSHOT.jar Test
+
+  ~/software/java/bin/java -Xms2g -Xmx2g -XX:PermSize=1024m -XX:MaxPermSize=1024m -XX:MaxNewSize=1024m -Djava.ext.dirs=/home/i-wanglei/software/chao/java/lib IngestImageIntoDB format1 jdbc:mysql://storm02v.sys.shbt.qihoo.net:3306/HAwl i-wanglei p1qaz0okm /home/i-wanglei/fsimage 
+
+
+  vim ImageDBOperator.java 
+#+END_SRC
+
+
+ part-00028
+*** pid 獲取錯誤
+修正  但是速度慢下來了  看看fsimage的源碼
+*** 新错误  path有毒
+[i-wanglei@jl18 data19]$ grep 'restart server' fsimage.xml
+<INODE><INODE_PATH>/home/hdp-netlab/wulitao/test/onetime/find_special_url/20180719-124710/   echo 'restart server..'</INODE_PATH><REPLICATION>0</REPLICATION><MODIFICATION_TIME>2018-11-24 06:13</MODIFICATION_TIME><ACCESS_TIME>1970-01-01 08:00</ACCESS_TIME><BLOCK_SIZE>0</BLOCK_SIZE><BLOCKS NUM_BLOCKS="-1">
+** <2018-12-14 周五>
+*** issue-1
+**** describe
+Caused by: org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hdfs.protocol.DSQuotaExceededException: The DiskSpace quota of  is exceeded: quota=0 diskspace consumed=16.7k
+	at org.apache.hadoop.hdfs.server.namenode.INodeDirectoryWithQuota.verifyQuota(INodeDirectoryWithQuota.java:176)
+	at org.apache.hadoop.hdfs.server.namenode.FSDirectory.verifyQuota(FSDirectory.java:1809)
+	at org.apache.hadoop.hdfs.server.namenode.FSDirectory.updateCount(FSDirectory.java:1562)
+	at org.apache.hadoop.hdfs.server.namenode.FSDirectory.unprotectedSetReplication(FSDirectory.java:836)
+	at org.apache.hadoop.hdfs.server.namenode.FSDirectory.setReplication(FSDirectory.java:808)
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.setReplicationInternal(FSNamesystem.java:1997)
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.setReplication(FSNamesystem.java:1962)
+	at org.apache.hadoop.hdfs.server.namenode.NameNode.setReplication(NameNode.java:797)
+**** solution
+
+#+BEGIN_SRC sql
+  insert into hdfs_inodes(id, parent_id, name, access_time, modification_time, inode_user, inode_group, permission, type, replication, blocksize, block_ids, block_generation_stamp, client_name, client_machine) values(8, 2, 'start-balancer.sh', 1544761595727, 1544761595727, 'wangchao8', 'supergroup', 420, 1, 1, 1048576, '[]', '[]', 'DFSClient_-633964843', '10.162.94.74')
+#+END_SRC
+when we invoke put 
+we get a sql
+#+BEGIN_SRC sh
+    update hdfs_inodes set parent_id=0, name='', access_time=0, modification_time=1544763604566, inode_user='wangchao8', inode_group='supergroup', permission=493, type=2, nsquota=-1, dsquota=0 where id=1
+  update hdfs_inodes set parent_id=1, name='ch', access_time=0, modification_time=1544763715911, inode_user='wangchao8', inode_group='supergroup', permission=493, type=2, nsquota=-1, dsquota=0 where id=2
+#+END_SRC
+* 2019
+** TODO 01-10
+- State "TODO"       from              [2019-01-09 周三 11:52]
+*** invalid user check
+*** ec workflow
+*** restart dn

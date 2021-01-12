@@ -1,0 +1,15 @@
+* nna
+** load
+*** 目的
+** 通过简单的query api来观察数据在集群中的状态
+** 拿很多map来存各种指标
+** namenodeloader
+1.namenodeLoader里面维护了整个目录树
+2.还拿着QueryEngine
+3.还拿着conf
+* ssl安全套接字层
+* ldap 轻量目录访问协议
+* 0.20如何从fsImage load出fs
+** fsimage和fsnamesystem
+** TransferFsImage
+用来从namenode上fetch文件。

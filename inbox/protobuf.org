@@ -1,0 +1,73 @@
+#+title: protobuf 整理
+* 参考
+1. [[https://developers.google.com/protocol-buffers/docs/javatutorial][官方文档-java教程]]
+* develop
+** 用protoc 命令生成的java文件报错
+- 使用的命令为3.11.4
+- mvn中引用的包为3.5.1
+- solution ： 使用相同的protoc
+** 编译命令
+#+BEGIN_SRC sh
+  protoc -I=$SRC_DIR --java_out=$DST_DIR $SRC_DIR/addressbook.proto
+#+END_SRC
+* 为什么使用protobuf
+* 语法
+1. 1-15比16以上的tag在二进制encoding的时候要少用一个byte，因此，1-15最好用来定义common属性和repeated字段
+2. repeated : 可能重复出现一次或多次，在编码的时候会重复使用tag
+3. optional : may set or not set，如果没设置，会赋一个默认值，可以指定此默认值
+   1. 默认值定义 optional PhoneType type = 2 [default = HOME];
+   2. 系统默认值
+      1. string : null
+      2. numeric : zero
+      3. bools : false
+      4. 嵌入式message : 默认实例或prototype 
+4. required : proto3已经废弃
+* Protobuf API
+- 生成的每个类都有自己的builder
+#+BEGIN_SRC java
+
+#+END_SRC
+- 每个类有自己的get方法，对应builder则有get和set方法，还包括了一个clear方法。
+- repeat字段还有一个count方法，重复list的size，有add方法和addall，参考list方法定义
+* 枚举和内部类
+枚举定义
+#+begin_example
+  enum PhoneType {
+    MOBILE = 0;
+    HOME = 1;
+    WORK = 2;
+  }
+#+end_example
+* Builders vs Messages
+1. 由proto编译生成的message class是immutable，一旦一个message对象被构建出来，它就不能被更改，就像是java中的String。
+2. 为了构造一个message，首先要构建一个Builder
+* 标准message 方法
+- isInitialized(): checks if all the required fields have been set.
+- toString(): returns a human-readable representation of the message, particularly useful for debugging.
+- mergeFrom(Message other): (builder only) merges the contents of other into this message, overwriting singular scalar fields, merging composite fields, and concatenating repeated fields.扩展一个message是不是可以用这个方法。
+- clear(): (builder only) clears all the fields back to the empty state.
+* Parsing and Serialization
+- byte[] toByteArray();: serializes the message and returns a byte array containing its raw bytes.
+- static Person parseFrom(byte[] data);: parses a message from the given byte array.
+- void writeTo(OutputStream output);: serializes the message and writes it to an OutputStream.
+- static Person parseFrom(InputStream input);: reads and parses a message from an InputStream.
+* Protocol Buffers and O-O Design 
+protobuf 生成的类只应该被当做数据的持有者，如果想要让这个生成的类支持丰富的操作，你应该包装一下它，以面向应用提供服务
+一般包括
+- writting message
+- reading message
+* message 版本升级
+为了向前向后兼容，新的protobuf必须遵守以下几条规则
+1. 不要更改任何已存在的tag
+2. 不要增加和删除任何required字段
+3. 可以删除optional和repeated字段
+4. 可以新增optional和repeated字段，但是不要使用之前的tag，哪怕是删除的
+遵守如上规则后
+1. 老代码读新message时会忽略新的字段，以默认值填充老字段
+2. 新代码读老message时，你要显示的做些检查，因为可能你需要的某些属性是老message中没有的，或者在proto文件中指定默认值
+* 高级用法
+1. 反射
+   1. 用反射把protobuf转化为json或者xml
+   2. 消息对比
+   3. 消息表达式
+

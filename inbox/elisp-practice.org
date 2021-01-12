@@ -1,0 +1,30 @@
+#+title: elisp 
+* hello elisp 
+#+begin_src emacs-lisp :tangle yes
+(setq hello "hello world")
+(message hello)
+#+end_src
+
+#+RESULTS:
+: hello world
+* 基础
+** 函数
++ 当我们添加了注释，此时C-h f 来查看hello-world,就会显示这个注释,如果这个函数式在文件中定义的，还会给出文件链接
++ 每个函数都有一个返回值，函数中最后一个S表达式的值，比如下面这个(message "")函数的值
+#+begin_src emacs-lisp :tangle yes
+  (defun hello-world(name)
+    "say hello to the comming user"
+    message("Hello,%S" name)
+    “a--------------------” )
+(hello-world "chao")
+#+end_src
+
+#+RESULTS:
+: hello-world
+** 赋值
+1. (defvar) : 不会覆盖，可写文档
+#+begin_src emacs-lisp :tangle yes
+(defvar variable-name value
+"document string")
+#+end_src
+2. setq 可以用来设置全局变量或局部变量

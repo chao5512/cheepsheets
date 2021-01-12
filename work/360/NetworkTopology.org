@@ -1,0 +1,10 @@
+* NetworkTopology
+数据中心
+机房
+机架
+节点
+** 集群拓扑，leave是datanode，innerNode是swicher、router
+** 
+* TODO some target
+- State "TODO"       from              [2018-11-09 周五 03:29]
+** 关注构建方法，集群拓扑变化的时候，怎么同步状态

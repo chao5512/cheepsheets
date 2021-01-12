@@ -1,0 +1,34 @@
+#+title: 设计模式
+* 解释器设计模式
+* 状态模式
+* 原型设计模式
+* 七大设计原则
+** 1. 单一职责
+那么我们就应该能找到一个类的职责
+** 2. 接口隔离原则
+一个类对另一类的依赖
+** 3. 依赖倒置
+面向接口编程
+1. 模块之间靠抽象完成依赖
+2. 细节依赖抽象
+*** 依赖关系的传递方式
+1. 接口传递
+2. 构造传递
+3. set传递
+** 4. 里式替换原则
+子类尽量不要重写父类的原则
+* inbox
+#+BEGIN_SRC plantuml :file ../resource/img/pattern-inbox.png :cmdline -charset utf-8
+  @startuml
+  node "Other Groups" {
+    FTP - [Second Component]
+    [First Component] --> FTP
+  } 
+  [架构]<--[框架]
+  [功能模块]-->[框架]
+  [功能模块]<--[面向对象]
+  @enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:../resource/img/pattern-inbox.png]]

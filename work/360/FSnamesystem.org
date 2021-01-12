@@ -1,0 +1,104 @@
+* computeTargets
+这个方法是干啥用的，计算副本往哪放？
+服务于新块选择placement和少块时选择placement
+
+** 返回一个DatanodeDescriptor[]
+
+** 顶层方法
+Instruct the datanode to copy a block to specified target.
+
+** 选择策略BlockPlacementPolicy（5个）
+
+**** BlockPlacementPolicyDefault
+1st replica. 如果写请求方所在机器是其中一个datanode,则直接存放在本地,否则随机在集群中选择一个datanode.
+2nd replica. 第二个副本存放于不同第一个副本的所在的机架.
+3rd replica.第三个副本存放于第二个副本所在的机架,但是属于不同的节点.
+
+** inner invoke func
+*** chooseTargets（按有无偏爱节点重载）
+
+***** 如果副本数大于节点数，则副本数=剩下的所有节点。
+
+***** chooseTarget，选择下一个target。
+
+***** 排序目标节点，形成pipeline
+DatanodeDescriptor[]是一个pipeline
+#+BEGIN_SRC java
+  //从writer遍历所有nodes的最短路径TSP
+  getPipeline(DatanodeDescriptor writer,DatanodeDescriptor[] nodes)
+  //计算两节点距离
+  clusterMap.getDistance(writer, node)    
+#+END_SRC
+*** chooseLocalNode
+尝试选择writer所在datanode作为result。
+**** writer==null，则随机选一个
+调用chooseRandom
+**** 选择了localmachine，但不isGoodTarget
+调用chooseLocalRack
+***** isGoodTarget的判定条件
+1、 没有被选中过也没有在黑名单里
+2、 不是Decommissioned
+3、 剩余空间足够
+4、 这个target不是很忙，活跃连接数不大于2倍的平均负载，localnode忽略这个条件
+5、 当前机架上已选节点不是特别多
+***** 如何判定dn上空间足够
+1、保留块数目
+#+BEGIN_SRC java
+    private long minBlocksReserved = 100;
+#+END_SRC
+2、预估当前计划写入多少块
+涉及到副本监控线程
+#+BEGIN_SRC java
+  /**
+     ,* @return Approximate number of blocks currently scheduled to be written 
+     ,* to this datanode.
+     ,* 当前计划写入的块的数目，估计值
+     ,*/
+    public int getBlocksScheduled() {
+      return currApproxBlocksScheduled + prevApproxBlocksScheduled;
+    }
+#+END_SRC
+3、写入计划中的块后，应保留至少100个block的位置
+*** chooseLocalRack
+本机架上选择datanode，如果不可用，从第二副本所在机架上选择，如何还不可用，chooseRandom
+**** 基于chooseRandom实现的，传参的时候指定一个机架
+**** 第二副本怎么表示的
+*** chooseRandom
+#+BEGIN_SRC java
+  //基于
+  (DatanodeDescriptor)(clusterMap.chooseRandom(nodes))
+  //实现的
+  //待补充
+
+#+END_SRC
+** 副本设置
+方法一：配置文件hdfs-site.xml 需要重启
+#+BEGIN_SRC xml
+  <property>
+    <name>dfs.replication</name>
+    <value>3</value>
+  </property>
+#+END_SRC
+方法二：通过命令修改备份数 无需重启
+#+BEGIN_SRC sh
+  #递归设置/目录副本为1
+  bin/hadoop fs -setrep -R 1 /
+  #递归设置/目录副本为3
+  hadoop fs -setrep -R 3 hdfs://master:9000/
+#+END_SRC
+** questions
+*** 当集群上的副本数超过3个时，nn会删除哪些节点上的副本来维护副本平衡呢？
+*** 当集群上的副本数少于3个时，会选择哪些节点作为原点进行复制呢？
+*** 集群拓扑怎么配的?
+*** 都当做一个机架时会浪费多少资源？
+* UnderReplicationMonitor
+副本监控线程
+#+BEGIN_SRC java
+
+  //  Periodically calls computeDatanodeWork().
+  //  周期跑computDatanodeWork（）
+       class UnderReplicationMonitor implements Runnable
+#+END_SRC
+** computeDatanodeWork()
+*** 计算快复制和块失效工作
+** processPendingReplications()

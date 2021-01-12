@@ -1,0 +1,54 @@
+#+title: rocksDB
+* rocksDB的历史
+** 大数据分析所涉及到的点
+  + 大范围顺序读
+  + 两个或多个数据集的join
+  + 很少量的更新
+** 机械磁盘（spinning disk）的年代
+通过不断优化，hbase的查询仅仅是MySql的两倍，IOPs是3倍
+** 闪存(Flash storage)的出现
+2012年的hbase和hdsf因为一些软件瓶颈，[[http://hadoopblog.blogspot.com/2012/05/hadoop-and-solid-state-drives.html][detail]]，无法很好的利用闪存。因而一款面向告诉闪存的KV存储引擎呼之欲出
+** 为什么我们需要一个嵌入式（Embedded）数据库？
++ 设：我们对机械磁盘的一次读写耗时10 milliseconds，对闪存的一次读写耗时100 microseconds。两者差100倍，两台机器间的网络延迟为50 microseconds
++ 则 : 机械磁盘的时代，一次cs架构的数据存取只比本地存取多负担0.05ms/10ms=0.5%
++ 而 : 闪存出现后，一次cs架构的数据存取比本地存取多负担50microseconds/100microseconds=50%
++ 所以：我们需要一个嵌入式数据库[[http://en.wikipedia.org/wiki/Embedded_database][detail]]，因为它在闪存cs架构下依然会有很低的延迟
+** 向闪存更新数据block总是会存在写放大(write-endurance)
+** levelDB有什么不足?
++ 必须fit in OS page cache
++ 写放大严重
++ 跟不上日趋快速的存储硬件
+** 展望rocksDB
+1. 嵌入式KV存储，支持点查和范围查
+2. 更适应于告诉存储硬件
+3. 完整的数据库服务支持
+4. 随着cpu和IOPs的线性成长
+5. rocksDB不是一个分布式数据库，由上层应用实现replication、fault-tolerance、sharding
+** RocksDB架构
+todo
+* using rocksDB 
+1. use shell
+** 在mac上安装使用rocksdb
+安装
+#+BEGIN_SRC sh
+  brew install rocksdb
+# 安装完的可执行文件
+-r-xr-xr-x   1 wangchao  staff  5031508 Mar  5 23:20 rocksdb_dump
+-r-xr-xr-x   1 wangchao  staff  5029696 Mar  5 23:20 rocksdb_ldb
+-r-xr-xr-x   1 wangchao  staff  5075428 Mar  5 23:20 rocksdb_repl_stress
+-r-xr-xr-x   1 wangchao  staff  5082536 Mar  5 23:20 rocksdb_sanity_test
+-r-xr-xr-x   1 wangchao  staff  5029696 Mar  5 23:20 rocksdb_sst_dump
+-r-xr-xr-x   1 wangchao  staff  5280732 Mar  5 23:20 rocksdb_stress
+-r-xr-xr-x   1 wangchao  staff  5031508 Mar  5 23:20 rocksdb_undump
+-r-xr-xr-x   1 wangchao  staff  5080924 Mar  5 23:20 rocksdb_write_stress
+  pwd
+/usr/local/Cellar/rocksdb/6.6.4/bin
+#+END_SRC
+** 在mac上编译rocksdb
+#+BEGIN_SRC sh
+  git clone
+  make all
+  ./db_bench fillseq --compression_type=none
+
+./db_bench --benchmarks="readrandom" --use_existing_db --compression_type=none --statistics
+#+END_SRC

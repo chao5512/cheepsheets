@@ -1,0 +1,24 @@
+#+title: kafka
+* concepts
+1. kafka是一个集群，集群中的机器被称为broker
+2. categories 类别 按topic分类存储records
+3. record 由key value tampstamp组成
+4. agnostic 任意的、未知的
+5. anatomy 解剖
+6. partition ：有序的、不可变的records sequence。允许追加partitioned log
+7. offset : 每个partition的每个record被赋予一个序列号
+8. retention 保留
+9. constant with
+10. consumer维护自己的读取offset，也就是可以按任意顺序读records
+* 为什么要分区
+1. 赋予log可扩展的能力，使得一个topic的log数据量可以超过单台机器的存储能力
+2. 物理存储上更加适应并行计算
+* kafka的分布式实现
+1. 备份partition，对于每个partition将服务器构造成主从结构
+* 消息通讯模式
+1. 队列模式，每个record发送给一个消费者
+2. 订阅模式，每个record发送给所有订阅了当前topic的消费者
+3. kafka中，同一组消费者们被视为同一个消费者
+* inbox
+1. kafka集群会保留一段时间内的数据，无论他是否被消费过
+2. kafka的性能与数据量不相干，所以保存数据不会影响性能

@@ -1,0 +1,598 @@
+#+EXCLUDE_TAGS: summary
+* avatar 集群搭建                                                   :summary:
+** Avatar方案简单介绍
+1.	此方案只针对hdfs单点备份，并不包括Mapred，因为Hadoop本身就不存在处理jobtracker单点故障的机制。
+2.	AvatarNode继承自Namenode，而并非对Namenode的修改，AvatarDataNode同样亦如此，
+故Avatar的启动机制是独立于Hadoop本身的启动机制。
+3.	在此方案中，SecondaryNamenode的职责已包括在Standby节点中，故不需要再独立启动一个SecondaryNamenode。
+4.	AvatarNode必须有NFS的支持，用以实现两个节点间事务日志（editlog）的共享。
+5.	此方案不能实现Primary和Standby之间的自动切换，只能手动运行命令进行切换。
+6.	Primary和Standby之间的切换只包括从Standby切换到Primary，并不支持从Primary状态切换到Standby状态。
+7.	通过Zookeeper保存Primary的ip信息，AvatarDataNode、DFSClient通过访问Zookeeper获取最新Primary信息。
+** 集群规划
+1.	NFSServer一台（以jl1.sys.lyct.qihoo.net为例）
+2.	Zookeeper3台（以jl[2-4].sys.lyct.qihoo.net为例）
+3.	Primary一台（以jl2.sys.lyct.qihoo.net为例）
+4.	Standby一台（以jl3.sys.lyct.qihoo.net为例）
+5.	AvatarDatanode若干台(jl[4-6].sys.lyct.qihoo.net)
+** NFS配置
+jl1上配置nfs-server，Primary和standby上配置nfs-client
+*** 3台机器上都需要配置nfs-utils
+#+BEGIN_SRC sh
+
+  #yum安装nfs,Nfs-utils是NFS服务主程序
+  yum install nfs-utils portmap
+  #检查rpcbind是否开启
+  chkconfig rpcbind on
+  #检查nfs是否开启
+  chkconfig nfs on
+  #启动rpcbind
+  service rpcbind start
+  #启动nfs
+  service nfs start
+  service nfslock start
+#+END_SRC
+*** server端配置
+1.	vim /etc/exports
+添加以下信息：
+#+BEGIN_SRC sh
+  #root挂载目录具有root权限，root_squash这个参数会把所有用户变成nfsnobody（较安全）
+  /nfs_mount *(rw,sync,no_root_squash)
+#+END_SRC
+
+2.	启动NFS服务命令
+#+BEGIN_SRC sh
+  sudo service nfs restart
+#+END_SRC
+3.	查看NFS共享目录是否设置成功命令showmount -e
+如果显示NFS共享目录，则说明配置成功
+（NFS提供一个挂载点，本地提供一个挂载点，这样将nfs系统提供的挂载点挂载到本地，
+这样的效果是当nfs系统的挂载点目录发生变化时在本地的挂载点目录中能够同步nfs系统中的）
+*** primary和standby上部署客户端
+1.mount to server
+#+BEGIN_SRC sh
+  mkdir nfs_mount
+   mount -t nfs -o sync w-r992.test.com:/nfs_mount ~/nfs_mount
+#+END_SRC
+2.edit fstab
+#+BEGIN_SRC sh
+  vim /etc/fstab
+  #jl2.sys.lyct.qihoo.net:/nfs_mount ~/hadoop/nfs_mount/
+#+END_SRC
+3.测试是否挂载成功在客户端挂载目录下touch test，查看服务端共享目录，如果能查到test文件则说明NFS服务配置成功
+*** TODO nfs集群配置
+- State "TODO"       from              [2018-11-01 Thu 12:12]
+** Zookeeper配置
+用来确定主备节点的状态，防止脑裂
+*** zoo.cfg
+#+BEGIN_SRC sh
+  # The number of milliseconds of each tick
+  tickTime=2000
+  # The number of ticks that the initial 
+  # synchronization phase can take
+  initLimit=10
+  # The number of ticks that can pass between 
+  # sending a request and getting an acknowledgement
+  syncLimit=5
+  # the directory where the snapshot is stored.
+  # do not use /tmp for storage, /tmp here is just 
+  # example sakes.
+  dataDir=/home/wangchao8/hadoop/zkData
+  # the port at which the clients will connect
+  clientPort=2182
+  # the maximum number of client connections.
+  # increase this if you need to handle more clients
+  #maxClientCnxns=60
+  #
+  # Be sure to read the maintenance section of the 
+  # administrator guide before turning on autopurge.
+  #
+  # http://zookeeper.apache.org/doc/current/zookeeperAdmin.html#sc_maintenance
+  #
+  # The number of snapshots to retain in dataDir
+  #autopurge.snapRetainCount=3
+  # Purge task interval in hours
+  # Set to "0" to disable auto purge feature
+  #autopurge.purgeInterval=1
+  server.1=10.162.94.103:2888:3888
+  server.2=10.162.94.104:2888:3888
+  server.3=10.162.94.105:2888:3888
+#+END_SRC
+*** zkEnv.sh
+#+BEGIN_SRC sh
+  56   ZOO_LOG_DIR="/home/wangchao8/hadoop/zkData/log"
+  67   JAVA=/home/wangchao8/software/java/bin/java
+#+END_SRC
+*** 启动zk后，用zkCli构建节点
+#+BEGIN_SRC sh
+  zkCli.sh -server 127.0.0.1:2181,
+  create /hdfs jl2.sys.lyct.qihoo.net:9000    
+  create /hdfs/jl2.sys.lyct.qihoo.net jl2.sys.lyct.qihoo.net:9000       
+  create /hdfs/jl2.sys.lyct.qihoo.net/9000 jl2.sys.lyct.qihoo.net:9000
+
+#+END_SRC
+** Primary与Standby配置
+1. core-site.xml
+#+BEGIN_SRC xml
+  <configuration>
+    <!-- 默认Primary 的IP地址和端口号 -->
+  <property>
+     <name>fs.default.name</name>
+     <value>hdfs://jl2.sys.lyct.qihoo.net:9800</value>
+  </property>
+  <!-- Primary的 IP地址和端口号 -->
+  <property>
+     <name>fs.default.name0</name>
+     <value>hdfs://jl2.sys.lyct.qihoo.net:9800</value>
+  </property>
+  <!-- Standby的IP地址和端口号 -->
+  <property>
+     <name>fs.default.name1</name>
+     <value>dfs://jl3.sys.lyct.qihoo.net:9800</value>
+  </property>
+  <!-- zookeeper的IP地址和端口号 -->
+  <property>
+     <name>fs.ha.zookeeper.quorum</name>
+     <value>jl2.sys.lyct.qihoo.net:2182,jl3.sys.lyct.qihoo.net:2182,jl4.sys.lyct.qihoo.net:2182</value>
+  </property>
+  <property>
+     <name>io.compression.codecs</name>
+     <value>org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.GzipCodec,
+     org.apache.hadoop.io.compress.BZip2Codec,com.hadoop.compression.lzo.LzoCodec</value>
+  </property>
+
+  <property>  
+     <name>io.compression.codec.lzo.class</name>  
+     <value>com.hadoop.compression.lzo.LzoCodec</value>  
+  </property>
+
+  <property>
+     <name>fs.checkpoint.period</name>
+     <value>3600</value>
+  </property>
+  <!-- edits大小超过这个值，则判定为standby有延迟-->
+  <property>
+     <name>avatar.catchup.lag</name>
+     <value>2097152</value>
+  </property>
+  <property>
+     <name>fs.checkpoint.enabled</name>
+     <value>true</value>
+  </property>
+  </configuration>
+
+#+END_SRC
+2. hdfs-site.xml
+#+BEGIN_SRC xml
+  <!-- Primary的HTTP的监控地址 -->
+  <property>
+    <name>dfs.http.address0</name>
+    <value>jl2.sys.lyct.qihoo.net:58070</value>
+  </property>
+  <!-- Standby的HTTP的监控地址 -->
+  <property>
+      <name>dfs.http.address1</name>
+      <value>jl3.sys.lyct.qihoo.net:58070</value>
+  </property>
+  <!-- 本地存储的元数据信息目录-->
+  <property>
+      <name>dfs.name.dir</name>
+      <value>/home/wangchao8/hadoop/image</value>
+  </property>
+  <!-- Primary的fsimage文件存储目录-->
+  <property>
+      <name>dfs.name.dir.shared0</name>
+      <value>/home/wangchao8/nfs_mount/s0/image</value>
+  </property>
+  <!-- Standby的fsimage文件存储目录-->
+  <property>
+      <name>dfs.name.dir.shared1</name>
+      <value>/home/wangchao8/nfs_mount/s1/image</value>
+  </property>
+  <!-- edits的本地存储目录-->
+  <property>
+      <name>dfs.name.edits.dir</name>
+      <value>/home/wangchao8/hadoop/edits</value>
+  </property>
+  <!-- Primary的edits文件存储目录-->
+  <property>
+      <name>dfs.name.edits.dir.shared0</name>
+      <value>/home/wangchao8/nfs_mount/s0/edits</value>
+  </property>
+  <!-- Standby的edits文件存储目录-->
+  <property>
+      <name>dfs.name.edits.dir.shared1</name>
+      <value>/home/wangchao8/nfs_mount/s1/edits</value>
+  </property>
+
+  <property>
+      <name>dfs.persist.blocks</name>
+      <value>true</value>
+  </property>
+  <property>
+      <name>dfs.sync.on.every.addblock</name>
+      <value>true</value>
+  </property>
+
+#+END_SRC
+** AavatarDatanode配置
+1. core-site.xml
+#+BEGIN_SRC xml
+  <configuration>
+
+  <property>
+     <name>fs.default.name</name>
+     <value>hdfs://jl2.sys.lyct.qihoo.net:9800</value>
+  </property>
+
+  <property>
+     <name>fs.default.name0</name>
+     <value>hdfs://jl2.sys.lyct.qihoo.net:9800</value>
+  </property>
+  <property>
+     <name>fs.default.name1</name>
+     <value>hdfs://jl3.sys.lyct.qihoo.net:9800</value>
+  </property>
+  <property>
+     <name>io.compression.codecs</name>
+     <value>org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.BZip2Codec,com.hadoop.compression.lzo.LzoCodec</value>
+  </property>
+
+  <property>  
+     <name>io.compression.codec.lzo.class</name>  
+     <value>com.hadoop.compression.lzo.LzoCodec</value>  
+  </property>
+
+  <property>
+     <name>fs.ha.zookeeper.quorum</name>
+     <value>jl4.sys.lyct.qihoo.net:2182,jl2.sys.lyct.qihoo.net:2182,jl3.sys.lyct.qihoo.net:2182</value>
+  </property>
+  </configuration>
+  
+#+END_SRC
+2. hdfs-site.xml
+#+BEGIN_SRC xml
+  <property>
+      <name>dfs.avatarnode.port</name>
+          <value>9801</value>
+          </property>
+  <property>
+    <name>dfs.http.address0</name>
+      <value>jl2.sys.lyct.qihoo.net:58070</value>
+      </property>
+  <property>
+      <name>dfs.http.address1</name>
+      <value>jl3.sys.lyct.qihoo.net:58070</value>
+  </property>
+  <property>
+      <name>dfs.deletedreport.intervalMsec</name>
+      <value>10000</value>
+  </property>
+  <property>
+      <name>dfs.blockreport.intervalMsec</name>
+      <value>3600000</value>
+  </property>
+  <property>
+      <name>dfs.datanode.port</name>
+      <value>58010</value>
+  </property>
+  <property>
+      <name>dfs.datanode.ipc.address</name>
+      <value>localhost:58020</value>
+  </property>
+#+END_SRC
+** 客户端配置
+*** core-site.xml
+#+BEGIN_SRC xml
+
+  <property>
+  <name>fs.default.name</name>
+  <value>hdfs://jl2.sys.lyct.qihoo.net:9000</value>
+  </property>
+  <property>
+  <name>fs.default.name0</name>
+  <value>hdfs://jl2.sys.lyct.qihoo.net:9000</value>
+  </property>
+  <property>
+  <name>fs.default.name1</name>
+  <value>hdfs://jl3.sys.lyct.qihoo.net:9000</value>
+  </property>
+  <property>
+  <name>fs.ha.zookeeper.quorum</name>
+  <value>jl2.sys.lyct.qihoo.net:2181,jl3.sys.lyct.qihoo.net:2181,jl4.sys.lyct.qihoo.net:2181</value>
+  </property>
+  <!--在这里可以改成spinner-->
+  <property>
+  <name>fs.hdfs.impl</name>
+  <value>org.apache.hadoop.hdfs.DistributedAvatarFileSystem</value>
+  </property>
+#+END_SRC
+*** hdfs-site.xml
+#+BEGIN_SRC xml
+  <property>
+  <name>dfs.http.address0</name>
+  <value>jl2.sys.lyct.qihoo.net:50070</value>
+  </property>
+  <property>
+  <name>dfs.http.address1</name>
+  <value>jl3.sys.lyct.qihoo.net:50070</value>
+  </property>
+  <property>
+  <name>dfs.support.ugi.access</name>
+  <value>false</value>
+  </property>
+  <property>
+  <name>dfs.cli.support.metrics</name>
+  <value>false</value>
+  </property>
+  <property>
+  <name>fs.ha.retrywrites</name>
+  <value>true</value>
+  </property>
+  <property>
+  <name>dfs.client.block.write.locateFollowingBlock.retries</name>
+  <value>20</value>
+  </property>
+#+END_SRC
+*** 客户端使用
+#+BEGIN_SRC sh
+  ./software/hadoop/bin/hadoop fs -ls /
+#+END_SRC
+*** spinner
+**** 更改core-size.xml
+#+BEGIN_SRC xml
+   <property>
+     <name>fs.defaultFS</name>
+     <value> hdfs-qihu://nn1:9000</value>
+  </property>
+  <!-- HDFS 1.0 conf start -->
+  <property>
+     <name>hadoop.v1.jar</name>
+     <value>hadoop-0.20.2.1U33.5-core.jar</value>
+  </property>
+  <property>
+     <name>fs.hdfs-qihu.impl</name>
+     <value> net.qihoo.spinner.SpinnerDistributedFileSystem</value>
+  </property>
+  <property>
+    <name>fs.AbstractFileSystem.hdfsold.impl</name>
+    <value>net.qihoo.spinner.SpinnerHdfs</value>
+   </property>
+   <property>
+     <name>fs.hdfsold.impl</name>
+     <value>org.apache.hadoop.hdfs.DistributedFileSystem</value>
+   </property>
+   <property>
+     <name>fs.default.name</name>
+     <value> hdfs-qihu://nn1:9000</value>
+   </property>
+#+END_SRC
+**** 
+
+** 启动集群
+*** 命令
+#+BEGIN_SRC sh
+  #格式化名字节点
+    hadoop namenode -format
+  #启动primary
+  bin/hadoop-daemon.sh start avatarnode  -zero
+  #关闭primary
+  bin/hadoop-daemon.sh stop avatarnode
+
+  #启动standby
+  bin/hadoop-daemon.sh start avatarnode  -one  -standby
+  #关闭standby
+  bin/hadoop-daemon.sh stop avatarnode
+  #启动/关闭avatardatanode：
+  bin/hadoop-daemon.sh start avatardatanode
+  bin/hadoop-daemon.sh stop avatardatanode
+  #查看是primary/standby
+  bin/hadoop org.apache.hadoop.hdfs.AvatarShell –zero/-one -showAvatar
+
+#+END_SRC
+*** 切换过程依次需要经历如下步骤：
+1. bin/hadoop org.apache.hadoop.hdfs.AvatarShell –one/-zero –faileoverprepare（在从节点上）
+2. bin/hadoop org.apache.hadoop.hdfs.AvatarShell –zero/-one –shutdownAvatar（不能stop或kill，否则将导致primary无法向zookeeper更新shutdown信息，standby无法切换成功）（主节点）
+3. bin/hadoop org.apache.hadoop.hdfs.AvatarShell –one/zero -setAvatar primary
+*** 查看avatar主备
+#+BEGIN_SRC sh
+  bin/hadoop org.apache.hadoop.hdfs.AvatarShell –zero/-one -showAvatar
+#+END_SRC
+
+** hdfs shell
+*** 零散
+#+BEGIN_SRC sh
+  #统计一个目录里的所有文件
+  hadoop fs -count /home/scribe/hadoop/safe-lycc/safe-lycc-namenode/2018-11-14
+  #           1         7150       909196952537 /home/scribe/hadoop/safe-lycc/safe-lycc-namenode/2018-11-14   7150个文件
+
+  #统计一个文件的行数
+  hadoop fs -cat  /文件* | wc -l
+
+  #统计一个目录下所有文件的总大小
+  hadoop fs -dus -h /home/scribe/hadoop/safe-lycc/safe-lycc-namenode/2018-11-14
+  #846.8 G  /home/scribe/hadoop/safe-lycc/safe-lycc-namenode/2018-11-14
+#+END_SRC 
+
+*** Q&A by shell
+#+BEGIN_SRC sh
+  #-test -[defsz] <path> :
+  #  Answer various questions about <path>, with result via exit status.
+  #    -d  return 0 if <path> is a directory.
+  #    -e  return 0 if <path> exists.
+  #    -f  return 0 if <path> is a file.
+  #    -s  return 0 if file <path> is greater than zero bytes in size.
+  #    -z  return 0 if file <path> is zero bytes in size, else return 1.
+
+  hadoop fs -test -e path
+#+END_SRC
+
+*** tools
+#+BEGIN_SRC sh
+  #离开安全模式
+  hadoop dfsadmin -safemode leave
+
+  #check the quota of specify path
+  hadoop fs -count -q /user/hadoop
+  ###
+  QUOTA : 命名空间的quota(限制文件数)	
+  REMAINING_QUOTA : 剩余的命名空间quota(剩余能创建的文件数目)
+  SPACE_QUOTA : 物理空间的quota （限制磁盘空间占用大小）
+  REMAINING_SPACE_QUOTA : 剩余的物理空间
+  DIR_COUNT : 目录数目
+  FILE_COUNT : 文件数目
+  CONTENT_SIZE: 目录逻辑空间大小
+  FILE_NAME : 路径
+  #set quota
+  hadoop dfsadmin -setSpaceQuota  1g /user/hadoop
+  #set replication of file
+  hadoop fs -setrep -w 2 /chao/hadoop
+  #check qutao
+  ./software/hadoop/bin/hadoop fs -count -q /user
+#+END_SRC
+* online configuration
+** dn
+*** hdfs-site.xml 
+#+BEGIN_SRC xml
+<!-- where blocks stored -->
+  <property>
+      <name>dfs.data.dir</name>
+      <value>/data01/block,/data02/block,/data03/block,/data04/block,/data05/block,/data06/block,/data07/block,/data08/block,/data09/block,/data10/block,/data11/block,/data12/block</value>
+    </property>
+
+#+END_SRC
+* ops
+** COMMENT fsck
+1. 查看client-viewfs.xml 找到namenode
+2. ssh到namenode上,使用命令找到块所在dn
+#+BEGIN_SRC sh
+  ~/software/hadoop/bin/hadoop fsck /chao/hadoop -files -locations -blocks
+#+END_SRC
+3. ssh到dn上
+#+BEGIN_SRC sh
+  #在/tmp/hadoop-wangchao8/dfs/data/current/NS-1448698474/current里找find block
+#+END_SRC
+** 离开安全模式
+#+BEGIN_SRC sh
+  hadoop dfsadmin -safemode leave
+#+END_SRC
+** blocing missing
+1. 排查namenode上有没有这个块
+#+BEGIN_SRC sh
+  hadoop fsck "filename" -files -blocks -locations
+#+END_SRC
+2. 排查datanode上有没有这个块
+#+BEGIN_SRC sh
+  # 根据fsck拿到datanode的地址
+  # 在clusterMonitor上拿到当前集群所在的namespaceid 537690663
+  # 在datanode上find块
+  find /data*/block/current/NS-537690663 -name 
+  "blk_-1141189942021161464_7402627703*"
+#+END_SRC
+*** 发现nn和dn上均有这个块信息。可能是元数据和数据块的时间戳不一致
+尝试把dn上的blk时间戳改为与meta一致
+** eof
+* dev
+** fsimage解析
+目标，解析fsimage 把inode和block存入mysql
+*** 实际问题
+**** username注册表
+线上内存中inode节点多达几亿个，每个inode需要有属性来标注owner和group，如果
+都是直接引用字符串，ε=(´ο｀*)))唉不可以么？存疑
+现在的hdfs方案是内存中用SerialNumberMap来存id到String的映射
+inode中一个long型permission就可以存int型的id来映射字符串
+然后fsImage序列化到磁盘的时候是把映射解析出来存的
+**** 6000万条数据，入到300多万的时候报数据库错误
+duplicate
+发现有两个文件名一个是S-xxxx 另一个是s-xxxx 2
+因为在pathname上做了联合索引，导致主键重复
+建表时在字段后面加binary，表示该字段区分大小写
+**** 入库字段转义
+以后字符串类型数据入库最好先这么转义一波
+#+BEGIN_SRC java
+  //单引号转义
+  inodePath=inodePath.replaceAll("'", "\\\\\'");
+#+END_SRC
+**** @字符问题
+**** 为fsimage奇怪的遍历方式加入了拆除分支的功能，后jmap发现作用不大
+**** 一次OOM，因为解析fsimage的生产者速度明显高于mysql入库速度，无界队列
+改成有界队列，限制生产者生产速度
+**** 空文件保留空数组
+**** 文件名字段存在超长字符串
+mysql主键只有256字节，在utf8编码下，字符串作为主键时实际上取得时字符串前缀，而这个超长字符串的大部分前缀字符是相同的
+导致主键冲突
+***** 换成text长文本类型，却不能建主键了
+***** 加大varchar长度，依旧报上面的建表错误
+mysql  #1170错误（42000） BLOB/TEXT Column Used in Key Specification  Without  a  Key  Length
+*** 留意
+**** mysql并发入库，代码怎么写？
+**** 高效并发队列，Dispatcher  ringbuffer
+**** 如何快速删除一个大文件的前几行，本地也好hdfs也好  how
+**** 
+*** sql
+#+BEGIN_SRC sql
+  insert into hdfs_meta (namespace_id,layout_version,create_time)values(1884402454,-35,23411961479);
+#+END_SRC
+* raidnode                                                          :summary:
+** raidprotocl
+
+** 校验块为什么没有修复回来
+** MissingParityFiles 工具可以查看那些文件的校验块丢了
+Usage: java RaidShell -findMissingParityFiles rootPath
+* doRaid and fix                                                    :summary:
+** doRaid
+*** TriggerMonitor
+定期触发，选择文件doRaid
+*** shouldSelectFiles
+job数达到最大job数则跳过本次选择
+*** selectFiles
+构造一个遍历器traversal with filter
+*** 具体选择条件
+**** 已经raid
+副本数到达target副本数，并且（跳过parity检查或parity存在）
+**** 文件太新
+**** block太少
+**** 不在raid策略里
+**** 策略不在已有策略中
+** fix
+*** DistBlockIntegrityMonitor
+根据parity修复lost block
+*** Worker
+定时发起checkAndReconstructblock
+**** 如果job数小于配置的maxPendingJob，继续检查
+**** 对所有丢块文件进行优先级计算
+***** 丢parity block
+丢一个block以上-->HIGH
+***** 丢源文件的block
+1. 副本因子大于1-->HIGH
+2. 副本因子等于1
+    丢一块以上-->HIGH
+    丢一块-->LOW
+**** startJobs 根据优先级启动任务
+这里会限制一下一个mr任务处理的文件数
+同时 优先级会配置到mr的jobconf里
+** 生成校验块
+在配置文件中对文件目录配置raid的目标条件和raid算法，触发线程周期的检查每一个策略对应的
+文件目录，用于生成检验块的job不可以多于配置raid.distraid.max.jobs。对当前策略维护
+一个可以做过滤的遍历器，在遍历的时候做检查。具体的，当前文件是否已经做了raid？
+（副本数到达target副本数，并且校验块存在或者跳过校验块检查，默认不跳过），文件太新不
+做raid，文件太小block太少不做raid，文件与策略不匹配。
+选好了文件后，就可以针对这些文件发布mr任务，生成校验块。
+** 修块
+修复线程周期的用fsck检查lost blocks，在修复job数小于配置的前提（即控制花在修复上的资源）下，
+对所有丢块文件进行优先级计算，具体分为丢的是校验块和源数据块。丢校验块的时候，一个以上的
+校验块优先级为高。丢源数据块的时候，副本因子大于1的时候为高，副本因子为1的时候丢一块
+为低，一块以上为高。根据优先级启动修块任务。
+* 社区hdfs
+** zkfc
+*** 相关jira
+[[https://issues.apache.org/jira/browse/HDFS-1623][HDFS-1623]]：支持nn高可用
+[[https://issues.apache.org/jira/browse/HDFS-3042][HDFS-3042]]: 自动切换active
+[[https://issues.apache.org/jira/browse/HDFS-2185][HDFS-2185]]：zkfc
+*** 
+* 测试
+#+BEGIN_SRC sh
+
+  #create 测试inodes
+  sh start-workload.sh  -Dcreatefile.num-mappers=1 -Dcreatefile.duration-min=10 -Dcreatefile.file-parent-path=/home/chao -nn_uri hdfs://jlm6.sys.lyct.qihoo.net:9000/ -mapper_class_name com.linkedin.dynamometer.workloadgenerator.CreateFileMapper
+#+END_SRC

@@ -1,0 +1,302 @@
+* mission：hadoop日志如druid
+** DONE mr洗数据
+- State "DONE"       from "SOMEDAY"    [2018-11-14 周三 12:58] \\
+  证明清洗程序可用
+- State "TODO"       from              [2018-11-09 周五 08:21]
+抽取cmd, ts, 家目录（比如/home/xitong，抽取为xitong），操作用户、访问的文件路径
+** DONE 灌入druid测试集群
+- State "DONE"       from "ABORT"      [2018-11-14 周三 12:59] \\
+  注意的问题，摄取json的时间间隔设置，jobproperties设置
+  遗留的问题：supset测试集群登不上
+- State "ABORT"      from              [2018-11-14 周三 12:59]
+- State "TODO"       from "NEXT"       [2018-11-14 周三 12:59]
+- State "TODO"       from              [2018-11-09 周五 08:21]
+日志按分钟级聚合
+维度：cmd, 家目录、操作用户
+指标：count, 文件路径的count distinct
+** DONE superset出图
+
+- State "DONE"       from "SOMEDAY"    [2018-11-15 周四 10:59] \\
+  done
+- State "TODO"       from              [2018-11-09 周五 08:21]
+** TODO 未来计划：
+- State "TODO"       from              [2018-11-09 周五 08:21]
+flink对audit日志进行清洗进入kafka，druid实时摄取
+
+druid的wiki为
+http://druid01v.sys.shbt.qihoo.net:8080/druid/
+
+当然也可以从官网进行学习，druid目前由林静maintain 
+** DONE 另外需要确认一下，日志中是否能获取到federation信息？
+
+- State "DONE"       from "SOMEDAY"    [2018-11-14 周三 13:01] \\
+  日志里没有federation的信息，这个应该在scribe收集日志的时候标注一下，hdfs落地时就放在不同的目录中。
+  Scribe通过thrift写入hdfs, thrift需要配置映射文件
+- State "TODO"       from              [2018-11-14 周三 13:01]
+** 详细版
+所有历史日志存在hdfs safe-lycc集群，目录：
+         总目录：/home/scribe/hadoop/
+         不同集群、不同角色、不同时间的日志按规则存储，例：
+dfs-shbt所有namenode 11月8号的日志存放目录为：/home/scribe/hadoop/dfs-shbt/dfs-shbt-namenode/2018-11-08
+         
+@王超 你可以先处理shbt  namenode的日志
+Namenode日志中会有很多信息，抽取client rpc请求日志进行分析处理
+Client RPC请求日志示例：
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1541689213 2018-11-08 23:00:13,564 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem.audit: ugi=whitelist, supergroup     ip=/10.203.92.78     cmd=open         src=/home/whitelist/rescanner/apk_adcheck_daily_tool/lib/python2.7/lib2to3/tests/data/fixers/parrot_example.py      dst=null         perm=null
+需要分析统计的维度：集群名称、NN主机名、timestamp、ugi、clientIp、cmd、src、dst
+* 数据分析
+** 基础概念
+*** 维度demission
+数据的属性
+*** 指标metrics
+量化衡量标准，可不可以理解为一些观测需求
+比如：
+1、某个操作用户总计使用过多少目录（src）
+2、某一时间段总计有多少目录被访问
+3、某一时段内有多少rpc请求
+* Druid
+分钟级
+每个路径每分钟被访问多少次
+** druidf概念
+1. Druid是一个为大型冷数据集上实时探索查询而设计的开源数据分析和存储系统，提供极具成本效益并且永远在线的实时数据摄取和任意数据处理。
+2. 按时间范围查询数据时，仅需要访问对应时间段内的这些 Segment 数据块,而不需要进行全表数据范围查询,这使效率得到了极大的提高。
+3. 在 Segment 中也面向列进行数据压缩存储，这便是所谓的数据纵向切割。而且对Segment 中的维度列使用了 Bitmap 技术对其数据的访问进行了优化。
+4. 其中，Druid会为每一维度列存储所有列值、创建字典（用来存储所有列值对应的ID）以及为每一个列值创建其bitmap索引以帮助快速定位哪些行拥有该列值
+*** 原始数据格式
+原始数据的格式，可以是JSON、CSV、TSV
+从gz到json
+mapper怎么拿到可读文件，一个目录下的所有文件？
+先拿一天的log /home/scribe/hadoop/dfs-shbt/dfs-shbt-namenode/2018-11-10
+**** 拿到一个目录下的所有文件
+#+BEGIN_SRC java
+  Path inPath = new Path("/home/scribe/hadoop/dfs-shbt/dfs-shbt-namenode/");  
+  FileStatus[] status = hdfs.listStatus(inPath);  
+  List<Path> list = new ArrayList<Path>();  
+  for (FileStatus fileStatus : status) {  
+      if (hdfs.getFileStatus(fileStatus.getPath()).isDir()) {  
+          list.add(fileStatus.getPath());  
+      }  
+  }  
+  Path[] paths = new Path[list.size()];  
+  list.toArray(paths);  
+  TextInputFormat.setInputPaths(job, paths);  
+#+END_SRC
+*** 目标是快速计算日志数据的下钻和聚合
+*** 在Druid中可以通过Hyperloglog+和Theta sketch等技术支持distinct count、留存分析等需求
+*** 数据指标Metrics
+**** 重置周期
+druid.monitoring.emissionPeriod
+** 架构
+*** Real-time node
+提供数据的摄取和查询功能
+*** Historical node
+加载、删除和服务于segments，管理segment对应的持久化数据
+*** Coordinator node
+主要负责历史节点上的数据管理和分发
+*** Broker Nodes
+历史节点和实时节点的查询路由器
+** Ingestion
+*** Overview
+**** DataSource and Segments
+1.dataSources are similar to RDBMS's tables
+2.each segment is a single file
+3.a datasouce may just a few segements or 大量的 segements
+4.store in deep storage with an enty as metadata about this segement sync into DB.
+**** Segment identifiers
+1.four components
+For example, this is the identifier for a segment in 
+datasource clarity-cloud0, 
+time chunk 2018-05-21T16:00:00.000Z/2018-05-21T17:00:00.000Z, 
+version 2018-05-21T15:56:09.909Z, 
+partition number 1:
+#+BEGIN_QUOTE
+clarity-cloud0_2018-05-21T16:00:00.000Z_2018-05-21T17:00:00.000Z_2018-05-21T15:56:09.909Z_1
+#+END_QUOTE
+2.partiotion number 0 could be omited
+**** Segment Version
+1. it to support batch-mode overwriting
+2. just like hbase mvcc
+**** maybe we need Segment states
+3 dementions
+1. ispublished
+2. isavailable
+3. isused
+**** Indexing and handoff
+** Partitioning
+*** 根据segmentGranularity第一次分区，出timethunk
+*** 根据不同的ingestion method 再次对time thunk 分区
+比如index-hadoop里使用hash对某些字段分区
+*** hash分区
+根据基数和目标分区数
+targetPartitionSize ： number of rows per partition
+** Rollup
+
+** Schema Design
+druid摄取数据的时候会把原始数据看成3中类型
+*** timestamp
+*** dimension
+*** metrics
+metrics正常是可以计算的数值类型
+也可以是复杂对象 如
+HyperLogLog sketches or approximate histogram sketches
+what is thiese？
+*** typical practice
+1. fewer than 100 dimensions & fewer than 100 metrics
+2. online production maybe have 1000 demensions
+*** if we want Numeric dimensions
+**** [#A] performance tradeoffs
+Numeric column is good at group
+String column is good at filter
+**** HOW
+specify the type of the column in the dimensions section of the dimensionsSpec.
+** 命令
+#+BEGIN_SRC sh
+  curl -X 'POST' -H 'Content-Type:application/json' -d @nnlogtest.json r883.dfs.shbt.qihoo.net:8090/druid/indexer/v1/task
+#+END_SRC
+** jobpproperties
+job属性，优先级高于集群属性。用于指定依赖（解决冲突）、设置时区。公司已经在在集群上做了本地化配置，不需要另行指定
+#+BEGIN_SRC sh
+   "jobProperties" : {
+                 "mapreduce.job.classloader": "true",
+          "mapreduce.job.classloader.system.classes": "-javax.validation.,java.,javax.,org.apache.commons.logging.,org.apache.log4j.,org.apache.hadoop.",
+          "mapreduce.map.java.opts":"-Duser.timezone=UTC -Dfile.encoding=UTF-8",
+          "mapreduce.reduce.java.opts":"-Duser.timezone=UTC -Dfile.encoding=UTF-8"
+
+
+#+END_SRC
+** 内部mr的监控地址
+可以在log上find “track”来找
+http://m8.dfs.shbt.qihoo.net:19888/jobhistory/attempts/job_1540593843247_1451706/m/FAILED
+** Hadoop在存储数据方面表现良好，但它并未针对提取数据和使数据立即可读而进行优化
+** 结果查看
+[[http://r883.dfs.shbt.qihoo.net:8090/][数据集摄取进度]]
+[[http://r883.dfs.shbt.qihoo.net:8081/#/][数据集查看]]
+[[http://druid01v.sys.shbt.qihoo.net:8090/][测试集群superset]]
+** 删除数据
+1. 先disable
+2. 命令
+#+BEGIN_SRC sh
+  curl -X 'POST' -H 'Content-Type:application/json' -d @delete-kill.json r883.dfs.shbt.qihoo.net:8090/druid/indexer/v1/task
+#+END_SRC
+3. delete-kill.json
+#+BEGIN_SRC json
+  {
+    "type":"kill",
+    "dataSource": "nnlog-lycc",
+    "interval" : "2018-11-14/2018-11-18"
+  }
+
+#+END_SRC
+* Hadoop-based Batch Ingestion
+
+* 日志
+** 格式
+*** 文件名
+w-hdp668.safe.lycc.qihoo.net-31462-5-xt_hadoop-dfs-shbt-namenode-2018-07-06-01-00-09_380247_1530810013120_06021.gz
+*** 内容
+|集群名称|---|namenode主机名|---|ts|年月日|时分秒 |INFO|打印日志的类|
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,205 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.blockReceived: blockMap updated: 10.203.38.85:50010 is added to blk_943118198668562781_4801770263_len=2097152_type=OTHER size 2097152
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,205 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem: Removing lease on  file /home/hdp-wlxstore/wlsandbox/70ec/222128452.sandbox from client DFSClient_671340123
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,205 INFO org.apache.hadoop.hdfs.StateChange: DIR* NameSystem.completeFile: file /home/hdp-wlxstore/wlsandbox/70ec/222128452.sandbox is closed by DFSClient_671340123
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,205 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.blockReceived: blockMap updated: 10.203.84.39:50010 is added to blk_5291680088476411831_4801770260_len=14680064_type=OTHER size 14680064
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,205 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.blockReceived: blockMap updated: 10.203.84.15:50010 is added to blk_5291680088476411831_4801770260_len=14680064_type=OTHER size 14680064
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,205 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem.audit: ugi=hdp-wlxstore, supergroup	ip=/10.203.85.210	cmd=rename	src=/home/hdp-wlxstore/wlsandbox/a46b/222122109.sandbox	dst=/user/hdp-wlxstore/.Trash/Current/home/hdp-wlxstore/wlsandbox/a46b/222122109.sandbox perm=hdp-wlxstore:hdp-wlxstore:rw-r--r--
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,206 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem: Removing lease on  file /home/hdp-wlxstore/wlsandbox/a4cb/222129693.sandbox from client DFSClient_-1590444912
+dfs-shbt HdfsLogProcessor m13.dfs.shbt.qihoo.net /home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 1530810572 2018-07-06 01:09:32,206 INFO org.apache.hadoop.hdfs.StateChange: DIR* NameSystem.completeFile: file /home/hdp-wlxstore/wlsandbox/a4cb/222129693.sandbox is closed by DFSClient_-1590444912
+
+
+导入数据的维度--集群名称、NN主机名、timestamp、ugi、clientIp、cmd、src、dst
+dfs-shbt --集群名称
+HdfsLogProcessor 
+m13.dfs.shbt.qihoo.net --nn主机名
+/home/work/hadoop/log/hadoop-work-avatarnode-m13.dfs.shbt.qihoo.net.log 
+1541689213 -- ts
+2018-11-08 23:00:13 --时间列
+,564 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem.audit: 
+ugi=whitelist --ugi
+, supergroup     
+ip=/10.203.92.78     --clientIP
+cmd=open --cmd
+src=/home/whitelist/rescanner/apk_adcheck_daily_tool/lib/python2.7/lib2to3/tests/data/fixers/parrot_example.py      
+dst=null         
+perm=null
+** 日志位置
+#+BEGIN_SRC sh
+  ./hadoop fs -ls /home/scribe/hadoop/dfs-shbt/dfs-shbt-namenode
+#+END_SRC
+** 日志清洗
+*** mr打包
+1. 依赖自己从集群上拉
+2. 在pom里指向依赖
+#+BEGIN_SRC xml
+  <!-- 自己编译的hadoop-core-->
+  <dependency>
+              <groupId>org.apache.hadoop</groupId>
+              <artifactId>core</artifactId>
+              <version>0.20.2.1I33.5</version>
+              <scope>system</scope>
+              <systemPath>${project.basedir}/src/main/resources/lib/hadoop-0.20.2.1U33.5-core.jar</systemPath>
+  </dependency>
+#+END_SRC
+3. 直接用mvn的按钮打包
+*** mr
+maper 读shbt namenode
+
+1.作为清洗标志的第九列是org.apache.hadoop.hdfs.server.namenode.FSNamesystem.audit:
+2. 时间转换，unix时间到北京时间
+3. ugi的格式不统一 导致每行长短不一样
+4. 数组越界
+*** 运行mr命令 
+#+BEGIN_SRC sh
+  # 输入输出目录可以是不同的hdfs集群
+  #mr 运行命令
+  hadoop jar parselog-1.0-v1.jar LogParseJob /home/scribe/hadoop/safe-lycc/safe-lycc-namenode/2018-11-18/ hdfs://namenode.dfs.shbt.qihoo.net:9000/home/druid/nnlogtest/lycc
+#+END_SRC
+** hdfs output 清洗完成的日志数据
+#+BEGIN_SRC sh
+  hadoop fs -ls hdfs://namenode.dfs.shbt.qihoo.net:9000/home/druid/nnlogtest
+
+#+END_SRC
+* trick
+1. 从日志中找别的计算平台的入口   find track
+例如  从druid日志中找内部mr入口
+1. 时间戳  时区
+* 定时任务
+用crontab发布定时任务
+** 第一阶段
+etl 可以根据返回码 $?来做分支 
+成功进入 ingestion
+失败alarm  message="etl failed + mr任务地址"
+** 第二阶段
+ingestion
+每半个小时发一次query，两个小时内还完不成  失败alarm message="ingestion failed！"
+返回error则写一个文件   still ingesting
+返回success删除文件
+* todo
+** 改成csv
+** 非数值类型的字段的distinct count
+** 抽取home目录
+字段名 src
+有的操作不到home下
+** dimensions去掉src
+去掉src 作为metrics，大量dst都是null 非null对应rename操作
+** 固定几个查询计划
+** 面向运维思考
+
+
+
+safe-lycc HdfsLogProcessor mhdp13.safe.lycc.qihoo.net /home/work/hadoop/log/hadoop-work-namenode-mhdp13.safe.lycc.qihoo.net.log 1542194997 2018-11-14 19:12:54,123 INFO org.apache.hadoop.hdfs.StateChange IPC Server handler 3732 on 9001: BLOCK* NameSystem.addToInvalidates: blk_8905273655069233704 is added to invalidSet of 10.160.107.10:50010
+** map数量过多  跑不通
+指定inputfamat，合并小文件
+#+BEGIN_SRC java
+  job.setInputFormatClass(CombineTextInputFormat.class);
+#+END_SRC
+*** 怪事情,明明报这个错，我改少map后就不报了。。
+#+BEGIN_SRC text
+  Error: java.lang.ClassCastException: org.apache.hadoop.mapred.FileSplit cannot be cast to org.apache.hadoop.mapreduce.lib.input.FileSplit at org.apache.hadoop.mapreduce.lib.input.LineRecordReader.initialize(LineRecordReader.java:84) at org.apache.hadoop.mapred.MapTask$NewTrackingRecordReader.initialize(MapTask.java:557) at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:804) at org.apache.hadoop.mapred.MapTask.run(MapTask.java:343) at org.apache.hadoop.mapred.YarnChild$2.run(YarnChild.java:170) at java.security.AccessController.doPrivileged(Native Method) at javax.security.auth.Subject.doAs(Subject.java:415) at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1657) at org.apache.hadoop.mapred.YarnChild.main(YarnChild.java:164)
+#+END_SRC
+** 增加一个metrics count src
+group cmd count src
+group cmd distinct count src
+** 日志清洗输出文件数控制
+** 

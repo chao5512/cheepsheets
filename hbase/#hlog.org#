@@ -1,0 +1,254 @@
+#+title: 源码
+* hlog
+#+begin_example
+/*******************************************************************************
+ * HLog stores all the edits to the HStore.
+ * 
+ * It performs logfile-rolling, so external callers are not aware that the 
+ * underlying file is being rolled.
+ *
+ * A single HLog is used by several HRegions simultaneously.
+ * 
+ * Each one is identified by a unique long int.  HRegions do not need to declare
+ * themselves before using the HLog; they simply include their HRegion-id in the
+ * append() or completeCacheFlush() calls.
+ *
+ * An HLog consists of multiple on-disk files, which have a chronological order.
+ *
+ * As data is flushed to other (better) on-disk structures, the log becomes 
+ * obsolete.  We can destroy all the log messages for a given HRegion-id up to 
+ * the most-recent CACHEFLUSH message from that HRegion.
+ *
+ * It's only practical to delete entire files.  Thus, we delete an entire 
+ * on-disk file F when all of the messages in F have a log-sequence-id that's 
+ * older (smaller) than the most-recent CACHEFLUSH message for every HRegion 
+ * that has a message in F.
+ ******************************************************************************/
+#+end_example
+** functions
+*** hlog
+完成在一个文件系统fs的指定目录dir下rollwriter
+*** rollwriter
+#+begin_example
+单词
+The 'rollLock' prevents us from entering rollWriter() more than once at a time.
+The 'this' lock limits access to the current writer so 
+we don't append multiple items simultaneously.
+discarded 丢弃
+seize
+#+end_example
+1. 试图roll一个新的writer用来写log，可能需要等待cache-flush完成，在这个过程中算出可以删除的old-log列表
+2. 必须确保现在没有发生flush，否则flush标识可能会出现在一个过新的位置
+   1. 如果在flush时rolllog，即老log文件被改名，新的写入和flush标识写入就会写入这个文件
+   2. 这是不符合逻辑的，可能会多删条目
+**** rollLock
+**** SequenceFile.writer
+[[https://blog.csdn.net/bitcarmanlee/article/details/78111289][(2条消息)hadoop SequenceFile详解 - bitcarmanlee的博客 - CSDN博客]]
++ 一个向hdfs写数据的东西
+**** 删除无用的log
+一个treeset 维护所有的log文件，用long标识，这个long有新旧的
+* hreigon server
+#+begin_example
+/*******************************************************************************
+ * HRegionServer makes a set of HRegions available to clients.  It checks in with
+ * the HMaster. There are many HRegionServers in a single HBase deployment.
+ ******************************************************************************/
+
+
+merge
+/*****************************************************************************
+   * TODO - Figure out how the master is to determine when regions should be
+   *        merged. It once it makes this determination, it needs to ensure that
+   *        the regions to be merged are first being served by the same
+   *        HRegionServer and if not, move them so they are.
+   *        
+   *        For now, we do not do merging. Splits are driven by the HRegionServer.
+   ****************************************************************************/
+#+end_example
+* hLocking
+手写读写锁
+#+begin_example
+nonexclusive 排他
+toast
+#+end_example
+* hregion
+** funcitons
+*** needsSplit
++ region是否split
++ 遍历region的所有storeFile，找到最大的，超了阈值返回true
+*** closeAndMerge
+#+begin_example
+  * Merge two HRegions.  They must be available on the current
+  * HRegionServer. Returns a brand-new active HRegion, also
+  * running on the current HRegionServer.
+
+non-adjacent 相邻的
+collision 冲突
+    // That should have taken care of the bulk of the data.
+    // Now close the source HRegions for good, and repeat the above to take care
+    // of any last-minute inserts
+#+end_example
+
+recalibrate
+#+begin_example
+
+During compactions, hbase should be able to continue to take writes/updates.
+ During splits, the client will have to recalibrate so writes go instead into
+ the new splits but again, other than a pause, writes shouldn't be dropped
+#+end_example
+*** flushcache
+#+begin_example
+  /**
+  ,* Flush the cache.  This is called periodically to minimize the amount of log
+  ,* processing needed upon startup.
+flush让启动的时候日志的工作量变小
+  ,* 
+  ,* The returned Vector is a list of all the files used by the component HStores.
+  ,* It is a list of HStoreFile objects.  If the returned value is NULL, then the
+  ,* flush could not be executed, because the HRegion is busy doing something
+  ,* else storage-intensive.  The caller should check back later.
+  ,*
+  ,* The 'disableFutureWrites' boolean indicates that the caller intends to 
+  ,* close() the HRegion shortly, so the HRegion should not take on any new and 
+  ,* potentially long-lasting disk operations.  This flush() should be the final
+  ,* pre-close() disk operation.
+  ,*
+  ,* This method may block for some time, so it should not be called from a 
+  ,* time-sensitive thread.
+  ,*/
+有可能会block很长时间，因此不要用时间敏感的线程调用这个方法
+#+end_example
+* hstoreFile
+** funcs
+*** mergeStoreFiles
+#+begin_example
+   * Write to this HStoreFile with all the contents of the given source HStoreFiles.
+   * We are merging multiple regions into a single new one.
+
+把参数里给定的一堆file合并到这个htorefile中
+#+end_example
+* lease
+#+begin_example
+/*******************************************************************************
+ * Leases
+ *
+ * There are several server classes in HBase that need to track external clients
+ * that occasionally send heartbeats.
+ * hbase中有一些需要跟踪(偶尔发送心跳的)客户端的服务类
+ * These external clients hold resources in the server class.  Those resources 
+ * need to be released if the external client fails to send a heartbeat after 
+ * some interval of time passes.
+ *
+ * The Leases class is a general reusable class for this kind of pattern.
+ *
+ * An instance of the Leases class will create a thread to do its dirty work.  
+ * You should close() the instance if you want to clean up the thread properly.
+ ******************************************************************************/
+hbase中有一些需要跟踪(偶尔发送心跳的)客户端的服务类
+服务为这些外部客户端hold服务类的资源，如果客户端长时间连不上来，那么需要释放在服务中被hold的资源
+
+expires
+Advance 使增长
+wild card 通配符
+
+#+end_example
+* hmaster
+#+begin_example
+
+repeatedly
+/*******************************************************************************
+ * HRegionServers interact with the HMasterRegionInterface to report on local 
+ * goings-on and to obtain data-handling instructions from the HMaster.
+ *********************************************/
+
+clobbered 击倒
+Wipe the existence of the regions out of the meta table
+#+end_example
++ killlist 关闭且不会再打开的region（正在合并的,正在下线的表的 等等）
+* test
+** EvalutionClient
+#+begin_example
+/**
+ * Client used evaluating HBase performance and scalability.  Steps through
+ * one of a set of hardcoded tests or 'experiments' (e.g. a random reads test,
+ * a random writes test, etc.). Pass on the command-line which test to run,
+ * how many clients are participating in this experiment, and the row range
+ * this client instance is to operate on. Run
+ * <code>java EvaluationClient --help</code> to obtain usage.
+ * 
+ * <p>This class implements the client used in the
+ * <i>Performance Evaluation</i> benchmarks described in Section 7 of the <a
+ * href="http://labs.google.com/papers/bigtable.html">Bigtable</a>
+ * paper on pages 8-10.
+ */
+
+n an orderly fashion
+
+Mark a table as in-memory. 
+This means we should also be able to specify a maximum row length.
+ HBase would have to enforce this as MapFile and SequenceFile 
+don't have a configurable block size - 
+and we don't want to change the block size for the whole DFS cluster for one table.
+
+Bigtable applies attributes on a per column basis. 
+For example, the number of versions kept for a column family, access control, 
+compression are all per column family attributes. 
+Currently max versions is a per table attribute in HBase. 
+Since we are going to be modifying table and column descriptions for 
+this set of enhancements, we should take this opportunity to make 
+max versions a per column attribute as well.
+#+end_example
+* shell
+1. 要保留分区应该使用 truncate_preserve 'tablename'命令，如果直接使用truncate 'tablename'是不会保留分区的
+* thrift
+跨语言编程用
+- 提供其他语言的访问hbase的可能
+* chore
+#+begin_example
+zombie : 僵尸
+'daemon'-ified
+#+end_example
+
+** hbase-85 僵尸进程导致HRS变成僵尸进程
+主线程因为oom退出，但是其他线程一直timewating sleep
+* somthings
+** 读写锁使用不对导致
+#+begin_quote
+error:
+java.io.IOException: java.lang.IllegalMonitorStateException
+
+咋地了
+I now know what is causing the problem: trying to hold a lock across multiple RPC's.
+You can't be guaranteed that the same proxy that took out the lock is the one that is invoked
+when trying to unlock the lock.
+#+end_quote
++ wait或notify没有在锁中调用
++ 解决办法，用Hlocking代替重入读写锁
+#+begin_example
+/*******************************************************************************
+ * HLocking is a set of lock primitives that does not rely on a
+ * particular thread holding the monitor for an object. This is
+ * especially important when a lock must persist over multiple RPC's
+ * since there is no guarantee that the same Server thread will handle
+ * all the RPC's until the lock is released.
+ *
+ * For each independent entity that needs locking, create a new
+ * HLocking instance.
+ *
+ ******************************************************************************/
+#+end_example
+** 两空格缩进还是4空格缩进
+[[https://issues.apache.org/jira/browse/HADOOP-1148][[HADOOP-1148] re-indent all code - ASF JIRA]]
+** 使用Timer添加一个超时机制 hmaster：shutdown()
+** ll
+#+begin_example
+INCOMPATIBLE
+#+end_example
+* 重要更新
+** HADOOP-1445 Support updates across region splits and compactions
+** hbase-46 增加健壮性，死亡挣扎 
+** hbase-798 客户端开启行读锁
+** hbase-669 多region之间的事务，场景：读多写少，乐观并发控制
+** hbase-796 弃用Text类型参数
+** hbase-920 balance条件更为宽松
+

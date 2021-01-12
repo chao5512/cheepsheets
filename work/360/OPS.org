@@ -1,0 +1,165 @@
+* blocing missing
+1. 排查namenode上有没有这个块
+#+BEGIN_SRC sh
+  hadoop fsck "filename" -files -blocks -locations
+#+END_SRC
+2. 排查datanode上有没有这个块
+#+BEGIN_SRC sh
+  # 根据fsck拿到datanode的地址
+  # 在clusterMonitor上拿到当前集群所在的namespaceid 537690663
+  # 在datanode上find块
+  find /data*/block/current/NS-537690663 -name 
+  "blk_-1141189942021161464_7402627703*"
+#+END_SRC
+** 发现nn和dn上均有这个块信息。可能是元数据和数据块的时间戳不一致
+尝试把dn上的blk时间戳改为与meta一致
+** 磁盘漂移
+#+BEGIN_SRC sh
+  #查这个miss的block
+  fsck /home/cloud/archive/tracedb_scribe/20180628.har/part-170 -files -blocks -locations |grep 882130895931778348
+  #接上步结果找到dn
+  #ssh到dn上找这个块，NS-*是namespace，可以在clustermonitor上找到
+  find  /data*/block/current/NS-551229463/current/ -name "*8821308959317783486*"
+  #结果
+  /data11/block/current/NS-551229463/current/subdir3/subdir18/blk_-8821308959317783486_3720887745.meta
+  /data11/block/current/NS-551229463/current/subdir3/subdir18/blk_-8821308959317783486
+  #这是一个老块 一般不会有问题  看下日志
+  grep "8821308959317783486" hadoop/log/hadoop-work-datanode-hdp3807.safe.lycc.qihoo.net.log.2018-12-05-11 > 1
+  #发现盘符不对
+  #重启dn
+  ./software/java/bin/jps -m
+  ./software/hadoop/bin/hadoop-daemon.sh start datanode
+  #或者
+  ./software/hadoop/bin/hadoop-daemon.sh start avatardatanode
+#+END_SRC
+*  系统装好后的初始化工作
+** 机器列表
+r1160.cldiskb.zwyc.qihoo.net
+r4151.qss.zzzc.qihoo.net
+fenxi10.sydata.zzzc.qihoo.net
+r933.cldiskb.zwyc.qihoo.net
+r1386.cldiskb4.zwyc.qihoo.net
+r55.cldiskb1.zwyc.qihoo.net
+** 无权限的机器
+r3323.dfs.shbt.qihoo.net
+r357.cldiskb.zwyc.qihoo.net
+r58.cldiskb1.zwyc.qihoo.net
+r07.cldiskb.zwyc.qihoo.net
+r1070.cldiskb1.zwyc.qihoo.net
+** from linsheng
+#+BEGIN_SRC sh
+  #挂盘：
+  wget -qN --user=360cloud --password=cloud360 http://w-c05.dfs.shgt.qihoo.net:8361/base/fix_slaves.sh && sh fix_slaves.sh
+  #扫坏盘：
+  wget -qO- --user=360cloud --password=cloud360 http://w-c05.dfs.shgt.qihoo.net:8361/diskinfo.sh | sh
+#+END_SRC
+** 磁盘挂载
+#+BEGIN_SRC sh
+  #磁盘挂载
+  cd /root/install_slaves/root_script
+
+  #实际磁盘是6的倍数，正常是24块
+  cat /etc/fstab
+
+  #而挂载的磁盘太少时
+  sh diskctl_init.sh
+
+  #查看磁盘挂载
+  df -h
+
+  #init slavae
+  wget -qN --user=360cloud --password=cloud360 http://w-c05.dfs.shgt.qihoo.net:8361/base/fix_slaves.sh && sh fix_slaves.sh
+#+END_SRC
+** 初始化流程
+yelinsheng@jlm6.sys.lyct.qihoo.net:~/init
+*** 初始化环境
+磁盘只有一个data00
+#+BEGIN_SRC sh
+  #init env
+  1.ip.slave 添加ip
+  2.3-4-5
+  3.check init
+#+END_SRC
+*** 初始化hadoop服务
+磁盘挂载正常
+* dn挂掉
+** tools
+#+BEGIN_SRC sh
+#查看挂载的磁盘
+#+END_SRC
+* ec
+** HDFS-RAID
+HDFS-RAID 这个方案是facebook在 Hadoop 0.20-append分支上做的，
+为了不引入复杂度，基于HDFS，没有修改HDFS。只支持离线(异步)EC。
+RaidNode定期扫描配置发现需要转成EC的文件，转换过程可以本地计算
+也可以通过MapReduce Job。RaidNode内部有一个BlockFixer线程定期
+检查被配置成EC的文件路径，如果文件有丢失的block或者corrupt的
+block，就本地重算或者通过MapReduce Job来重算，然后将生成的block
+插入文件系统中。客户端方面，不需要修改任何代码，只需要修改配置
+告诉它使用的文件系统是DistributedRaidFileSystem，它封装了DFSClient，
+截获DFSClient的请求，当DFSClient抛出CheckSumException或者
+BlockMissingException时，DRFS捕获这些异常，定位到相应的parity file，
+然后重新算出丢失的block，随后返回给客户端. HDFS-RAID 详解看这
+* dn在handshake的时候挂掉
+dn的日志
+#+BEGIN_SRC text
+  2019-01-09 16:29:43,278 INFO org.apache.hadoop.hdfs.server.datanode.AvatarDataNode: Problem connecting to server. m01.cldiskb.zzzc.qihoo.net/10.173.49.71:9002
+  java.io.IOException: Call to m01.cldiskb.zzzc.qihoo.net/10.173.49.71:9002 failed on local exception: java.io.EOFException
+          at org.apache.hadoop.ipc.Client.wrapException(Client.java:898)
+          at org.apache.hadoop.ipc.Client.call(Client.java:866)
+          at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:227)
+          at $Proxy4.getProtocolSignature(Unknown Source)
+          at org.apache.hadoop.ipc.RPC.getProtocolProxy(RPC.java:556)
+          at org.apache.hadoop.ipc.RPC.getProtocolProxy(RPC.java:498)
+          at org.apache.hadoop.ipc.RPC.getProtocolProxy(RPC.java:478)
+          at org.apache.hadoop.ipc.RPC.getProtocolProxy(RPC.java:609)
+          at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:591)
+          at org.apache.hadoop.hdfs.server.datanode.AvatarDataNode$ServicePair.handshake(AvatarDataNode.java:550)
+          at org.apache.hadoop.hdfs.server.datanode.AvatarDataNode$ServicePair.run(AvatarDataNode.java:808)
+          at java.lang.Thread.run(Thread.java:722)
+  Caused by: java.io.EOFException
+          at java.io.DataInputStream.readInt(DataInputStream.java:392)
+          at org.apache.hadoop.ipc.Client$Connection.receiveResponse(Client.java:590)
+          at org.apache.hadoop.ipc.Client$Connection.run(Client.java:507)
+
+#+END_SRC
+nn的日志
+#+BEGIN_SRC text
+  2019-01-10 13:04:34,139 WARN org.apache.hadoop.ipc.Server: RPC access deny 10.173.93.91 not valid for user work, and ugi token work is not valid for user.
+  2019-01-10 13:04:34,139 INFO org.apache.hadoop.ipc.Server: IPC Server listener on 9002: readAndProcess threw exception java.io.IOException: RPC access deny 10.173.93.91 not valid for user work,and token work is not valid for userwork from client 10.173.93.91. Count of bytes read: 0
+  java.io.IOException: RPC access deny 10.173.93.91 not valid for user work,and token work is not valid for userwork
+
+#+END_SRC
+* 按进程号查看进程详细信息
+#+BEGIN_SRC sh
+  #查看进程号4888的进程
+  ll /proc/4888
+
+  #cwd符号链接的是进程运行目录；
+
+  #exe符号连接就是执行程序的绝对路径；
+
+  #cmdline就是程序运行时输入的命令行命令；
+
+  #environ记录了进程运行时的环境变量；
+  #case 
+  fd目录下是进程打开或使用的文件的符号连接。
+#+END_SRC
+* 卸载坏盘
+#+BEGIN_SRC sh
+  df -h |grep sdl
+
+  vim /etc/fstab
+
+  ll /dev/slot*|grep sdl
+
+  fuser -km /data13
+
+  umount /data13
+#+END_SRC
+* dn挂掉
+#+BEGIN_SRC sh
+  #fixed
+  psnap03.safe.shyc2.qihoo.net
+  r3362.dfs.shbt.qihoo.net
+#+END_SRC

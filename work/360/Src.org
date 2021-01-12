@@ -1,0 +1,127 @@
+* hdfs
+** fsimage
+还未写blocks
+#+BEGIN_SRC sh
+   ~/software/java/bin/java -jar ~/software/dbimage/ingestImage.jar format jdbc:mysql://storm02v.sys.shbt.qihoo.net:3306/HAwl i-wanglei p1qaz0okm fsimage 
+#+END_SRC
+** isGoodTarget
+根据nn维护的dn信息做判断
+*** condition-1
+保证选择现役dn，如果正在退役或者已经退役，放弃选择
+*** condition-2
+保证本次写入到选中dn后，这个dn仍有剩余空间。剩余空间的计算方法为blocksize*最小保留块数，
+相关的配置项为dfs.blockpolicy.reserved，默认为一百块。如果剩余不够一百块的空间，那
+么放弃这个dn选择。
+*** condition-3
+保证选中dn的通讯负载不超过集群平均负载过多，代码中为两倍，超过两倍则放弃选择。
+*** condition-4
+保证一个机架上的dn数不要太多
+本次选择每个机架上可选最多的dn数的计算公式为（副本总数-1）/机架数+2
+没有机架感知的情况下 最大可选dn数为副本总数+1 
+** permission
+** block report
+*** namenode保存两级关系
+**** 文件--》块
+保存在内存，fsimage，editlog中
+**** 块 --》dn
+dn连接namenode时 汇报给namenode
+**** dn的职责
+1.存block，供client和其他dn使用
+2.接收namenode的指令，作用于block
+3.周期向namenode汇报block情况
+*** append
+** computeDatanodeWork
+run periodically to do these things
+*** 为小于副本数的的block选择dn 以满足副本数
+** open
+** datanode
+*** datanode init线程
+**** 检查dfs.data.dir里配的存储目录
+block存储目录
+1.只要有一个祖先目录存在即可，并创建完整目录
+2.必须是一个文件夹
+3.可读、可写
+4.checkHealthy得到系统中实际可用的目录
+**** 验证可用目录个数是否在配置容忍度之内
+变量：
+1.真实可用的目录
+2.dfs.data.dir配置的总目录
+3.dfs.datanode.failed.volumes.tolerated配置的允许缺少的目录个数
+报错：Too many failed volumes - 巴拉巴拉
+**** 确保目录可用以后，new 一个datanode
+**** 几个配置
+1.block copy线程池，默认大小10
+2.dn之间copy block的等待时间，默认5分钟
+3.是否支持append 默认不支持
+**** 注册到namenode
+**** UserGroupInformation初始化
+*** datanode daemon线程
+*** dn是否正常工作的判定条件
+**** 磁盘check
+
+** 白名单
+*** namenode对要加入组织的dn有多少层检验
+** setrep
+*** 加了-w后
+记录这些要等待的文件，然后去扫真实结果，也就是拿到一个文件的所有块，看他们所在的host够不够指定副本数
+*** 如何处理副本变更
+**** nn
+1.nn在文件系统中更改要变更的副本数，同时写入log
+2.返回对应文件原有的blocks
+**** a priority q for dns
+1.把这些blocks和rep delta写入优先队列
+2.然后在收到dn的汇报信息后，夹带一个work给dn，让他复制，dn复制完，下一次汇报时就知道副本变更完事了
+*** 有递归的时候如何控制负载
+没有控制，UnderReplicatedBlocks使用了几个无界队列
+LightWeightLinkedSet，每次add后会做扩容判断
+*** 没有控制生产者速度，消费者怎么说
+** 10.173.93.46
+问题描述，启动后一段时间ssh不到，可以平通,重启机器，可以ssh，循环复现
+** 10.173.93.91
+问题描述，启动后，与namenode通讯有问题，被标记为invalid user，在白名单中是有注册的。
+** ec
+*** raid
+* ec
+** HDFS-RAID
+HDFS-RAID 这个方案是facebook在 Hadoop 0.20-append分支上做的，
+为了不引入复杂度，基于HDFS，没有修改HDFS。只支持离线(异步)EC。
+RaidNode定期扫描配置发现需要转成EC的文件，转换过程可以本地计算
+也可以通过MapReduce Job。RaidNode内部有一个BlockFixer线程定期
+检查被配置成EC的文件路径，如果文件有丢失的block或者corrupt的
+block，就本地重算或者通过MapReduce Job来重算，然后将生成的block
+插入文件系统中。客户端方面，不需要修改任何代码，只需要修改配置
+告诉它使用的文件系统是DistributedRaidFileSystem，它封装了DFSClient，
+截获DFSClient的请求，当DFSClient抛出CheckSumException或者
+BlockMissingException时，DRFS捕获这些异常，定位到相应的parity file，
+然后重新算出丢失的block，随后返回给客户端. HDFS-RAID 详解看这
+** RaidNode
+*** rs and xor
+*** 配置
+1.实现类，默认为DistRaidNode,使用mr来做raid
+raid.classname
+2.raidnode端口  默认为60000
+raid.server.address
+3.handler处理能力 默认10
+fs.raidnode.handler.count
+4.blockfixer实现类，默认DistBlockIntegrityMonitor
+raid.blockfix.classname
+5.是否启用blockfixer 默认不启用
+raid.blockreconstruction.corrupt.disable
+6.每种策略最大的job数 默认是10
+raid.distraid.max.jobs
+*** raidnode成员变量
+1.triggerThread 触发策略
+2.purgeMonitor 清理失效的校验块
+3.blockIntegrityMonitor修块线程
+4.placementMonitor块放置策略
+5.DirectoryTraversal 按策略遍历目录树，选择文件做raid
+*** 一个inode的raid状态 RaidState
+  RAIDED,
+  NOT_RAIDED_TOO_NEW,
+  NOT_RAIDED_TOO_SMALL,
+  NOT_RAIDED_BUT_SHOULD,
+  NOT_RAIDED_OTHER_POLICY,
+  NOT_RAIDED_NO_POLICY;
+*** raid策略，施加在一个目录上的，嵌套怎么办
+虽然在当前目录的策略上配置了大于等于1的时候要做raid，但是target目标值也配成了1，所以只有大于1的才会通过check
+*** 流程

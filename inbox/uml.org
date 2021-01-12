@@ -1,0 +1,83 @@
+#+title: plantuml
+* BRFS
+** 大文件写入时序图
+#+BEGIN_SRC plantuml :file ../resource/img/brfs-bigFile.png :cmdline -charset utf-8
+  @startuml
+title 大文件写入时序图
+participant Client as c
+participant RegionNode as rn
+participant RocksDB as nn
+participant DataNode as dn
+== 申请文件句柄阶段 ==
+
+c -> rn: 请求写入大文件/home/user1/case1/bfx
+rn -> nn: exist 检查
+nn -> rn: 返回key，形如6bfs
+rn -> c: 返回key
+
+== 数据上传 ==
+
+c -> rn: 上传数据
+note left: 这是显示在左边的备注
+
+rn --> dn: 转交数据
+... 不超过 5 秒钟 ...
+dn --> rn: 状态返回
+note right: 这是显示在右边的备注
+
+rn -> c: 状态返回
+
+== 状态显示 ==
+
+c -> c: 给自己发消息
+
+  @enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:../resource/img/brfs-bigFile.png]]
+** 文件写入流程
+#+BEGIN_SRC plantuml :file ../resource/img/brfs-file-write.png :cmdline -charset utf-8
+@startuml
+title BRFS文件写入流程
+participant Client as c
+participant BRFileSystem as fs
+participant regionNodeSelector as rns
+participant HttpClient as hc
+participant HttpServer as hs
+participant StorageRegionManager as srm
+participant StorageRegionWriter as srw
+participant DataEngine as de
+participant DataPool as dp
+== 打开region阶段 ==
+c -> fs: openStorageName\n by StorageName
+fs -> rns: 选择regionNode列表
+rns -> fs: 返回regionNode列表 
+fs -> hc: openStorageName 的get请求
+hc -> hs: handle openStorageName
+hs -> srm: findStorageRegionByName 
+srm -> hs: return StorageRegion or null
+hs -> hc: response
+hc -> fs: response
+fs -> c: StorageNameStick
+== 文件上传阶段 ==
+c -> rns: 选择regionNode列表
+note left: client 拿到了 \nStorageNameStick
+rns -> c: 返回regionnode列表
+c -> hc: 写数据的post请求
+hc -> hs: httpServer 处理请求
+hs -> srw: writeData(storageID,data)
+srw -> de: store(data)
+== 文件落盘阶段开始 ==
+de -> dp: 数据写入一个datapool(阻塞队列)\ndataEngine分发线程\n落盘后callback fid
+== 文件落盘阶段结束 ==
+de -> srw: callback fid，积累成fids
+srw -> hs: callback fids as a json
+hs -> hc: response json
+hc -> c: response
+note left: 获得写入状态码\nfids
+@enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:../resource/img/brfs-file-write.png]]

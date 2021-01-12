@@ -1,0 +1,60 @@
+% Created 2020-03-12 Thu 10:46
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{王超}
+\date{\today}
+\title{rocksDB目录树测试}
+\hypersetup{
+ pdfauthor={王超},
+ pdftitle={rocksDB目录树测试},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 26.3 (Org mode 9.1.14)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{最好情况，一直命中缓存}
+\label{sec:org7bd7530}
+\begin{center}
+\begin{tabular}{lrrrrrrrr}
+目录层数 & 1 & 5 & 10 & 20 & 50 & 100 & 150 & 200\\
+read time(micros) & 1612 & 1720 & 1860 & 1705 & 1698 & 1722 & 2145 & 2467\\
+\end{tabular}
+\end{center}
+
+\section{最坏情况}
+\label{sec:org07f3995}
+一直不能命中缓存,但有读的时候把下一次要读的正好缓存上来了
+\begin{center}
+\begin{tabular}{lrrrrrrrr}
+目录层数 & 1 & 5 & 10 & 20 & 50 & 100 & 150 & 200\\
+read time(micros) & 7306 & 7565 & 7782 & 7564 & 7521 & 7990 & 8761 & 7846\\
+\end{tabular}
+\end{center}
+
+\section{最最坏情况}
+\label{sec:orgdb771bd}
+排除顺序扫的可能
+\begin{center}
+\begin{tabular}{lrrrrrrrr}
+目录层数 & 1 & 5 & 10 & 20 & 50 & 100 & 150 & 200\\
+read time(micros) & 7050 & 7162 & 9662 & 10296 & 12500 & 15912 & 19088 & 30905\\
+\end{tabular}
+\end{center}
+\end{document}

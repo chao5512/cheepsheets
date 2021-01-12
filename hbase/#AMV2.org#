@@ -1,0 +1,26 @@
+#+title:  AssignmentManagerV2 
+* 参考
+[[https://yq.aliyun.com/articles/601096?spm=a2c4e.11155435.0.0.2f023e4eTzDjM0][深入解读HBase2.0新功能之AssignmentManagerV2]]
+* 老AM的问题
+1. 状态变化复杂，涉及到的组件多
+2. region状态多处缓存，master、zk、meta中都有
+3. 重度依赖zk，rs对region的改变都要通过zk来告诉master
+* AMv2的由来
++ 第一：剥离zk，速度起飞，但是zk不再存region transition，中间状态可能会在重启时丢失
++ 第二：在加一个Procedure V2来保存中间状态，保证在master重启时，之前的assing/unassign，split等任务能够从中断点重新执行
+** Pv2带来的价值
++ 保存中间状态：使用Procedure WAL，在hdfs上做持久化
++ 提供了丰富的状态转换和回滚
+* test
+#+BEGIN_SRC plantuml :file ./img/test.png
+  @startuml
+  Class01 <|-- Class02
+  Class03 *-- Class04
+  Class05 o-- Class06
+  Class07 .. Class08
+  Class09 -- Class10
+  @enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:./img/test.png]]
