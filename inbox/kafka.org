@@ -1,0 +1,153 @@
+#+title: all about kafka
+* 学习资料
+1. [[https://www.zhenchao.org/2019/06/17/kafka/kafka-architecture/][指间]]
+* overview
+** client(客户端)
+*** producer
+**** key words
+1. 异步提高吞吐
+2. 消息缓存
+*** consumer
+**** key words
+1. pull/push模式
+2. consumer group
+3. leader/follower consumer
+** cluster(服务端)
+*** broke
+**** kws
+1. leader broker & kafkaController
+*** LogManager
+**** kws
+1. 本地文件系统
+2. 副本
+3. 顺序读写
+4. 零拷贝
+5. 索引
+6. 清理 压缩
+*** ReplicaManager
+**** kws
+1. topic分区副本
+2. 角色切换
+3. 数据同步
+*** GroupCoordinate
+**** kws
+1. 管理consumer与topic分区间的平衡关系
+*** Purgatory
+**** kws
+1. 延时任务
+*** Authorizer
+**** kws
+1. 权限控制
+*** AdminManager
+**** kws
+1. 手动管理
+** concepts
+*** topic partition
+1. 消息topic划分
+2. topic 且分为许多partition
+3. partition做了副本
+4. 对于同一个topic partition.分为leader partition和follower partition
+5. follower partition只起备份作用?
+*** 副本集合 AR & ISR partition replica
+1. AR(assigned replica) 一个topic中的所有副本集合
+2. ISR(in sync replica) 一个topic及时保持同步的副本集合
+3. ISR是AR的子集,满足条件的ISR晋升到AR中
+   1. 副本所在broker节点与zk链接正常
+   2. 副本相对于leader副本的延迟不大 通过offset来判断
+4. leader副本丢失后,从ISR中选择新的leader保证数据丢失的不大.但不使用一致性协议还是有数据丢失?HW?
+*** Log End Offset & High Watermark
+1. HW由leader partition维护
+2. consumer只能看到HW之前的log,也就是说,对于某个副本的小集群来说,HW之前的消息才算写进kafka了.
+3. producer将消息投递到kafka时会携带一个期望ack=x值,这个值的意思是最小保存成功x个副本才算写入成功
+4. 只有写入成功,HW才向前移动
+*** topic offset
+1. native offset topic 用来存各个topic的消费offset
+
+** 
+* All About Producer
+** KafkaProducer
+负责接收用户消息,投递给指定topic分区
+1. 由producer指定将数据写入到那个partition
+2. 配合key和分区器和元数据,来做partition选择
+** 拦截器
+[[https://www.jianshu.com/p/7873b76842c0][Ref]] 有点像hbase的协处理器
+1. 利用interceptor,使用者可以在消息发送前或者producer回调前(写入成功或失败后)定制功能
+   1. 发送前在每个producerRecoder的value前添加当前时间
+   2. 利用回调前的定制功能,统计发送成功的消息数
+*** 使用
+1. 实现ProducerInterceptor接口
+   1. onSend为发送前的拦截点
+   2. onAcknowledgement为回调前的拦截点
+   3. configure
+2. 在producer中配置该拦截器
+#+BEGIN_SRC java
+
+  List<String> interceptors = new ArrayList<>();
+  // 两个拦截器
+  interceptors.add("com.test.kafka.interceptor.TimeInterceptor");
+  interceptors.add("com.test.kafka.interceptor.CounterInterceptor");
+  // 到时通过反射拿到实例
+  props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
+
+#+END_SRC
+** Partitioner
+*** 面向的业务不同
+1. 有的业务需要自己控制消息追加到某一partition上
+2. 有的业务不关心追加到那个partition上
+*** ProducerRecorder
+代表要被追加的消息
+1. 可以指定分区信息,producer优先向指定的分区上追加消息
+2. 如果没有指定分区消息就使用到partitioner
+** RecorderAccumulator
+
+*** 考虑线程安全
+1. 有一个业务线程向accumulator中追加消息
+2. 有一个sender线程在满足条件时消费消息
+** arch
+#+BEGIN_SRC artist
+  +--------------------------------------------------------------------------------------------+
+  | 主线程                                                                                      |
+  | +-----------------+       +-------------------+     +------------+         +-------------+ |
+  | |  KafkaProducer  |------>| KafkaInterceptors |---->| Serializer |-------->| Partitioner | |
+  | +-----------------+       +-------------------+     +------------+         +-------------+ |
+  +--------------------------------------------------------------------------------------------+
+
+
+
+
+
+
+
+
+
+#+END_SRC
+* metadata
+producer缓存集群中的信息,可以根据这些信息做负载均衡.但如何保证缓存的时效性?失败重试?
+** Abstraction
+*** Metadata
+1. 用于client的分区
+2. 用于client sender
+3. 维护了topic的子集,当request一个尚未缓存的topic将会触发元数据更新
+4. consumer 端不需要metadata过期时间, producer端需要过期时间
+* in action
+** 配置kafka集群在zk上的根目录
+在serve.properties文件中
+#+BEGIN_SRC sh
+  zookeeper.connect=localhost:2181/chao-kaf
+#+END_SRC
+** kafka-logs目录下的meta.properties文件中记录cluster id
+1. cluster id 什么时候增长
+2. cluster id干啥用的
+3. 存在meta.paoperties中一份,zk的/cluster/id中一份
+** kafka的broker是不是无状态的?
+
+* zk在kafka中的作用
+[[https://blog.csdn.net/maoyeqiu/article/details/102715254][Ref]]
+** 选举
+controller节点存储这leader broker的信息
+#+BEGIN_SRC sh
+  [zk: localhost:2181(CONNECTED) 25] get /chao-kaf/controller
+  {"version":1,"brokerid":0,"timestamp":"1598320825173"}
+#+END_SRC
+** 生产负载均衡
+** 消费负载均衡

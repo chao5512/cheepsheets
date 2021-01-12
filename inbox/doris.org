@@ -1,0 +1,177 @@
+#+title: 百度doris
+* 调研
+| 独立组件个数(按进程) | 聚合策略支持 | 数据类型个数 | 大表数据数量级支持 | 大表查询耗时 | 常规查询耗时 | SQL-LIKE查询支持 | 多表join | 查询函数支持 | 入库延时 |
+|  1.FE 2.BE 3.BROKER(可选) |1. 预聚合支持4种类型 |              |                    |              |              | 支持 |支持|              |          |
+
+
+
+|入库性能|PB级存储支持|分布式支持 | 并发查询支持 | 单机部署支持 | 窗口函数支持 | 数据自动均衡 | 离线处理 | 冷热数据分离 | 查询资源隔离 | 存储效率 | 副本支持 | 排序字段类型支持 |
+|       |         |支持      |            | 支持       |              |              |          |              |              |          |          |                  |
+* 编译
+** gcc 小于5.3.1
+#+begin_src shell
+  sudo yum install centos-release-scl
+  sudo yum install devtoolset-7-gcc*
+  scl enable devtoolset-7 bash
+  which gcc
+  gcc --version
+#+end_src
+** 安装maven
+
+1. 下载
+2. 配置环境变量
+3. 记得改一下repo,doris fe中的pom中也要改
+** 升级cmake
+#+begin_src shell
+  # 查看云端有木有
+  yum search cmake
+
+  # 查看可安装的cmake
+  yum list cmake
+
+  # 删除已安装的cmake
+  sudo yum remove cmake -y
+
+  # 下载cmake3
+  wget https://cmake.org/files/v3.6/cmake-3.6.2.tar.gz
+
+  # 解压到./tar -zxvf cmake-3.6.2
+  tar -zxvf cmake-3.6.2.tar.gz
+
+  # 编译
+  cd cmake-3.6.2
+  ./bootstrap --prefix=/usr/local
+  make install
+
+  # 把/usr/local/bin添加到系统path里
+  export PATH=/usr/local/bin:$PATH:$HOME/bin
+#+end_src
+
+build_librdkafka
+build_flatbuffers
+build_arrow
+build_s2
+build_bitshuffle
+build_croaringbitmap
+build_orc
+build_cctz
+* 部署
+** fe
+1. 拷贝output中的fe文件夹到安装目录
+2. 修改conf/fe.conf 中的meta.dir
+3. 启动 sh bin/start_fe.sh --daemon
+
+** be
+1. 拷贝output中的be文件夹到安装目录
+2. 修改be/conf/be.conf。主要是配置 storage_root_path,需手动创建该目录
+3. 在fe中注册Be节点
+   1. ./mysql-client -h host -P query_port -uroot
+   2. ALTER SYSTEM ADD BACKEND "host:heartbeat_service_port";
+   3. sh bin/start_be.sh --daemon 启动
+   4. 在fe中查看be,SHOW PROC '/backends';
+
+** in action
+#+begin_src shell
+  mysql -h 10.240.3.243 -P 9030 -uroot
+
+#+end_src
+* 原理
+** 存储
+* 运维
+** 副本
+0.9以后,支持较为完整的副本功能
+1. 副本状态可查
+2. 副本均衡
+3. 副本修复
+4. 资源控制
+5. 可以在建表的时候指定replication_num
+** 审计日志支持
+可以通过添加插件的方式获得审计日志
+** 排序字段类型
+
+** 数据过期策略
+storage_medium & storage_cooldown_time
+
+*** storage_medium
+存储介质,可以做表级的介质分配
+
+*** storage_cooldown_time
+默认30天从ssd迁移大hdd
+
+** 存储效率
+
+* 数据模型
+** inbox
+1. column分为两类key和value
+2. key对应于维度列
+3. value对应于指标列
+4. 
+** 分类
+*** Aggregate模型
+1. 设置了聚合类型的为value,未设置聚合类型的为key
+2. 数据导入时,key相同的行聚合为一行
+
+**** AggregateType
+目前支持4种
+1. SUM：求和，多行的 Value 进行累加。
+2. REPLACE：替代，下一批数据中的 Value 会替换之前导入过的行中的 Value。
+3. MAX：保留最大值。
+4. MIN：保留最小值。
+
+**** 聚合的实现
+
+***** 分3个阶段进行聚合
+1. 每一批次数据导入的 ETL 阶段。该阶段会在每一批次导入的数据内部进行聚合。
+2. 底层 BE 进行数据 Compaction 的阶段。该阶段，BE 会对已导入的不同批次的数据进行进一步的聚合。
+3. 数据查询阶段。在数据查询时，对于查询涉及到的数据，会进行对应的聚合。
+
+**** 使用聚合的原则
+1. 数据在不同时间，可能聚合的程度不一致。比如一批数据刚导入时，可能还未与之前已存在的数据进行聚合。
+2. 用户只能查询到聚合后的数据
+3. 用户需始终认为数据以最终的完成的聚合程度存在，而不应假设某些聚合还未发生
+
+**** 聚合模型的限制
+
+*** Uniq模型
+1. 聚合模型的一个特例
+2. 适用于不需要聚合,只关心主键唯一的场景
+3. 等同于主键列为key,value列的聚合策略为replace
+
+*** Duplicate模型
+1. 适用于不需要聚合,也不关心主键约束的场景,所有行都保留,即使是完全相同的行
+2. 指定的duplicate 列为排序列
+* RollUp
+rollup在多维分析中是上卷的意思,按照某一粒度进一步聚合
+** 在Aggregate模型中
+可以通过rollup表来加速查询
+** 在Duplicate模型中
+可以通过rollup来调整列顺序,更好的使用前缀索引
+** 总结
+1. rollup 用于提升查询效率
+2. rollup表附属于base表,不可显示的使用rollup表
+3. rollup占用额外的存储,同时也会牺牲导入速度
+4. rollup与base表为强一致的(官网说完全一致)
+5. rollup中列的聚合函数是从base表继承来的
+6. 要向命中rollup表,则需要查询的列全都在rollup表中
+* 建表
+支持单一分区和符合分区
+** 单一分区
+数据只做hash分布
+** 复合分区
+*** 第一级 partition
+1. 指定一个维度列作为分区列,并配置该列值的取值范围
+2. 支持整形和时间类型
+*** 第二级 distribution
+可以指定一个或多个维度来进行hash分桶
+*** 适用场景
+1. 需要删除历史数据的场景,可以用删分区来实现
+2. 需要解决数据倾斜问题
+3. 有时间维度的数据,按时间维度分区
+
+* 调研计划
+1. 测试在命中rollup的时候查询速度的提升
+2. rollup表的延迟
+3. 考察rollup表和base表的一致性策略
+4. 考察rollup表和base表存储位置上的关系
+5. 
+

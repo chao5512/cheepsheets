@@ -1,0 +1,7 @@
+#+title: Frangipani 关于分布式文件系统
+* 概述
+1. NFS network-filesystem
+
+* 缓存一致性
+* 分布式事物
+* 分布式故障恢复
