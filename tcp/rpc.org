@@ -1,0 +1,17 @@
+#+title: rpc的实现
+* 实现rpc的3个问题
+1. 函数识别
+   - [ ] 使用反射
+2. 序列化和反序列化
+   - [ ] protobuf
+   - [ ] avro
+3. 网络通讯
+   - [ ] jdk
+   - [ ] netty
+* 如何使用HADOOP-RPC
+1. 定义rpc协议，即两端都能识别的通讯接口
+2. 实现rpc,在rpc实现里调用server的真正服务的接口
+3. 构造并启动rpc server
+4. c端构造rpc请求，并发送
+
+

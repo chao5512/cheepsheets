@@ -1,0 +1,170 @@
+#+title: tcp ip
+* 思考
+1. 程序是如何通过网络进行通讯的？
+* 一些概念
+1. 主机和路由器
+2. 通信信道
+3. 分组报文
+4. 协议
+5. IP ： Internet Protocol  将信息从一台主机分发到不同的主机
+6. TCP ： Transmission Control Protocol 负责在信息到达主机后“寻址”到指定应用程序by port，因此TCP和UDP为端到端的传输协议
+7. UDP ： User Datagram Protocol
+8. DNS ： Domain Name System 是一种分布式数据库，存 域名=》ip
+9. 本地配置数据库： 与DNS 一起完成域名解析，具体是如何解析的？
+* 另一些概念
+1. 使用hostname的好处
+   1. 容易记忆
+   2. hostname提供了中间层，使ip地址的变化对用户不可见
+* 基本套接字
+1. InetAddress
+   1. 类型
+      1. unicast 单播
+      2. muticast多播 ipv4的多播地址前四位bit为1110
+   2. scope（与直接路由什么关系）
+      1. Link-local
+      2. Site-Local
+      3. Global
+   3. 
+* 网络编程
+** TTCP
+Test TCP
+*** 性能指标
+1. Bandwidth，MB/s
+2. Throughput, messages/s,QPS,T(transaction)PS
+3. latency,平均延迟 millseconds,percentiles(百分比延迟)
+4. Utilization，资源利用率
+5. Overhead 额外开销
+* UNP
+Unix Network Programming
+** 第一章
+*** 1.7 OSI 网络模型
+open system interconnection
+**** raw socket 原始套接字
+应用绕过传输层直接使用ipv4或ipv6
++ 更神奇的是，我们甚至还可以绕过ip网络层直接读写数据链路层上的帧。
+  1. 源自Berkeley系列的内核使用BPF（BSD packet filter） 访问数据链路层
+  2. linux通过SOCK_PACKET套接字访问数据链路层
+**** 套接字是顶上三层（应用、表示、会话）进入更低层（传输层）的接口。
+1. 顶三层更关心应用细节，底四层更关心通信细节
+2. 顶三层常为用户进程，底四层常为内核提供
+*** 1.8 BSD网络支持历史
+**** linux 的网络支持代码和套接字API是从头开发的，不适合归属于源自Berkeley的系列
+**** vpn
+virtual private network 虚拟专属网络
+*** 1.9 网络拓扑
+两个命令
++ netstat 用来获取所有接口名字
++ ifconfig 用来查看具体接口的详细信息
+**** 使用ping来找出本地网络中所有主机的ip？
+***** macbook
+1. ifconfig en0
+2. ping 广播地址
+3. traceroute ip 查到到某ip的路由
+4. arp ip 把ip映射成硬件地址（MAC地址）
+** 第二章 传输层协议
+*** UDP 
++ 无连接
++ 不可靠
++ 可以是全双工的
++ 每个数据报携带数据长度
+*** TCP
+1. 面向连接，先与服务器建立连接，再跨该链接与服务器交换数据
+2. 可靠的，发送数据时要求对端返回一个确认，如果没有收到确认会尝试重传。要注意的是，TCP不能保证数据一定会被对端收到，TCP的可靠是指“数据的可靠传递或未知传递是否到达的可靠通知”。
+3. TCP可以动态估算给定连接的RTT，以方便调整等待ACK的时间
+4. 给传输的字节标序来保证顺序和去重
+5. 提供流量（flow control）控制，动态窗口
+6. 全双工（full-duplex)
+*** SCTP(Stream Control transmission protocol)
++ 提供关联
++ 面向消息
++ 关联的两端支持多个流，每个流的阻塞不会影响其他流的正常数据交换
++ 多宿特性，可以做网络连接的冗余
+*** 2.6 TCP连接的建立和终止
+**** 建立连接的三次握手
+1. 服务器准备好接受（accept）外来连接，passive-open，通过socket、bind、listen
+2. 客户端调用connect主动连接，active-open，TCP客户端发送一个SYN，携带要发送数据的起始序列号
+3. 服务端返回ACK，并携带自己的SYN，向客户端发送数据的起始序号
+4. 客户端收到服务器返回的ACK和SYN后，向服务端返回ACK，客户端connect函数返回。
+5. 服务端收到客户端发来的ACK后，从accept方法返回
+**** 终止连接的四次挥手
+1. TCP连接的一端调用close方法主动终止连接，向另一端发送FIN
+2. 另一端收到FIN，执行被动关闭，向主动端返回ACK
+3. 可能经过一段时间，被动端也调用close关闭自己的套接字了，他也会发送一个FIN给对端
+4. 主动端确认这个FIN，应该是通过TCP的确认的
+**** TCP的TIME_WAIT状态
+存在的理由
+1. 可靠的实现TCP全双工连接的终止，某一段进入TIME_WAIT，以便在最后一个ACK丢失后，能够重新确认
+2. 防止旧连接的迷途数据被新连接消化，处于TIME_WAIT状态的连接端口不可以被马上使用
+*** 端口号
+为便于使用，划分为3段
+1. 0-1023：默认周知的端口，受IANA控制，保留端口，尽量按标准来
+2. 1024-49151：IANA知道的端口，应尽量保证相同端口使用在相同服务上，如2181
+3.49152-65536：私用的
+*** 套接字对
+形如{*:21,*:*}
+*** tcp服务端如何并行处理来自不同的端的请求？
+为每个新的连接fork一个子进程，用来处理之后从该连接对应的端发来的数据
+*** 那么对于某个新到达的数据，TCP服务端如何能够区分决定出由服务器上的那个子进程来处理呢？
+只查看目的端口号，是无法区分不同的端的，它必须查看套接字对的全部4个元素
+*** 2.11 缓冲区
++ IPv4数据包最大大小为2^16-1
++ MTU (maximum transmission unit)最大传输单元
++ IPv4的DF（dont fragment）位和IPv6的隐含DF位可以用来探测path MTU，通过不断的报错和重试
+**** TCP的发送
+1. 当应用调用一个socket的write时，内核从应用进程的缓冲区中复制数据到该socket的发送缓冲区
+2. 成功写入发送缓冲区后，write返回，注意，write返回并不代表对端已经收到了数据
+3. TCP必须在发送缓冲区为发送数据保存一份副本，直到收到这份数据的ACK
+**** UDP的发送
+1. 不需要保存副本，UDP没有真正的缓冲区
+2. 从write方法返回代表着数据被写到数据链路层的发送队列
+**** SCTP与TCP相似
+** 第三章 基本套接字
+*** socket函数
+1. 创建一个套接字
+2. 可以指定协议，即可以使得程序做到协议无关性
+*** connect函数
+1. 客户端可以不必调用bind函数绑定端口，内核在需要时自动分配
+*** bind函数
+1. 为socket 绑定一个协议地址
+2. 协议地址：简单理解为ip+port
+*** listen函数
+1. 仅由服务器调用，使得一个主动连接套接字转换为被动套接字
+2. 可以通过参数来设置该套接字的最大连接个数
+3. 内核为监听套接字维护两个队列
+   1. 未完成连接队列
+   2. 已完成连接队列
+*** accept函数
+1. 由服务器调用，从已完成队列中取一个连接
+2. 返回一个客户端的TCP连接，称为已连接套接字
+*** fork函数和exec函数
+1. fork的两种典型用法
+   1. fork自身，执行相同的代码逻辑，网络服务器
+   2. fork自身，调用exec替换新的程序，shell
+2. 6个exec函数
+*** 并发TCP服务器
+1. 当一个连接建立，accept返回，服务器接着调用fork，由子进程服务该连接
+2. 父进程对一个套接字引用调用close方法后，该套接字的引用计数减一，引用计数为0时才清理和释放资源
+3. 父进程为什么在fork后调用close方法，为了让TCP连接即时关闭，释放可用描述符
+*** close函数
+调用close函数后，该套接字描述符不能再由调用进程使用
+** 第五章 
+*** 整理用到的命令
+1. scp 远程拷贝
+#+BEGIN_SRC sh
+  scp localPath user@host:~/some path under the user home
+#+END_SRC
+2. 查看网络连接
+#+BEGIN_SRC sh
+  netstat -a|grep tcp 
+#+END_SRC
+3. 查看进程
+#+BEGIN_SRC sh
+  ps -efo pid,ppid,stat,args,wchan
+#+END_SRC
+*** 网络编程服务端的基本情况
+1. fork子进程时，必须捕获SIGCHLD信号
+2. 检测到中断信号后，必须处理中断
+3. SIGCHLD的handle 用waitpid而不是wait来防止进程僵死，因为wait只响应一次
+** 
+* 网络编程实战
+如果我用tcp协议  这里说的packet对应TCP数据包的大小，TCP是面向流的协议，不必一定小于64k(udp 包头中用16bit表示包长度，所以最大64k)，这样看起来确实是可以把一个packet设置为64m，但是，tcp用来控制发送速度的窗口最大为64k，也就是说，就算我一个packet大小为64m，tcp协议看来还是以64k大小发送的。TCP是可靠连接，但不保证数据一定会被对端收到，可靠的意思是数据的可靠传递或不知道传递是否到达的可靠通知，所以hdfs设置了ackQ来在上层保存数据副本，以便重新发送
