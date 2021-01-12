@@ -11,6 +11,74 @@
    1. 将随机读写转换为顺序读写，适合高并发写入
    2. 均衡效果好，读写性能与机器数线性相关
    3. 空间高效利用，行中没有保存数据的列不占空间，Hbase存储更为紧凑
+** 设计
+*** HFile (hbase-3857)
+**** motivation
+1. v1下，rs中由于过大的bloom过滤器和block indexes，而引起的高内存占用和拖慢rs启动时间
+2. 只有当region的block index data加载完成，这个region才被视为open
+3. bloom fileter的情况是：第一次使用bloom filter的get请求会导致整个bloom filter的加载，相当于第一个get请求被放大了
+4. 高内存占用,可以把部分内容写出到HFile.加载时候可以部分加载.为了达到这样的效果Bloom Filter和 block indexes都被拆分成多个
+5. 对于每个拆分出来的Bloom filter,当收集了足够的key,能够高效的利用bit 数组时,就可以write out
+6. 对于每个拆分出来的Block index,收集到预期的一个值后,就可以write out
+7. 在hfile中bloom filter和index block被成为inline block
+8. 在v1中datablock是紧邻在一起的,所以可以用下一个block的offset来确定上一个block的length.加入inlineblock后,失去了这个方便
+9. 另一个改动,也就是多级索引,是为了加快rs的启动
+**** v2 格式
+***** byte type
+8byte 的字节序列,等于v1的magic records
+1. DATA 数据block
+2. LEAF_INDEX 多级索引的页索引
+3. BLOOM_CHUNK bloom filter的块
+4. META 元数据块 在v2中不在用于bloom filter
+5. INTERMEDIATE_INDEX 多级索引的中间索引
+6. ROOT_INDEX 多级索引的根索引
+7. FILE_INFO 元数据的kv map
+8. BLOOM_META 在load_on_open分区中的Bloom过滤器的元数据
+9. TRAILER 跟随版本的定长数据结构
+10. INDEX_V1 逻辑上的v1 hfile,应该是做兼容用的
+***** 压缩后的数据大小(int)
+1. 不包括header
+2. 这是hfile中block的实际size,所以可以用这个来跳过当前块
+3. 在v1中,只在header存了未压缩的size,因为压缩后的size可以用块之间的偏移量之差来计算得出
+***** 未压缩的数据大小(int)
+如果压缩算法指定为NONE,这个值和压缩大小相同
+***** 上一个同类型的块的偏移量(相当于双向链表)
+用来从后向前遍历,注意是同类型的上一个块
+***** 可压缩的数据
+**** 数据分区
+***** Scan block section
+线性扫描的时候用到的块,也包括索引页节点,bloom chunks
+***** Non-Scan block section
+1. meta 块
+2. 中间索引
+**** 索引块
+3类索引按两种格式存储(root和非root)
+***** data index 多级索引
+1. root index
+2. 可选的中间索引节点
+3. 可选的叶节点
+***** meta index 
+root only
+***** bloom index
+root only
+**** bloom filter
+为了快速启动rs,相较于v1 bloom 过滤器被拆分成小的bloom chunks
+***** 一个复合型bloom 过滤器
+1. 版本
+2. 总字节大小
+3. hash 方法的number
+4. hash 方法的种类
+5. 总的key的数量
+6. key的数量上限
+7. bloom 块的数量
+8. 比较器
+9. bloom 索引块
+**** File info
+比较器属性从file info 移至trailer
+| hfile.LASTKEY       | hfile的最后一个key |
+| hfile.AVG_KEY_LEN   | 平均key长          |
+| hfile.AVG_VALUE_LEN | 平均value长        |
+**** 
 ** Hbase使用
 *** 适用场景
 - 列族结构经常调整
@@ -336,7 +404,14 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 #+RESULTS:
 [[file:/Users/wangchao/iosdev/cheepsheets/resource/img/hbase-memstore-seq.png]]
 ** inbox
-1. 
+*** 读取流程
+1. 从zk拿到meta表位置
+2. 加载meta表,按rowkey查找region位置
+3. 向rs发读请求
+4. RegionScanner
+   1. StoreScanner(列族)最小堆
+      1. StoreFileScanner + MemstoreScanner最小堆
+
 * test
 #+begin_src plantuml :file tryout.png
   Alice -> Bob: synchronous call

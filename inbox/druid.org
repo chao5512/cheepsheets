@@ -1,0 +1,211 @@
+#+title: druid
+* 设计 
+1. 多进程
+2. 易扩展
+3. 容灾能力，某一个进程的崩溃不会立刻影响其他节点
+** 架构
+*** 节点角色
+1. coordinator： 管理segement
+2. overload： 数据摄取的工作分配
+3. broker： 处理外部查询请求
+4. router： 可选节点，可以将请求路由到其他节点，运行web控制台
+5. historical： 存储可查询的数据
+6. middleManager: 负责摄取数据
+*** 外部依赖
+**** deep storage
+1. 用作数据备份
+2. 用作数据传递的共享存储
+3. historical在响应查询的时候应该是不访问深度存储的，他应该在查询前就欲拉取segments到本地磁盘，待验证：不过懒加载模式下，应该是query时才去加载
+**** 元数据存储
+1. 存储segment使用信息和任务信息
+**** zookeeper
+1. 服务发现
+2. 协调
+3. leader选举
+*** 存储
+**** datasource
+1. 数据存储在datasource中，可以看作一张表，表中数据按时间分区
+2. 每个分区被称为chunk
+3. 每个chunk中，数据又被分区成为一个或多个segement
+**** segment
+***** middle manager
+segment是在middlemanager上创建的，在middlemanager上时，它是可变的、未提交的
+***** segment创建步骤
+1. 转换为列式
+2. Indexing：创建位图索引，并使用索引替换维度列
+3. 压缩
+   1. 对字符串的压缩
+   2. 对位图索引的压缩
+   3. 对所有拥有类型声明的列的压缩
+***** segment周期的提交与发布
+1. segment刷入deep storage
+2. handoff: segment被托管给historical
+3. 写入segment相关信息到元数据，用来决定加载或写在segment
+****** Indexing过程
+******* 需要在构建所以前确定segment的标识符
+1. append模式,使用overload的allocate api来添加一个新的分区到一个已有的segments集合
+2. overwrite模式，新的版本号，新的segment集合
+******* 实时任务
+支持实时查询，但是并没有发布到深度存储
+******* index完成时
+可以发布同时向元数据存储写入一条该segment相关数据
+******* indexing完成后
+如果indexing是个实时任务，那么它将等待historical节点加载该segment。不是实时任务则直接退出index阶段
+******* 此时coordinator和historical的一面
+1. coordinator周期的拉取元数据中新发布的segment
+2. 发现新发布但是并未可用的segment，挑选一个historical并命令该historical节点加载segent并提供服务
+3. historical节点干活
+4. 这时如果index 任务还在等待handoff， 那么它可以退出了
+****** segment identifier
+datasource_intervalStart_intervalEnd_version_partitionNum
+1. datasource name
+2. Time interval，包含这个segment的chunk的时间段。对应对摄入任务的segmentGranularity，granularitySpec
+3. version number
+4. 分区号。ok now we can find any segment
+***** segment lifecycle
+****** 三个方面
+******* 元数据存储
+1. 向元数据存储写入一条segment记录的过程叫作pubulish
+2. 这些记录又一个标志位used，代表是否可查
+3. 实时摄取的segment会在被publish前就可以查询
+******* 深度存储
+segment一旦构造完成，立刻刷入深度存储中，然后写入meta存储
+******* 支持可查
+****** 查看segment
+You can inspect the state of currently active segments using the Druid SQL sys.segments table. It includes the following flags:
+
+is_published: True if segment metadata has been published to the metadata store and used is true.
+is_available: True if the segment is currently available for querying, either on a realtime task or Historical process.
+is_realtime: True if the segment is only available on realtime tasks. For datasources that use realtime ingestion, this will generally start off true and then become false as the segment is published and handed off.
+is_overshadowed: True if the segment is published (with used set to true) and is fully overshadowed by some other published segments. Generally this is a transient state, and segments in this state will soon have their used flag automatically set to false.
+**** segment的结构
+1. 列式存储结构
+2. ts列和metrics列
+3. 维度列
+   1. 值到id的对应关系字典
+   2. 位图，对于某个值，标识哪些行包含它 最坏情况下，空间复杂度位行数*当前列可能的取值。为了减轻存储负担  可以用roaring bitmap compression.
+   3. 将值替换位id的数据列表
+***** why
+In other words, queries that solely aggregate metrics based on filters do not need to touch the list of dimension values stored in (3)
+**** files about segment
+1. 00000.smoosh： 包含了所有列的文件和一个索引文件。放在一起以减少文件描述符的消耗
+2. factory.json
+3. meta.smoosh
+4. version.bin
+**** 列格式
+1. jackson序列化的列描述符
+2. 二进制的列值表
+*** metadata
+**** druid.metadata.storage.tables.segments表
+1. 存储所有的used segment
+2. coordinator使用这个表来决定可查询的segment
+3. 主要的功能列有两列，剩下的主要用于indexing
+   1. used： 标识segment是否应该可用
+   2. payload ：一个json串，存储这个segment的元数据
+**** rule table
+segment的分配规则
+**** config table
+配置表，运行时修改配置的入口
+**** Task-related tables
+用于overload和middlemanager来保存任务信息
+**** Audit table
+历史审计表
+*** lifeCycle
+用来管理需要start和stop的对象
+**** stages
+***** 1. init
+目前，这个阶段专门用于log4j初始化，因为几乎所有东西都需要日志记录，并且应该在最后关闭日志记录。任何一种bootstrapping对象，如果它提供了在几乎所有其他生命周期对象之前应该初始化的东西，那么它也可以属于这里(如果它在启动或停止期间不需要日志记录的话)。
+***** 2. normal 
+默认的，除了任何形式的服务器或服务声明之外，大多数对象在这个级别注册可能最有意义。
+***** 3. server
+这个生命周期阶段适用于所有的“服务器”对象，例如:org.apache.druid.server.initialization.jetty.JettyServerModule，但是任何类型的“服务器”，如果它希望大部分(或一些特定的)生命周期对象在它开始时被初始化，并且在它停止时仍然可用，那么它可以逻辑地生活在这个阶段
+***** 4. ANNOUNCEMENTS
+用来发布服务节点位置的对象属于这个阶段
+*** 注册方式
+*** router
+web 控制台由router进程维护
+*** storage
+[[https://blog.bcmeng.com/post/druid-storage.html][Ref]]
+**** segment存储
+***** segment的实际存储文件有3个
+****** 1. version.bin
+4byte的二进制文件记录了segment的内部版本号
+0000 0009 当前为v9
+****** 2. meta.smooth 
+一个列式存储文件
+#+BEGIN_SRC sh
+  #版本号,该文件所能存储的最大值(2G),smooth文件数
+  v1,2147483647,1
+  # 列名,文件名,起始偏移量,结束偏移量
+  __time,0,0,154
+  city,0,306,577
+  gmv,0,154,306
+  index.drd,0,841,956
+  metadata.drd,0,956,1175
+  sex,0,577,841
+#+END_SRC
+****** 
+* 算法
+** bitmap
+[[http://hbasefly.com/2018/06/19/timeseries-database-8/][hbaseFly]]
+* utils
+** lifecycle
+** NativeIO
+ruid依赖linux的页缓存来缓存segment，但这两种情况的segment是不应该对页缓存产生大的占用的
+1. 从deep storage 拉取segment
+2. 只是为了rebalence segment而分配来的segment
+优化： 使用sync_file_range来代替fsync来加速
+* 用到的工具
+** jackson
+[[https://developer.ibm.com/zh/articles/jackson-advanced-application/][ibm-ref]]
+* develop
+** start point
+数据存在segment的列中,可以从Column.java(在#5957中重命名为ColumnHolder.java)和继承它的类入手来了解存储格式.
+** segment creation
+1. IncrementalIndex.java 摄取数据
+2. IndexMerger.java 创建segment
+** storage engine
+segment使用IndexIO.java映射内存,并为查询提供数据
+** query engine
+query逻辑去Query* 类看. 可以从QueryResouse.java下手
+** coordination
+1. historical的协调逻辑从DruidCoordinator.java下手
+2. 实时摄取的协调逻辑从OverloadResource.java下手
+** real-time ingestion
+1. druid使用FirehoseFactory.java类来加载数据
+2. hand-off 逻辑 RealtimePlumber.java
+** hadoop-based batch ingestion
+1. 决定创建多少segment  HadoopDruidDetermineConfigurationJob.java
+2. 创建segment HadoopDruidIndexerJob.java
+* paper
+** 实时节点
+*** 数据流动的4个阶段
+1. ingest
+2. persist
+3. merge -> segment
+4. hand off
+*** 窗口
+最小化丢数据的风险
+1. 在窗口末尾去merge所有的persist index并执行hand off
+2. 一旦这个窗口内的数据在historical节点可查了,刷出窗口内的所有信息,并撤销当前节点对这个窗口的server
+** message bus
+1. 用作消息事件的缓存,以便在failure和recover场景下正确消费消息
+2. 统一的数据来源,多个消费节点可以冗余消费提升灾备能力或者分区消费提升消费速度
+** 历史节点
+遵循shared-nothing architecture
+1. historical 彼此不认识
+2. 只知道load, drop, server immutable segment
+3. 和实时节点一样,通过zk发布服务状态和服务的数据
+*** 分层
+对historical分组,加载不同要求的segment.可以用来做冷热分离,配合规则
+** 代理(broker)节点
+理解zk上的segment信息,代理收到的查询,到正确的节点上收集数据,并汇总出最终结果.响应查询
+*** LRU
+用来缓存从历史节点查询指定segment的结果,不缓存从实时节点来的数据
+** 协调节点
+** mysql
+1. 存需要由historical 节点接管的segment
+* dump segments
+2. 存规则,关于segment怎么创建? 怎么销毁? 怎么保存副本?[
+[https://xixuebin.github.io/2019-04-01-092732-ch.html][使用DruidAPI dump Druid数据]]
+

@@ -1,0 +1,269 @@
+#+title: hive
+* 概念
+1. 面向海量结构化数据
+2. 基于hadoop的数据仓库工具
+
+   1. 存储基于hdfs
+
+   2. 计算基于(默认)mr
+
+   3. 使用yarn来调度资源
+
+3. 提供sql-like查询
+4. 将sql转化为mr任务
+5. extract/transform/load (ETL)
+
+** 优缺点
+*** 缺点
+1. 迭代式运算无法表达,太慢
+* 组件
+
+** 内建的
+1. 解析器
+2. 编译器
+3. 优化器
+4. 执行器
+
+** 外部依赖的
+1. metastore (derby or mysql)
+2. hdfs
+3. mr
+
+* 建表
+todo 
+
+** 查看建表语句
+#+begin_src sql
+  show create table tablename;
+#+end_src
+
+* 数据导入
+
+** 直接导入hdfs
+#+begin_src sh
+  # 1. load
+  load data local inpath '/xxx/xxx' into table student;
+  # 2. put
+  # 3. 直接从hdfs导入
+  # 直接put到 /user/hive/wirehouse
+#+end_src
+
+** insert
+#+begin_src sql
+  # 建表 带list类型
+  CREATE TABLE `student_details`(
+    `id_key` string, 
+    `name` string, 
+    `subjects` array<string>) stored as parquet;
+
+  # 插入一条数据
+  INSERT INTO student_details  select 'AA87U','BRYAN',array('ENG','CAL_1','CAL_2','HST','MUS')
+
+  # schema and group
+  message hive_schema {
+    optional binary id_key (STRING);
+    optional binary name (STRING);
+    optional group subjects (LIST) {
+      repeated group bag {
+        optional binary array_element (STRING);
+      }
+    }
+  }
+
+  id_key: AA87U
+  name: BRYAN
+  subjects
+    bag
+      array_element: ENG
+    bag
+      array_element: CAL_1
+    bag
+      array_element: CAL_2
+    bag
+      array_element: HST
+    bag
+      array_element: MUS
+
+
+  # 建表 带map类型
+  CREATE TABLE `test1.test01`(
+    `id` string, 
+    `name` string, 
+    `class` string, 
+    `marks` map<string,string>) stored as parquet;
+
+  # 插入一条数据
+  INSERT INTO test01 select '100','BRYAN',"class",map("key1","value1","key2","value2","key3","value3","key4","value4");
+
+  # schema and group
+  message hive_schema {
+    optional binary id (STRING);
+    optional binary name (STRING);
+    optional binary class (STRING);
+    optional group marks (MAP) {
+      repeated group map (MAP_KEY_VALUE) {
+        required binary key (STRING);
+        optional binary value (STRING);
+      }
+    }
+  }
+
+  id: id
+  name: name
+  class: class
+  marks
+    map
+      key: key1
+      value: value1
+    map
+      key: key2
+      value: value2
+    map
+      key: key3
+      value: value3
+    map
+      key: key4
+      value: value4
+#+end_src
+
+** parquet读写
+#+begin_src java
+  public void testWrite() {
+          MessageType schema = Types.buildMessage()
+                  .required(PrimitiveType.PrimitiveTypeName.BINARY).named("city")
+                  .required(PrimitiveType.PrimitiveTypeName.BINARY).named("ip")
+                  .repeatedGroup()
+                  .required(PrimitiveType.PrimitiveTypeName.INT32).named("ttl")
+                  .required(PrimitiveType.PrimitiveTypeName.BINARY).named("ttl2")
+                  .named("time")
+                  .named("Pair");
+
+          System.out.println(schema.getName());
+
+          GroupFactory factory = new SimpleGroupFactory(schema);
+
+          Path path = new Path("/tmp/parquet");
+          Configuration configuration = new Configuration();
+          ExampleParquetWriter.Builder builder = ExampleParquetWriter
+                  .builder(path).withWriteMode(ParquetFileWriter.Mode.CREATE)
+                  .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
+                  .withConf(configuration)
+                  .withMaxPaddingSize(2048)
+                  .withType(schema);
+          ParquetWriter<Group> writer = null;
+          try {
+              writer = builder.build();
+          } catch (IOException e) {
+              e.printStackTrace();
+          }
+          try {
+              for (int i = 0; i < 100; i++) {
+                  Group group = factory.newGroup()
+                          .append("city", "beijing" + i)
+                          .append("ip", "127.0.0.1" + i);
+                  Group tmpG = group.addGroup("time");
+                  tmpG.append("ttl", 10 + i);
+                  tmpG.append("ttl2", "_a" + i);
+                  writer.write(group);
+              }
+              System.out.println(writer.getDataSize());
+              writer.close();
+          } catch (IOException e) {
+              e.printStackTrace();
+          }
+          //}
+      }
+
+      @Test
+      public void read() throws IOException {
+          Path path = new Path("/home/wangchao/data/000000_0");
+          ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), path);
+          ParquetReader<Group> reader = builder.build();
+          Group group;
+          while ((group = reader.read()) != null){
+              System.out.println("schema:" + group.getType().toString());
+              System.out.println(group.toString());
+              //System.out.println(group.getString("city",0));
+              //System.out.println(group.getString("ip",0));
+              //
+              //
+              //Group author = group.getGroup("time", 0);
+              //System.out.println(author.getInteger("ttl",0));
+              //System.out.println(author.getString("ttl2",0));
+          }
+      }
+
+#+end_src
+
+** 时间戳timestamp
+#+begin_src sql
+  # 建表
+  create table foo (`time` timestamp) stored as parquet;
+
+  # insert
+  insert into table foo select '2014-01-17 00:17:13';
+
+  # schema and group
+  schema:message hive_schema {
+    optional int96 bar;
+  }
+
+  bar: Int96Value{Binary{12 constant bytes, [0, 26, 35, -113, 83, 53, 0, 0, 98, 124, 37, 0]}}
+
+#+end_src
+
+* sql
+
+** 删除有表的数据库
+#+begin_src sql
+  drop table tablename cascade;
+#+end_src
+
+** 查看表
+#+begin_src sql
+  show tables
+  show tables from database_name
+#+end_src
+
+** 查看表的数据位置
+#+begin_src sql
+  desc formatted student;
+#+end_src
+
+** 更改表的列
+#+begin_src sql
+
+
+#+end_src
+
+** DML
+
+*** load
+#+begin_src sql
+  LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename [PARTITION (partcol1=val1, partcol2=val2 ...)]
+  # filepath
+  ## 1. 相对路径
+  ## 2. 绝对路径
+  ## 3. 完整的uri 包括schema和权限
+  LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename [PARTITION (partcol1=val1, partcol2=val2 ...)] [INPUTFORMAT 'inputformat' SERDE 'serde'] (3.0 or later)
+#+end_src
+1. target load的目标可以是table或者partition,如果表指定了分区,那么这个导入必须指定分区
+2. filePath 可以是file/dir
+3. 指定LOCAL的意思是,从本地文件系统找
+4. 不指定LOCAL
+   1. 当schema和权限没有指定的时候,从hive配置的hadoopconf里面找fs.default.name
+5. OVERWRITE, 覆盖原来hive分区中的内容
+6. additional ops after hive3.0
+
+**** 摘要
+3.0之前的load操作只是简单把数据文件copy/move到hive表能找到的存储位置上
+
+* in action
+
+** 关键字作为字段
+使用``括起来,例如`timestamp`
+
+* todo
+
+** 传统数仓和OLAP\OLTP的区别
+

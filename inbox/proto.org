@@ -1,0 +1,113 @@
+#+title: google protobuf
+* proto 文件的定义
+
+** compile
+
+*** 输出路径
+--java_out=build/gen 这个目录必须是已存在的
+
+*** 每一个proto文件生成一个outer class的java文件
+1. 如果在proto中定义 option java_outer_classname = "Foo"; 则表示该proto文件生成的java文件为Foo.java
+2. 如果没有指定outer class, 则使用foo_bar.proto的名字FooBar来作为java文件的outer class
+3. 如果内部包含一个名为FooBar的message,与outer class相同,那么outer class的名字为FooBarOuterClass
+
+*** java文件的示例
+protobuffer 编译器会自动补全[--java_out]后中间目录
+#+begin_example
+  java 文件 = [--java_out=] + [packageName(用/替换.)] + [.java]
+
+  // 示例
+  // pacakge 为com.example
+  // outer class 为FooProtos
+  // 使用如下命令得到的java文件为build/gen/src/com/example/FooProtos.java
+  protoc --proto_path=src --java_out=build/gen src/foo.proto
+#+end_example
+
+** package
+根据java_package选项来把生成的java文件放到对应的package下,如果没有配置java_package选项,则根据package声明来决定java文件位置
+#+begin_example
+  // 1. 如果只声明了package, 那么生成的java文件会放置到foo.bar下面
+  package foo.bar;
+
+
+
+  // 2. 如果同时使用了java_package选项, 则会放到com.example.foo.bar下而不是foo.bar下
+  package foo.bar;
+  option java_package = "com.example.foo.bar";
+#+end_example
+
+** message
+Message接口定义了检查、操作、读取或写入整个message的方法。
+* protoc 生成java文件
+** protoc命令
+#+begin_src sh
+  protoc --proto_path=src --java_out=build/gen src/foo.proto
+#+end_src
+** Blocking Interfaces
+使用proto定义的Stub默认是非阻塞的接口.如果想要阻塞语义的接口
+1. Foo.BlockingInterface
+2. Foo.newReflectiveBlockingService(Foo.BlockingInterface)
+
+
+* 使用maven插件在编译时将proto文件转化为对应的java文件
+** 最小配置
+需要添加依赖com.google.protobuf:protobuf-java
+#+begin_src xml
+  <project>
+    ...
+    <build>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.8.0</version>
+          <configuration>
+            <source>1.8</source>
+            <target>1.8</target>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.xolstice.maven.plugins</groupId>
+          <artifactId>protobuf-maven-plugin</artifactId>
+          <version>0.6.1</version>
+          <configuration>
+            <protocExecutable>/usr/bin/protoc</protocExecutable>
+          </configuration>
+          <executions>
+            <execution>
+              <goals>
+                <goal>compile</goal>
+                <goal>test-compile</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        ...
+      </plugins>
+    </build>
+    <dependencies>
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>3.4.0</version>
+      </dependency>
+      ...
+    </dependencies>
+    ...
+  </project>
+#+end_src
+** 最大命令长度
+因为平台的限制,可能会出现命令长度过长的错误,protoc 3.5.0后可以用文件来传递命令参数
+#+begin_src xml
+  <plugin>
+    <groupId>org.xolstice.maven.plugins</groupId>
+    <artifactId>protobuf-maven-plugin</artifactId>
+    <version>0.6.1</version>
+    <configuration>
+      ...
+      <useArgumentFile>true</useArgumentFile>
+    </configuration>
+    ...
+  </plugin>
+#+end_src
+

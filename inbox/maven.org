@@ -5,14 +5,303 @@
 ***  最后的办法
 1. 下载jar包
 2. mvn install:install-file -DgroupId=com.google.errorprone -DartifactId=javac -Dversion=9+181-r4173-1 -Dpackaging=jar -Dfile=javac-9+181-r4173-1.jar
+** 指定语言(jdk)level
+#+BEGIN_SRC xml
+  <properties>
+          <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+          <encoding>UTF-8</encoding>
+          <java.version>1.8</java.version>
+          <maven.compiler.source>1.8</maven.compiler.source>
+          <maven.compiler.target>1.8</maven.compiler.target>
+      </properties>
+#+END_SRC
+** 检查commpile语言级别
+#+begin_src xml
+  <!-- 使用maven-enforcer-plugin -->
+  <build>
+          <plugins>
+              <plugin>
+                  <artifactId>maven-enforcer-plugin</artifactId>
+                  <version>1.4.1</version>
+                  <executions>
+                      <execution>
+                          <id>env-check</id>
+                          <goals>
+                              <goal>enforce</goal>
+                          </goals>
+                          <phase>validate</phase>
+                          <configuration>
+                              <rules>
+                                  <requireJavaVersion>
+                                      <message>
+                                          <![CDATA[You are compiling an older version of Java. This application requires at least JDK ${java.version}.]]>
+                                      </message>
+                                      <version>[1.8,)</version>
+                                  </requireJavaVersion>
+                              </rules>
+                          </configuration>
+                      </execution>
+                  </executions>
+              </plugin>
+          </plugins>
+      </build>
+#+end_src
+#+begin_src shell
+  # 如上配置便会在validate阶段附加一个compile检查
+  mvn validata
+#+end_src
+** 跳过测试两个命令的区别
+#+begin_src shell
+  # 跳过junit执行, 但编译测试用例类生成相应的class文件至target/test-classes下。
+  mvn clean install -DskipTests
+
+  # 跳过junit执行和编译
+  mvn clean install  -Dmaven.test.skip=true
+#+end_src
+** SCM
+software comfiguration management。
+*** 可以用来配置远程代码仓库(如gitlab)
+#+begin_src xml
+  <scm>
+    <connection>scm:git:http://gitlab.com/xxx.git</connection>
+    <developerConnection>scm:git:http://gitlab.com/xxx.git</developerConnection>
+    <url>http://gitlab.com/xxx.git</url>
+    <tag>HEAD</tag>
+  </scm>
+
+#+end_src
+
 * repository
 ** 配置公司仓库不生效
 cause by [[https://blog.csdn.net/lovewebeye/article/details/80060410?utm_source=blogxgwz5][私有仓库不生效]]
 solution 更改mirrorOf属性
 ** 配置国内源
 todo 配置文件的生效顺序
+** 阿里仓库也有不全的时候
+*** replay
+1. 通过mvn clean install 编译incubator-doris项目,成功下载java-cup-runtime和cup-maven-plugin到本地仓库
+2. 为了学习jflex和cup,新建了一个项目,把cup和jflex的依赖语句抄过来.
+3. cup相关的依赖无法找到依赖.
+4. 检查本地仓库,步骤3中提示的依赖确实是存在的
+5. 远程仓库为阿里仓库,阿里仓库中没有cup的插件和cup-runtime插件
+6. 此时就算本地仓库是有的,在第一步verrify时候还是要从远程仓库检查这个包的信息做验证.此时就会导致验证过不了,下载也下不了
+*** 总结
+1. 问题一: 多设置几个源,覆盖更多的依赖
+2. 问题而: 使用profile动态配置
+*** 使用动态配置(profiles)
+**** 在某个阶段,动态加入某个特殊仓库
+#+BEGIN_SRC xml
+
+  <profiles>
+          <profile>
+              <id>general-env</id>
+              <!--激活时机-->
+              <activation>
+                <!--property是使用-D参数来决定激活否-->
+                <property>
+                  <!--如果mvn clean install -Denv.CUSTOM_MAVEN_REPO=anyvalue,只要这个参数为空,就激活此profile-->
+                      <name>!env.CUSTOM_MAVEN_REPO</name>
+                  </property>
+              </activation>
+              <repositories>
+                  <!-- for java-cup -->
+                  <repository>
+                      <id>cloudera-thirdparty</id>
+                      <url>https://repository.cloudera.com/content/repositories/third-party/</url>
+                  </repository>
+              </repositories>
+              <pluginRepositories>
+                  <!-- for cup-maven-plugin -->
+                  <pluginRepository>
+                      <id>spring-plugins</id>
+                      <url>https://repo.spring.io/plugins-release/</url>
+                  </pluginRepository>
+              </pluginRepositories>
+          </profile>
+      </profiles>
+#+END_SRC
+**** 
+** repository & distributionManagement
+[[https://blog.csdn.net/hellojoy/article/details/79991767][参考]]
+
+* profiles
+动态配置
+** 用处
+1. 对不同的os进行不同的配置
+2. 对不同场景(dev,deploy,beta) 定制配置
+** 基本形式
+#+BEGIN_SRC xml
+
+  <profiles>
+    <profile>
+      <!--唯一标识-->
+      <id>test</id>
+      <!--触发条件-->
+      <activation></activation>
+      <properties>...</properties>
+      <build></build>
+      <moudules></moudules>
+      <!--...-->
+    </profile>
+  </profiles>
+#+END_SRC
+** 激活方式
+[[https://blog.csdn.net/justry_deng/article/details/100537571][Ref]]
+可以在pom或者配置文件中使用profile
+*** 1. 手动激活
+#+BEGIN_SRC sh
+  # id 为profile唯一标识
+  mvn ... -P id
+#+END_SRC
+*** 2. 默认激活
+#+BEGIN_SRC xml
+          <activation>
+              <!-- 设置默认激活 -->
+              <activeByDefault>true</activeByDefault>
+          </activation>
+#+END_SRC
+*** 3. 根据jdk激活
+#+BEGIN_SRC xml
+          <activation>
+              <!--
+                 当jdk的版本号是以下面的值开头时， 激活此profile
+                 即:当jdk的版本号是startWith下面的值时，激活此profile
+               -->
+              <jdk>1.8.0_</jdk>
+              <!--
+                  还可以取反，当jdk的版本号 不是 startWith下面的值时，激活此配置
+               -->
+              <!-- <jdk>!1.8</jdk> -->
+          </activation>
+#+END_SRC
+*** 4. 根据os激活
+#+BEGIN_SRC xml
+          <activation>
+              <!--
+              可以只写一两个条件
+                  当操作系统满足下述所有条件时，激活
+                  注: 如果有多个条件，那么必须所有条件都满足时，才会激活对应的profile
+               -->
+              <os>
+                  <!-- 操作系统名，如【Windows 10】 -->
+                  <name>Windows 10</name>
+                  <!-- 操作系统隶属， 如【windows】、【unix】 -->
+                  <family>windows</family>
+                  <!-- 操作系统的体系结构，如【amd64】 -->
+                  <arch>amd64</arch>
+                  <!-- 操作系统版本号，如【10.0】 -->
+                  <version>10.0</version>
+              </os>
+          </activation>
+#+END_SRC
+*** 5. 根据文件是否存在
+#+BEGIN_SRC xml
+      <!-- 生产环境 -->
+      <profile>
+          <id>prod-id</id>
+          <!--
+              根据文件存在与否， 来激活profile
+              注:文件路径可以是绝对路径，也可以是相对路径(相对pom.xml的路径)。
+              注:在exists标签里，如果写绝对路径，不要使用${project.basedir}或
+                 ${pom.basedir};经本人测试，在exists标签里使用${}取不到值。
+              注:missing与exists最好不要同时使用。 如果同时使用的话，missing就
+                 会形同虚设，是否激活此profile完全由exists决定,。
+          -->
+          <activation>
+              <file>
+                  <!-- 相对路径示例 -->
+                  <exists>src/main/resources/xyza.yml</exists>
+                  <!-- <missing>src/main/resources/abcd.yml</missing> -->
+ 
+                  <!-- 绝对路径示例 -->
+                  <!-- <exists>C:/Users/JustryDeng/Desktop/zx-lw.log</exists> -->
+                  <!-- <missing>/usr/apps/file/info.properties</missing> -->
+              </file>
+          </activation>
+          <dependencies>
+              <dependency>
+                  <groupId>org.projectlombok</groupId>
+                  <artifactId>lombok</artifactId>
+                  <optional>true</optional>
+              </dependency>
+          </dependencies>
+      </profile>
+  </profiles>
+  根据maven指令-D参数激活：
+
+  <!-- ************** 根据 maven指令参数-D 激活 ************** -->
+  <profiles>
+      <!-- 测试环境 -->
+      <profile>
+          <id>test-id</id>
+          <dependencies>
+              <dependency>
+                  <groupId>com.alibaba</groupId>
+                  <artifactId>fastjson</artifactId>
+                  <version>1.2.58</version>
+              </dependency>
+          </dependencies>
+      </profile>
+ 
+      <!-- 生产环境 -->
+      <profile>
+          <id>prod-id</id>
+          <activation>
+              <!--
+                  maven指令参数-D激活
+                  注:与根据maven指令参数-P 指定profile的id进行激活类似
+              -->
+              <property>
+                  <name>pk</name>
+                  <value>pv</value>
+              </property>
+          </activation>
+          <dependencies>
+              <dependency>
+                  <groupId>org.projectlombok</groupId>
+                  <artifactId>lombok</artifactId>
+                  <optional>true</optional>
+              </dependency>
+          </dependencies>
+      </profile>
+  </profiles>
+#+END_SRC
 * build
 [[https://blog.csdn.net/riju4713/article/details/85102471][跳过test]]
+** 打包带依赖，指定主类
+#+BEGIN_SRC xml
+        <plugin>
+           <groupId>org.apache.maven.plugins</groupId>
+           <artifactId>maven-shade-plugin</artifactId>
+           <version>2.4.3</version>
+           <executions>
+                <execution>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>shade</goal>
+                  </goals>
+                  <configuration>
+                    <filters>
+                      <filter>
+                        <artifact>*:*</artifact>
+                        <excludes>
+                          <exclude>META-INF/*.SF</exclude>
+                          <exclude>META-INF/*.DSA</exclude>
+                          <exclude>META-INF/*.RSA</exclude>
+                        </excludes>
+                      </filter>
+                    </filters>
+                    <transformers>
+                      <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                        <mainClass></mainClass>
+                      </transformer>
+                    </transformers>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+
+#+END_SRC
 * geting start
 maven提供清晰的构建套路，mvn可以方便的管理：
 ** builds
@@ -24,6 +313,11 @@ maven提供清晰的构建套路，mvn可以方便的管理：
 ** Releases
 ** Distribution
 * make a project with mvn
+
+** 命令
+#+BEGIN_SRC sh
+  mvn archetype:generate
+#+END_SRC
 ** -B 批量执行命令，不加-B可以交互式的按模板生成项目
 #+BEGIN_SRC sh
   mvn -B archetype:generate \
@@ -42,10 +336,318 @@ maven提供清晰的构建套路，mvn可以方便的管理：
   artifactId - the id of the artifact (project)
   version - the version of the artifact under the specified group
 #+end_example
+*** dependency
+**** scope
+[[https://blog.csdn.net/blueheart20/article/details/81014116][参考]]
+***** compile
+1. 默认的scope
+2. 表示为当前依赖参与项目的编译、测试和运行阶段，属于强依赖。打包之时，会达到包里去。
+***** test
+该依赖仅仅参与测试相关的内容，包括测试用例的编译和执行，比如定性的Junit。
+***** runtime
+依赖仅参与运行周期中的使用。一般这种类库都是接口与实现相分离的类库，比如JDBC类库，在编译之时仅依赖相关的接口，在具体的运行之时，才需要具体的mysql、oracle等等数据的驱动程序。
+此类的驱动都是为runtime的类库。
+***** provided
+该依赖在打包过程中，不需要打进去，这个由运行的环境来提供，比如tomcat或者基础类库等等，事实上，该依赖可以参与编译、测试和运行等周期，与compile等同。区别在于打包阶段进行了exclude操作。
+***** system
+使用上与provided相同，不同之处在于该依赖不从maven仓库中提取，而是从本地文件系统中提取，其会参照systemPath的属性进行提取依赖。
+***** import
+这个是maven2.0.9版本后出的属性，import只能在dependencyManagement的中使用，能解决maven单继承问题，import依赖关系实际上并不参与限制依赖关系的传递性。
+
 ** 继承性
 dependencies
 developers and contributors
 plugin lists (including reports)
 plugin executions with matching ids
 plugin configuration
-resourc
+resources
+
+*** 父工程一般定义打包方式为pom
+
+*** super pom
+像java中所有对象都默认继承Object，maven中所有pom都继承自一个super pom
+
+* #+setupfile: ting
+** 两个settings.xml
+*** global
+${maven.home}/conf/settings.xml
+*** user
+${user.home}/.m2/settings.xml
+** 
+* maven进阶
+[[https://www.cnblogs.com/davenkin/p/advanced-maven-multi-module-vs-inheritance.html][Ref]]
+** 多模块和继承
+多模块和继承关闭不比同时存在
+1. 多模块可以将执行顺序推给maven
+2. 继承是用于所有子模块共享父模块的配置，比如junit依赖
+* plugin
+** jacoco
+java code coverage 分析单元测试覆盖率的插件
+[[https://developer.ibm.com/zh/articles/j-lo-jacoco/][eclemama]]
+** maven-antrun-plugin
+用来兼容ant任务的
+** maven-assembly-plugin
+将项目合并输出到一个可发布的归档文件中
+*** 两种方式
+1. 使用内建的assembly-descriptor
+#+begin_src xml
+  <descriptorRefs>/<descriptorRef>
+#+end_src
+2. 自定义descriptor来做更适合自己的assembly
+#+begin_src xml
+  <descriptors>/path<descriptor>
+
+#+end_src
+*** 配置
+
+
+** maven-clover2-plugin
+检查代码覆盖率
+1. 使用clover2需要先获得license
+** maven-deploy-plugin
+主要用于把在deploy阶段把你的artifacts发布到版本仓库,供其他项目使用
+*** 前置项
+1. 仓库信息: 地址,传输方式,可选的账户信息
+2. artifacts信息: group, artifact, version, packaging, classifier
+3. a deployer: 一个能够执行部署操作的的实现
+*** goals
+**** deploy:deploy
+这个goals会在deploy阶段被调用,执行mvn deploy 即可
+- 在pom中如下声明
+#+begin_src xml
+  [...]
+    <distributionManagement>
+      <repository>
+        <id>internal.repo</id>
+        <name>MyCo Internal Repository</name>
+        <url>Host to Company Repository</url>
+      </repository>
+    </distributionManagement>
+  [...]
+#+end_src
+- 在settings.xml中配置账户信息
+#+begin_src xml
+  [...]
+      <server>
+        <id>internal.repo</id>
+        <username>maven</username>
+        <password>foobar</password>
+      </server>
+  [...]
+#+end_src
+- 如何避免明文密码 [[http://maven.apache.org/guides/mini/guide-encryption.html][透明密码]]
+**** deploy:deploy-file
+这个goal主要用于非maven build的artifact,也就是在没有pom文件的支持下完成发布到版本仓库
+*** 不发布当前的artifact
+#+begin_src xml
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.0.0-M1</version>
+        <configuration>
+          <!--跳过当前artifact的deploy,对应的配置项为 maven.deploy.skip-->
+          <skip>true</skip>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+#+end_src
+
+** maven-gpg-plugin
+签名认证
+** maven-release-plugin
+*** 开发流程
+一般开发，基于一个snapshot版本开发，开发完以后，发一个对应的release的包，然后再将代码版本更新为下一个snapshot版本。这些工作当然可以纯手工完成，但是可能比较痛苦，这里介绍的release插件就是干这个的。
+*** prepare
+prepare步骤
+1. 确保本地所有改变都已提交
+2. 确保没有snapshot依赖
+3. 在pom中 把版本从xxx-snapshot 改为指定的release版本
+4. 引用scm中配置的项目远程仓库地址
+5. 因为改动了pom,运行测试已确保一切ok
+6. commit pom改变
+7. 对当前代码打一个tag,在maven-release-plugin中,这是一个交互式过程
+8. 在pom中指定下一个snapshot 版本用于开发
+9. commit
+**** 再次执行
+当再次执行 mvn release:prepare时,release插件会默认从上次退出的地方继续执行,如果你想要从头开始,这提供两种方式
+#+begin_src shell
+  # 1
+  mvn release:prepare -Dresume=false
+
+  # 2
+  mvn release:clean release:prepare
+#+end_src
+**** 对于多模块项目
+为了避免挨个询问各个模块的版本号,你可以使用这个配置
+#+begin_src xml
+<autoVersionSubmodules>true</autoVersionSubmodules>
+#+end_src
+**** 可以使用tagNameFormat配置tagname
+可以使用的变量如下
+1. project.groupId which corresponds to the project's groupId.
+2. project.artifactId which corresponds to the project's artifactId.
+3. project.version which corresponds to the project's release version.
+*** perform
+perform 步骤
+1. 从scm中配置的remote checkout出代码(可以配置tag)
+2. 运行预定义的maven goals (默认为deploy site-deploy)
+**** release的时候使用指定的动态配置项
+#+begin_src xml
+  <profiles>
+          <profile>
+              <id>release</id>
+              <properties>
+                  <!-- tests run in the preparation step of the release -->
+                  <skipTests>true</skipTests>
+              </properties>
+              <build>
+                  <plugins>
+                      <!-- requires a javadoc jar. Build one when releasing. -->
+                      <plugin>
+                          <groupId>org.apache.maven.plugins</groupId>
+                          <artifactId>maven-javadoc-plugin</artifactId>
+                      </plugin>
+                      <!-- Sign artifacts using gpg for oss upload -->
+                      <plugin>
+                          <groupId>org.apache.maven.plugins</groupId>
+                          <artifactId>maven-gpg-plugin</artifactId>
+                      </plugin>
+                  </plugins>
+              </build>
+          </profile>
+      </profiles>
+
+  <releaseProfiles>release</releaseProfiles>
+#+end_src
+*** rollback
+确保没有使用release:clean 清除前一阶段生成的release描述文件和备份文件,rollback需要依赖这些文件来完成
+**** 步骤
+** os-maven-plugin
+用于更好的适应各种平台os,目前是生成proto需要
+#+begin_src xml
+  <project>
+    <build>
+      <extensions>
+        <extension>
+          <groupId>kr.motd.maven</groupId>
+          <artifactId>os-maven-plugin</artifactId>
+          <version>1.6.1</version>
+        </extension>
+      </extensions>
+    </build>
+  </project>
+#+end_src
+** protobuf-maven-plugin
+用来生成proto对应的java文件
+#+begin_src xml
+  <plugin>
+                  <groupId>org.xolstice.maven.plugins</groupId>
+                  <artifactId>protobuf-maven-plugin</artifactId>
+                  <version>0.6.1</version>
+                  <executions>
+                      <execution>
+                          <goals>
+                              <goal>compile</goal>
+                              <goal>test-compile</goal>
+                          </goals>
+                      </execution>
+                  </executions>
+                  <configuration>
+                      <protocArtifact>com.google.protobuf:protoc:3.4.0:exe:${os.detected.classifier}</protocArtifact>
+                      <outputDirectory>${basedir}/src/main/java</outputDirectory>
+                      <clearOutputDirectory>false</clearOutputDirectory>
+                  </configuration>
+              </plugin>
+#+end_src
+* in action
+
+** logback error - multipul bindings 
+[[https://www.jianshu.com/p/9342d313e01a][Ref]]
+*** logs
+#+BEGIN_SRC sh
+  SLF4J: Class path contains multiple SLF4J bindings.
+  SLF4J: Found binding in [jar:file:/Users/x/.m2/repository/org/slf4j/slf4j-log4j12/1.7.25/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+  SLF4J: Found binding in [jar:file:/Users/x/.m2/repository/ch/qos/logback/logback-classic/1.1.2/logback-classic-1.1.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+  SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+#+END_SRC
+*** solution 1
+使用桥接器
+*** solution 2
+借助mvn
+**** take a look of all dependencies
+#+BEGIN_SRC sh
+  dependency:tree
+#+END_SRC
+**** exclution the 多余 bindings
+#+BEGIN_SRC xml
+  <dependency>
+    <groupId>com.facebook.airlift</groupId>
+    <artifactId>bootstrap</artifactId>
+    <version>0.186</version>
+    <exclusions>
+      <exclusion>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-jdk14</artifactId>
+      </exclusion>
+      <exclusion>
+        <groupId>org.slf4j</groupId>
+        <artifactId>log4j-over-slf4j</artifactId>
+      </exclusion>
+      <exclusion>
+        <groupId>org.slf4j</groupId>
+        <artifactId>jcl-over-slf4j</artifactId>
+      </exclusion>
+    </exclusions>
+  </dependency>
+#+END_SRC
+** 跳过依赖中冲突的包
+* Lifecycle
+lifecycle 可以理解为一个宏图,phase为完成这个宏图的具体阶段,plugin是有特定功能(goal)的工具,可以在某个阶段顺序执行
+** build-in
+*** default
+可以完成项目部署
+*** clean
+
+*** site
+负责发布文档的创建
+** 一个lifecycle由一些phase组成
+*** defaul lifecycle由这些阶段组成
+1. validate :检查项目正确性,以来信息是否可用
+2. initialize :初始化build状态,例如:设置属性,创建文件
+3. generateSourcce :
+4. process-sources :
+5. generate-resources : 生成resource文件
+6. process-resources : 复制到dest dir
+7. compile :compile 源码
+8. process-class : 相当于post-compile,在这里可以做java的字节码增强
+9. generate-test-sources : 生成测试源码
+10. process-test-sources :
+11. generate-test-resources : 生成测试resource
+12. process-test-resources : 复制到dest dir
+13. test-compile : 编译test代码到dest dir
+14. process-test-class : 相当于post-test-compile
+15. test : 运行测试用例检查项目功能
+16. prepare-package: 打包前
+17. package :将compile 后的代码打包成一种发布格式(jar war .eg)
+18. pre-intergration-test: 集成测试前
+19. intergration-test : 集成测试
+20. post-intergration-test
+21. verify :对集成测试的结果做一些检查,.eg checkstyle
+22. install :把这个artifact安装到本地仓库
+23. deploy :发布到远程仓库
+** 一个phase由一些可配置的plugin组成
+** 规划一个属于你的Lifecycle
+*** 1.使用packaging属性
+根据packageing的不同值  maven为各个阶段分配了默认的goal
+*** 2.使用plugins
+**** 步骤
+1. 生命plugin
+2. 将goal分配到某写phase上
+**** <extention>
+可以用来更好的控制goal执行顺序
+* license
+通常license只是项目本身的license,不包括项目的依赖
+

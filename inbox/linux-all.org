@@ -6,8 +6,11 @@
 ** 了解一台机器 
 *** 磁盘
 #+BEGIN_SRC sh
-  #查看磁盘大小和使用情况
+  # 查看磁盘大小和使用情况
   df -hl
+
+  # 查看文件系统类型
+  df -T
 #+END_SRC
 **** 常见磁盘 
  1. fd：软驱 
@@ -22,7 +25,10 @@
 #+END_SRC
 *** 查看linux内核信息
 #+BEGIN_SRC sh
-  uname －a 
+  # 输出所有内核信息
+  uname －a #Linux wangchao-arch 5.8.3-arch1-1 #1 SMP PREEMPT Fri, 21 Aug 2020 16:54:16 +0000 x86_64 GNU/Linux
+  # 输出内核名称
+  uname -s # Linux
 #+END_SRC
 *** 查看操作系统版本信息？
 #+BEGIN_SRC sh
@@ -43,6 +49,10 @@
   #查询系统CPU是否启用超线程：
   cat /proc/cpuinfo | grep -e "cpu cores"  -e "siblings" | sort | uniq
 #+END_SRC
+*** 获取cpu核数
+nproc
+*** 挂载一个磁盘分区
+[[https://blog.csdn.net/a1766855068/article/details/84942745][参考]]
 ** how to kill a program
 [[https://itsfoss.com/how-to-find-the-process-id-of-a-program-and-kill-it-quick-tip/][参考]]
 *** find pid by name
@@ -56,6 +66,20 @@
 [[https://javawind.net/p131][参考]]
 [[https://www.cnblogs.com/dragonsuc/p/5512797.html][更详细的版本]]
 *** 内部命令
+*** linux memory type
+**** 3种内存，还有一种可选
+***** pysical memory
+真实物理内存
+***** swap file
+1. 存modified memory
+2. 存频繁访问的物理内存
+***** virtual memory
+1. 抽象的，没有物理内存的地址和限制
+2. 独立的，不同进程拥有不同的地址空间
+3. sharing，一个引用可以多处使用
+4. 灵活的，assign虚拟地址到文件
+**** 内存管理
+内存被划分为page 经典4k大小
 ** htop
 + 在某个进程上按l: lsof
 ** cat
@@ -75,6 +99,79 @@ g/re/p
 #+BEGIN_SRC sh
 swapoff -a && swapon -a
 #+END_SRC
+** nmap
+#+BEGIN_SRC sh
+  # 使用nmap查看远端ip的端口状态
+  nmap ip -p port'
+#+END_SRC
+** privoxy
+** 解压
+*** tar.gz
+#+BEGIN_SRC sh
+  tar -zxvf xx.tar.gz
+#+END_SRC
+** 磁盘占用
+#+BEGIN_SRC sh
+  #一层一层排查
+  du -s /root/* | sort -nr|head
+  #查看一个文件夹里内容的大小
+  du -h –max-depth=1
+  # 检查是否真的被删除了
+  lsof | grep deleted
+#+END_SRC
+** 输出重定向
+#+begin_src shell
+  # 将stdout和stderr合并输出到某个文件
+  sh build.sh > build.log 2>&1
+#+end_src
+** ssh
+*** 跳板机
+[[https://morland96.github.io/2017/10/31/ssh-jump/][参考]]
+**** 命令行操作
+#+begin_src shell
+  # linux终端中使用命令行登录跳板机
+  ssh -i xxx/jumpserver.pem -p <jumpserver port> wangchao@<jump-server>
+
+  # 使用命令行做隧道
+  ssh -L 2222:<remote-host>:22  user@<jump-server>
+  # 该命令语法为
+  # ssh -L local-port:remote-address:remote-port user@ssh-host
+  ssh -L 9100:目标ip:8100 -i xxx/jumpserver.pem -p <jumpserver port> wangchao@<jump-server>
+#+end_src
+**** 配合配置文件 和ssh-agent
+***** 利用ssh-agent来缓存密码
+[[https://wiki.archlinux.org/index.php/SSH_keys_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)#SSH_agents][参考]]
+#+begin_src shell
+  # 1. 启动ssh-agent
+  eval $(ssh-agent)
+
+  # 2. 缓存秘钥和密码
+  ssh-add ~/.ssh/id_ecdsa
+
+
+#+end_src
+***** 配置跳板机
+#+begin_src shell
+
+#跳板机
+Host dev
+    HostName <jumpserver>
+    Port <jumpserver port>
+    IdentityFile xxx/jumpserver.pem
+    User <username>
+#+end_src
+
+
+** 按进程号查看进程启动位置
+[[https://blog.csdn.net/summerhust/article/details/7334554][参考]]
+#+begin_src shell
+  # 查看进程号
+  jcmd
+  # 每个进程启动之后在 /proc下面有一个于pid对应的路径
+  ll /proc/<pid>
+  # 观察cwd指向的文件
+#+end_src
+
 * 网络测试
 ** 找出两台机器的可用带宽
 *** nc 接收
@@ -119,7 +216,50 @@ nc -l 5001 > /dev/null
 3. 安装dhcpcd
 4. 重启，打开archlinux 动态获取ip
 5. ping
+** 改键
+[[https://www.zouyesheng.com/xmodmap-usage.html][Ref]]
+1. 键盘产生的信号为keycode
+2. 使用xev查看某个按键的keycode
+3. 在xorg层面，绑定keycode到keysys
+*** 交换win键和alt键
+#+BEGIN_SRC sh
+  # 1. xev 查看alt键keycode为64
+  # KeyPress event, serial 32, synthetic NO, window 0x1a00001,
+  #    root 0x1e6, subw 0x0, time 2691388, (1552,553), root:(1553,573),
+  #    state 0x10, keycode 64 (keysym 0xffe9, Alt_L), same_screen YES,
+  #    XLookupString gives 0 bytes: 
+  #    XmbLookupString gives 0 bytes: 
+  #    XFilterEvent returns: False
 
+  # 在自定义xmodemap文件中
+  # 2. 将alt 按键绑定到Alt_L方法
+  keycode 64 = Super_L
+  keycode 133 = Alt_L
+
+  # 3. 移除原有的mod1(代表alt修饰符)中的原来的Alt_L（这里的Alt_L在加入修饰符组后会替换成keysys，所以要移除旧的Alt_L）
+  remove mod1 = Alt_L
+  remove mod4 = Super_L
+
+  # 4. 添加刚刚定义的方法
+  add mod1 = Alt_L
+  add mod4 = Super_L
+
+  # 5.使用xmodmap加载配置文件
+  xmodmap .Xmodmap
+
+  # 附件 .Xmodmap
+  clear lock
+  clear control
+  add control = Caps_Lock Control_L Control_R
+  keycode 66 = Control_L Caps_Lock NoSymbol NoSymbol
+  keycode 64 = Super_L
+  keycode 133 = Alt_L
+  remove mod1 = Alt_L
+  remove mod4 = Super_L
+  add mod1 = Alt_L
+  add mod4 = Super_L 
+
+#+END_SRC
 ** 空投
 1. [[https://blog.csdn.net/superstar_zbt/article/details/100883570][pacman 404]]
 ** 内存管理
@@ -145,15 +285,47 @@ nc -l 5001 > /dev/null
 pacman是archlinux的一个主要特性，旨在管理所有包，不论是官方的还是用户的
 
 ** 中文输入法
+*** ibus
 1. 配置系统的语言环境
 2. 查看中文支持:locale locale-gen
 3. 安装ibus
 4. 配置开机启动
 
-*** 简体
+**** 简体
 ~/.config/ibus/rime/build/luna_pinyin.schema.yaml
 找到simplification reset：1
+*** fcitx
+**** 安装fcitx
+[[zhuanlan.zhihu.com/p/74931620][Ref]]
+fcitx-im包组已经取消了fcitx-qt4包，搜狗输入法Linux版是基于QT4的，少了这个包，搜狗输入法就无法正常启动
+#+BEGIN_SRC sh
+  # 删除就fcitx 因为这里没有qt4
+  sudo pacman -Rsn fcitx-im fcitx-configtool
+
+  # 安装fcitx-lilydjwg-git 代替原有的fcitx
+  yaourt -S fcitx-lilydjwg-git fcitx-sogoupinyin
+
+  #安装qt5的依赖
+  sudo pacman -S kcm-fcitx
+#+END_SRC
+**** 环境变量
+#+BEGIN_SRC sh
+  #~/.xprofile
+
+  export GTK_IM_MODULE=fcitx
+  export QT_IM_MODULE=fcitx
+  export XMODIFIERS="@im=fcitx"
+#+END_SRC
+**** 安装搜狗输入法后 idea不能输入中文
+1. which idea 找到python脚本（pacman 管理的软件都会有在上层整个管理脚本，找到idea软件位置）
+2. 位置 /opt/intellij-idea-ultimate-edition/bin/
+3. 在idea.sh 中添加环境变量
 ** wine
+*** 向windows程序传递参数
+*** 环境变量
+1. WINEPREFIX ：默认.wine 相当于一个windows系统，重新指定将是一个新的系统
+2. WINESERVER ：默认/usr/bin/winserver
+3. 
 ** 声音
 1. 安装alsa-ustils
 2. 使用alsamixer 来解除静音：方向键移动，按m借出静音
@@ -163,8 +335,100 @@ pacman是archlinux的一个主要特性，旨在管理所有包，不论是官�
   defaults.ctl.card 1
   defaults.pcm.card 1
 #+END_SRC
+** 使用dwm 打开idea idea无法显示主界面
+*** 过期的解决办法
+[[https://wiki.gentoo.org/wiki/Dwm#Troubleshooting][trouble-shooting]]
+q: 因为不明确的vm，导致部分java程序的gui显示异常
+a: 使用vmname工具制定vm
+#+BEGIN_SRC sh
+  pacman -S vmname
+  # 这不是永久的，所以你可以把它写进.xinitrc。
+  vmname LG3D
+  try again
+
+#+END_SRC
+*** 新的办法
+1. 添加环境变量 命令行启动有界面,但是dmenu没界面
+#+begin_src sh
+  # 但是dmenu吃不到这个环境变量,有可能是我没重启机器,但是最根本的解决办法是把idea的启动脚本中添加这个环境变量
+  # 这样做两个隐患
+  # 1. idea启动时这个环境变量更改可能对其他依赖这个环境变量的程序产生影响
+  # 2. idea更新的时候会覆盖我们添加到idea.sh中的环境变量
+  export _JAVA_AWT_WM_NONREPARENTING=1
+#+end_src
+
+2. 改idea.sh
+#+begin_src sh
+  export _JAVA_AWT_WM_NONREPARENTING=1
+#+end_src
+** dwm
+*** 自定义
+通过c语言头文件 config.h来自定义dwm，通过config.mk来定义make方式
+** 邮箱
+thunderbird
+** shadowsocks
+*** 服务端 
+1. 安装shadowsocks 
+2. 配置
+#+BEGIN_SRC sh
+  # 配置
+  {
+      "server":"0.0.0.0",
+      "server_port":2020,
+      "local_address":"127.0.0.1",
+      "local_port":1080,
+      "password":"xxxxxx",
+      "timeout":5000, // 超时时间别设置太短
+      "method":"aes-256-cfb",
+      "fast_open":false
+  }
+  # 运行服务
+  ssserver -c /etc/shadowsocks.json -d start
+#+END_SRC
+*** 客户端
+**** sslocal
+1. pacman -S shadowsocks
+2. 配置
+#+BEGIN_SRC sh
+  {
+        "server":"ssserver ip",
+        "server_port":2020,
+        "local_address":"127.0.0.1",
+        "local_port":1080,
+        "password":"xxxxxx",
+        "timeout":5000, // 超时时间别设置太短
+        "method":"aes-256-cfb",
+        "fast_open":false
+    }
+
+  # 启动
+  sslocal -c /etc/shadowsocks/config.json
+#+END_SRC
+**** privoxy 转发http为socks5
+#+BEGIN_SRC sh
+
+  # 配置 /etc/privoxy/config
+  # 以socks5 的形式转发到127.0.0.1:8080上
+  forward-socks5   /               127.0.0.1:1080 .
+  # 默认listen 8118端口
+  export http_proxy="127.0.0.1:8118"
+
+#+END_SRC
+**** chrome
+为chrome设置代理，注意这个是本机的sslocal的ip和端口，127.0.0.1:1080
+*** 使用
+1. 启动sslocal作为客户端 : sslocal -c /etc/shadowsocks/config.json
+2. 在终端中访问ssserver，启动privoxy来把http请求转换成socks5，发给sslocal : systemctl start privoxy
+3. 在chrome中访问ssserver，使用代理插件发给本地sslocal
+** 创建热点
+1. ifconfig 查看无线网卡
+2. iw 查看网卡详细信息
+3. 在root下 create_ap wlp4s0 enp3s0 wifi-name wifi-psw
+*** Failed to initialize lock error
+sudo rm /tmp/create_ap.all.lock
+
 * vim
-宏录制
+** 宏录制
 #+BEGIN_SRC sh
   # start
   q a
@@ -177,6 +441,39 @@ pacman是archlinux的一个主要特性，旨在管理所有包，不论是官�
   @a
 
 #+END_SRC
+** 折叠
+*** 折叠操作
+1. zf 折叠
+2. zo 打开折叠
+
+3. zc 从段落开始折叠到当前行
+
+4. ap 段落
+#+BEGIN_SRC sh
+  # 可以在zf后面指定折叠对象
+  zfap #ap 为段落
+
+  # 可以用可视模式选中想折叠的部分,然后按zf
+
+  # 可以先按zf,然后传入要折叠的行数和方向
+  zf4j # 向下折叠4行
+  zf4k # 向上折叠4行
+#+END_SRC
+*** 手动折叠
+#+BEGIN_SRC sh
+  # 更改折叠模式为手动折叠
+  set foldmethod=manual
+
+  # 在一个段落内(代码中大括号内)
+  zfap
+
+  # 打开折叠块
+  zo
+#+END_SRC
+** 按16进制查看文件
+#+begin_src shell
+  :%!xxd
+#+end_src
 * zsh
 ** 配置文件的读取顺序
 1. /etc/zsh/zshenv     or /etc/zshrc
@@ -196,29 +493,50 @@ pacman是archlinux的一个主要特性，旨在管理所有包，不论是官�
 #+END_SRC
 - ~/.zshrc : 用户配置文件
 *** do 配置
+* 文件系统
+** xfs
 
+** etx4
 
 * 应用
 ** scrot
 截屏用 [[https://blog.csdn.net/zhyh1986/article/details/39831469][参考]]
+* 一些系统调用
+** sync_file_range()
+sync一个文件的制定范围到磁盘，
+*** sync_file_range 与 fsync的区别
+1. sync_file_range有一个标志位可以决定异步sync，而fsync都是同步的。因而你可以频繁的使用sync_file_range(SYNC_FILE_RANGE_WRITE)来把写缓存页刷到磁盘。但是要注意，使用sync_file_range时的io error是无法捕获的。
+2. 事实上sync_file_range并不总是异步的，有时它也会等待writeback
+3. sync_file_range()可以以缓存页为单位（例如：在一个缓存页大小为4k的系统中，调用sync_file_range(fd,333,444,flag),会把fd所描述的文件的第一个缓存页sync）指定sync范围，而fsync会把一个文件的所有脏页sync。
+4. 同步sync_file_range(SYNC_FILE_RANGE_WRITE|SYNC_FILE_RANGE_WAIT_AFTER) 不会等待元数据的flush，即便是file size变了。而fsync会等待数据和元数据都flush。因而sync_file_range不保证file在crash后能够revocer，而fsync和fdatasync保证
+*** 高度依赖内核版本和文件系统
+1. 在支持neighbor page flushing 的xfs系统中，除了指定范围的页，也会flush相邻的脏页
+2. ext3和ext4不支持邻页刷新
+*** 更快但不能保证durability 尤其是文件大小发生变化时
+在想要减少脏页同时又不需要完整的文件durability时可以考虑sync_file_range
+* 命令 
+** 文件
+*** fallocate
+用来为一个文件预分配或回收空间，比创建的一个文件，填充0快。
+#+BEGIN_SRC sh
+  fallocate -l 10G dummy.img
+#+END_SRC
+*** 小众命令 vmtouch
+很多linux发行版不带这个命令，arch也不带
+**** 编译安装之
+#+BEGIN_SRC sh
+  $ git clone https://github.com/hoytech/vmtouch.git
+  $ cd vmtouch
+  $ make
+  $ sudo make install
+#+END_SRC
+**** 能干啥
+1. 看看缓存中都有那些文件
+2. 精准缓存\驱逐一个文件或文件的一个region
+3. 锁定一个文件，不让缓存将其换出
+4. 绘制文件系统缓存随时间的使用情况
+5. 还有3左右没看明白[[https://hoytech.com/vmtouch/][Ref]]
 
-* zsh
-** 配置文件的读取顺序
-1. /etc/zsh/zshenv     or /etc/zshrc
-2.
-** 更改sh
-#+BEGIN_SRC sh
-  # 查看当前有的sh
-  chsh -l
-  # 改为zsh并保存
-  chsh -s /bin/zsh
-#+END_SRC
-*** 配置文件
-在第一次进入zsh的时候会有引导，选择生成配置文件。
-- /etc/zsh/zprofile : 全局配置文件，用户登录的时候加载。常用语配置一些登陆时要执行的命令。默认是一行加载/etc/profile的命令
-#+BEGIN_SRC sh
-  emulate sh -c 'source /etc/profile'
-#+END_SRC
-- ~/.zshrc : 用户配置文件
-*** do 配置
+
+
 

@@ -1,0 +1,31 @@
+#+title: any tools
+* Figlet
+[[https://aotu.io/notes/2016/11/22/figlet/index.html][Ref]]
+** 准备
+#+BEGIN_SRC sh
+  # install
+  pacman -S figlet figlet-fonts
+#+END_SRC
+** 在emacs的org-mode中的source block中使用
+* Github图片不显示
+[[https://blog.csdn.net/qq_38232598/article/details/91346392][Ref]]
+1. 利用F12查看不显示的图片的url
+2. 去IpAddress.com搜一下这个rul的ip
+3. 在/etc/host下添加 ip url
+4. sudo hostname url // 令刚刚配置的host生效
+* BaiduPCS-Go
+** 安装
+pacman -S baidupcs-go
+** 使用
+#+begin_src sh
+  baidupcs-go
+  # 输入账号密码即可
+#+end_src
+* gflags
+命令行参数处理工具
+* pprof
+* grip
+本地预览github格式的md文件
+1. 默认会读当前目录下的readme文件
+2. grip 需要用github api来渲染,看看有没有办法使用本地
+

@@ -1,0 +1,418 @@
+#+title: hadoop
+* 源码
+** 项目概览
+
+** 编译
+
+protoc希望版本是2.5 本机版本为3
+#+end_src
+*** 本机安装多个版本的protoc
+**** 编译protoc-2.5
+#+begin_src shell
+  # 从github下载指定版本
+  wget https://github.com/protocolbuffers/protobuf/archive/v2.5.0.tar.gz
+
+  # 解压
+  tar -zxvf v2.5.o.tar.gz
+
+  cd protobuf-2.5.0
+  ./autogen.sh
+
+
+  # 替换墙内的下载地址
+   22   wget https://github.com/google/googletest/archive/release-1.5.0.tar.gz
+   23   tar xzvf release-1.5.0.tar.gz        
+   24   mv googletest-release-1.5.0 gtest
+
+   # 编译
+   ./configure
+   make
+ 
+#+end_src
+**** maven插件hadoop-maven-plugins
+真正的插件位置为hadoop-common的pom.可以指定protoc 的path来指定
+#+begin_src xml
+  # pom.xml (hadoop)
+  <!--    <protoc.path>${env.HADOOP_PROTOC_PATH}</protoc.path>-->
+  <protobuf.version>2.5.0</protobuf.version>
+  <protoc.path>/home/wangchao/env/protobuf-2.5.0/src/protoc</protoc.path>
+#+end_src
+**** 方便源码阅读
+在hadoop-maven-plugins插件中传入一个新的参数,通过在github上看这个插件的源码得知
+#+begin_src xml 
+  <!-- 默认为build目录下, 源码阅读的时候还是找不到 -->
+  <output>${basedir}/src/main/java</output>
+#+end_src
+*** exec-maven-plugin:1.3.1:exec
+找不到ensure-jars-have-correct-contents.sh
+**** 暂时的解决方法,把验证jar包的逻辑去掉
+删掉pom中涉及到check-jar-contents的部分,3.2.1中client下的两个模块
+
+** 启动
+
+*** 部分类找不到的问题
+**** 原因 
+hdfs项目依赖于hadoop-client-project和hadoop-common-project下的部分模块,在整体编译的时候使用的provider scope,在idea中运行的时候先进性build是没有将这些依赖打到hdfs包中,所以运行是就找不到common和client下的类
+**** 解决办法
+在idea中调试运行的时候,将需要的依赖scope从provider替换为compile
+
+*** namenode
+** distcp
+
+*** 跨版本迁移的时候跳过crc检查
+#+begin_src shell
+  hadoop distcp -update -skipcrccheck src dest
+#+end_src
+
+** 块汇报
+** Block
+hadoop文件系统e的原始类型
+
+*** inbox
+1. prefix = blk_
+2. meta extension = .meta
+
+*** Hdfs-4645
+block id 由随机生成改为顺序生成
+
+**** why
+1. 随机生成的id没有格式,不能携带更多信息,比如让给块池几位或者在id上附带block类型
+2. 随机生成的id不能够保证一定是唯一的,为什么不能保证是唯一的?在生成后检查是否已经存在,以此来保证block id唯一性,但当一个dn在长时间的offline后重新连入集群,那么它可能携带了大量的冲突的block id.
+
+**** 
+
+*** hdfs-898
+block id 随机生成转顺序生成的motivation
+
+**** problem
+
+***** 碰撞则重新生成
+1. block 生成的时候,随机一个64位id,(由namendoe在block-map中)检查是否碰撞.若碰撞则重新生成并检查
+2. 问题是,当一个offline很久的dn带回了一些prehistoric block.这些block的id可能已经被namenode分配给了其他的block.这里就出现了冲突.当一切顺利时,使用生成stamps可以辨识是否为prehistoric block, 但是极端情况下还是会无法分辨
+   1. 生成戳尚未更新,offline dn带回了一个被删除的block,此时blockid碰撞, 且nn无法区分出谁为过时的
+   2. 在生成戳之前的old块没有办法区分
+   3. 上面这两点还要再看
+
+**** motivation
+1. 在hdfs-512中,namenode中的blockmap把blockid 当做key,过时的block会有更老的生成stamps.这减少了块损坏的机会.但依然存在prehistoric block的问题
+2. 如果使用顺序生成,我们能够确定blockid不会碰撞.这样每个文件的生成stamps所需的bits可以减少(64-32)
+3. 更前瞻的,如果将来支持多个namenode,那么将不会存在不好检查碰撞的问题
+
+**** solution
+1. 假设有一个拥有64 million个block,2^26.block id是64位,可以表示2^64个block. 那么其实blockid是相当稀疏的,而如果生成的时候就是连续的,那么n未使用的block id也是连续的.
+2. 所以这个方案是,在64位的blockid 中寻找一个连续的段,来使用这个段来为新的block 分配id
+3. 在每次文件创建的时候 or block 写入失败的时候生成stamps.
+
+*** hdfs-512
+
+
+** datanode
+*** hdfs 逻辑架构
+**** 1.x
+***** 逻辑上分为两层
+1. 命名空间管理层: 提供命名空间和目录树的管理和使用
+2. 数据块存储管理层:
+   1. 数据块管理: dn和数据块的管理和使用
+   2. 存储管理: dn上的物理存储和数据块的管理和使用
+***** 实现上
+1. nn实现了以上逻辑结构的两部分
+2. dn实现了存储管理
+**** 单一nn的缺陷
+1. nn内存中需要保存目录树和数据块元信息,非常吃内存,如此,nn的重启非常耗时,有时能长达几个小时
+2. 读写都要与nn交互,hdfs吞吐量收nn单点限制
+3. nn作为文件系统的中心节点,没有物理上的数据隔离
+4. nn单点故障,靠zkfc来恢复
+5. 设计角度上,nn同时实现了数据块和目录树的管理,使这两个中能高度耦合,难以让其他服务单独使用数据块管理服务(为啥要单独使用?)
+**** 2.x 和Federation
+*** Storage
+**** DataStorage
+用来管理磁盘目录,federation架构
+
+**** StorageDirectory
+1. in_use.lock 用来绑定目录到datanode进程,因为datanode是依赖目录结构的,两个datanode都处理同一个目录,可能会出现无法预料的情况
+
+**** BlockPoolSlice
+federation 结构下,一个dn上的一个块池对应一个命名空间,也就是一个namenode
+***** 构造
+1. 创建元数据目录
+2. 初始化dfsUsage,用来统计磁盘volumn使用情况
+3. 初始化 addReplicPool
+4. 设置一个shutdownHook
+
+
+**** FsVolumeSpi
+用户配置的一个存储目录,管理这个目录下的所有块.包含所有的块池
+
+**** FsVolumeList
+用户配置的所有存储目录
+
+**** FsDatasetSpi
+用来管理一个datanode的所有block
+
+**** ReplicaMap
+保存了datanode上所有的replica的信息
+
+***** hdfs-8859
+使用GSet替换jdk的实现,节省了45%的内存占用
+
+**** ReplicaInfo
+
+***** 2.8.0的时候去掉了unlinkBlock
+- hdfs-8860 去掉了copy on write of a block.那么去掉以后是怎么实现append的
+- 答: 8860是意外删除的这个逻辑,见hdfs-9589
+
+*** 集中式缓存
+1. hadoop-2.3.0中加入了集中式缓存管理.用户可以通过'hdfs cacheadmin'命令或api将hdfs上的某个文件或者某个目录放到集中式缓存中.
+2. 集中式缓存由dn上的堆外内存组成,被nn管理
+
+*** 块汇报
+1. dn在启动的时候会通过DatanodeProtocal.blockReport()方法向nn汇报dn上管理的属于该命令空间的所有数据块副本的信息,也就是nn对应的块池在当前dn上的所有数据块副本的信息
+
+**** 布局
+[[https://www.cnblogs.com/aaronwxb/archive/2012/09/16/2687587.html][参考]]
+***** hdfs-8791
+#+begin_src java
+  // @ DatanodeUtil.java
+
+  public static File idToBlockDir(File root, long blockId) {
+     - int d1 = (int)((blockId >> 16) & 0xff);
+     - int d2 = (int)((blockId >> 8) & 0xff);
+     + int d1 = (int) ((blockId >> 16) & 0x1F);
+     + int d2 = (int) ((blockId >> 8) & 0x1F);
+      String path = DataStorage.BLOCK_SUBDIR_PREFIX + d1 + SEP +
+          DataStorage.BLOCK_SUBDIR_PREFIX + d2;
+      return new File(root, path);
+    }
+#+end_src
+
+****** 问题
+1. 0xff = 255
+2. 一个bp有256*256个子文件
+3. 过多的文件导致没有一个稳定的文件cache
+4. 文件扫面退化为磁盘上的随机读
+
+****** 解决方式
+将256 * 256 缩小为32 * 32
+
+****** 为什么要采用256 * 256 布局
+因为磁盘进步速度高于cpu和网络进步速度,所以需要放弃将所有blk meta缓存于内存的设计.
+这种布局提供仅仅根据blk id计算存储位置,来找到blk的方法.
+
+*** 修块
+[[https://blog.cloudera.com/hdfs-datanode-scanners-and-disk-checker-explained/][参考]]
+**** 扫描
+
+***** 要求
+1. 区分出坏块以便删除或重新复制错误的块,以维护数据完整性并减少client遇到错误的机会
+2. 尽可能少的占用资源
+3. 快速
+
+***** block分类
+1. suspicious block, 在读的过程中报错的的块,需要尽快被扫描
+2. regular block, 常规块,定期被扫描
+
+***** BlockScanner & VolumeScanner
+1. 一个Datanode拥有一个BlockScanner
+2. 一个BlockScanner拥有多个VolumeScanner
+
+****** VolumeScanner
+1. 扫描当前Volume中所有的Block,定义为Regular scan,消耗一定的IO,因为要完整的读Block
+2. 维护一个suspicious block 列表
+3. 维护一个近期修复过的suspicious block 列表,防止重复扫描
+4. 周期持久化一个cursor,这样即便是扫描被中断了,重新扫描时也不至于回退太多
+
+1. 当dn提供服务的时候不活了
+***** which block need to scan
+1. 当dn提供服务的时候,捕获到除网络错误的IOException时,报错的block添加到suspicious blocks中
+   1. socket timeout
+   2. broken pipe
+   3. connection reset
+2. 周期扫描所有的块,在每次迭代的时候先检查是否有suspicious块,先扫描suspicious
+***** 配置
+1. dfs.block.scanner.volume.bytes.per.second限制扫描带宽 默认1M,设置为0意为关闭block scanner
+2. dfs.datanode.scan.period.hours 常规扫描周期 默认3weeks, 0=默认值,负数为关闭
+***** 相关issue
+1. HDFS-7430 enhances the block scanner to use O(1) memory and enables each volume scanner to run on a separate thread.
+   1. 只在内存中保存上一次扫描的block的状态,而不是所有扫描过的
+   2. 为每个volume分配一个线程
+   3. 增加贷款限制
+
+
+2. HDFS-7686 allows fast rescan of suspicious blocks.
+
+3. HDFS-10512 fixes an important bug that a race condition could terminate the volume scanner.
+**** 坏块被发现的时机
+1. 常规扫描 BlockSender发送block至一个空流
+2. 发送数据 Datanode之间的DataTransfer
+3. read block时 DataXceiver 
+**** 坏块原因
+1. 磁盘坏道
+2. block meta header损坏
+3. sender block的时候发生的各种与期望不符
+**** DirectoryScanner : dn 中block在内存和磁盘的状态同步
+只会检查FsDataSetImpl中保存的block信息和Finalize block的信息
+**** 手动修块和自动修块
+[[https://ruozedata.github.io/2019/06/06/%E7%94%9F%E4%BA%A7HDFS%20Block%E6%8D%9F%E5%9D%8F%E6%81%A2%E5%A4%8D%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5(%E5%90%AB%E6%80%9D%E8%80%83%E9%A2%98)/][参考]]
+
+** namenode
+
+*** inode
+
+**** INodeWithAdditionFields
+附加了这些属性id, name, permission, access time and modification time.
+
+***** permission
+
+****** permission
+使用一个long来user,group,mode
+
+****** PermissionStatusFormat
+用来解析long型的permission
+
+****** LongBitFormat
+hdfs中大量使用一个long型来记录信息,header中的replicas,acl和permission等
+
+***** feature
+hadoop 2.6以后将磁盘配额,快照,正在构建等抽象成inode 的feature
+
+***** InodeDirectory
+1. 相比于其父类InodeWithAdditionFields 多了一个字段childrens
+2. hdfs2.6以后引入了快照功能,当我们在任意一个directory上建立snapshot后,任何对于该目录的子项的操作都要记录在快照中,以便日后恢复   
+
+***** InodeFile
+InodeFile为hdfs文件的抽象,记录了文件的两个重要信息
+1. header 文件头
+
+   1. 当前文件有多少副本
+
+   2. 数据块的大小
+
+2. blocks 文件对应的数据块
+
+   1. BlockInfo类型的数组,从BlockInfo可以获得所属的InodeFile,也可以获得该数据块所在数据节点
+
+**** INodeReference
+Hdfs中的文件可能存在多条访问路径,INodeReference和子类就是为了表示这个情况
+1. 某个快照中的文件被移动或者重命名后就会存在多条访问路径
+
+*** Feature
+hdfs-2.6后,加入feature,根接口位于INode.Feature
+
+**** AclFeature
+**** FileUnderConstructionFeature (org.apache.hadoop.hdfs.server.namenode)
+**** XAttrFeature (org.apache.hadoop.hdfs.server.namenode)
+**** DirectoryWithSnapshotFeature (org.apache.hadoop.hdfs.server.namenode.snapshot)
+
+**** DirectoryWithQuotaFeature (org.apache.hadoop.hdfs.server.namenode)
+**** FileWithSnapshotFeature (org.apache.hadoop.hdfs.server.namenode.snapshot)
+** RPC
+
+*** 通信模块
+**** Client
+发送Writable请求到远程服务器
+**** Server
+接收请求
+1. 采用Reactor的时间驱动IO模型
+2. 当Server收到一个完整的Rpc请求后,会调用call来响应请求
+***** Call
+
+**** 客户端Stub
+将程序的Rpc调用序列化,并调用Client.call()将请求发送到远程服务器
+***** 通用性
+1. 允许使用不同的序列化框架
+2. 但请求类型只能是Writable
+***** 请求序列化 
+hadoop-2默认使用protobuf作为序列化工具,为支持不同的序列化工具,定义了一个Rpc序列化接口RpcEngine
+***** RpcEngine 
+
+****** 方法
+
+******* getProxy()
+获得一个本地协议(protocol)代理 ProtocolProxy
+
+******* getServer()
+获得一个RpcServer对象,服务端用这个对象监听从客户端发来的请求
+****** 子类
+******* WritableRpcEngine
+******** Invoker
+InvocationHandler的子类,代理类的处理逻辑,可以在被代理对象的方法调用前后增加包装,封装一个Invocation,调用client.call()将请求发送到远程服务器
+******** Invocation
+Writable对象的封装
+******** Server
+Server的子类,监听socket上的rpc请求,已经被标记为弃用
+********* WritableRpcInvoker
+Server的子类,用于响应client的请求,
+1. 反序列化
+2. 根据请求信息反射调用服务
+3. 将响应结果包装为一个Writable对象返回
+******* ProtobufRpcEngine
+***** 客户端如何获得ClientStub
+RPC.getProtocolProxy(被代理的client protocol), 意为获得一个能够帮我完成这个protocol里面的方法(意图)的代理.也就是这个代理有能力做protocol中定义的这些事情
+**** 服务端Stub
+***** 服务端获取Stub
+RPC.buider.build()
+
+*** 使用
+**** RPC
+定义了Hadoop RPC的一些基础
+**** ProtocolInfo
+protocol的名字,用在client和server沟通时.默认为类名.为什么要实现增加这个实现以有机会覆盖默认值?当同一个protocol有多个实现的时候,也就是有多个版本的时候可以加以区分
+**** ClientProtocol
+定义了与nn交互的所有接口,但是由于protocol中的参数是无法直接进行网络传输的,需要先序列化,为方便序列化,又定义了ClientNamenodeProtocolPB协议,它包含了ClientProtocol中的所有方法,但是参数是序列化后的参数
+
+**** ClientNamenodeProtocolTranslatorPB
+作用在客户端,实现了ClientProtocol, 用来把ClientProtocol 的接口适配成ClientNamenodeProtocolPB
+1. 持有一个ClientNamenodeProtocolPB对象,暂定为cb,当调用rename(String, String)时,ClientNamenodeProtocolTranslatorPB生成一个RenameRequestProto对象,暂定为rrp,并调用cb.rename(rrp)来发送到远程服务端
+
+**** ClientNamenodeProtocolServerSideTranslatorPB
+作用在服务端,实现了ClientNamenodeProtocolPB,
+* 工
+** hdfs审计日志清洗入druid
+使用crontab每天离线做清洗,然后导入druid
+** nn内存外挂
+1. fsimage离线导入数据库
+** block missing
+只要不是3块都丢了就还有机会抢救
+*** 原因
+1. 块汇报不及时
+2. dn正常么
+3. dn 的dfs.datanode.data.dir下的目录正常么
+*** 恢复
+[[https://blog.51cto.com/xiaolanlan/2071642][暴力恢复]]
+1. 手动触发块汇报
+#+begin_src shell
+  hdfs dfsadmin -triggerBlockReport datanode_ip:port
+#+end_src
+** 修盘
+*** 1. 停止dn
+1.配置exclude：
+#+begin_src xml
+  <!--在/data/hadoop/excludes文件添加要退役的节点ip（可同时退役多个，一个一行）-->
+  <name>dfs.hosts.exclude</name>  
+  <value>/data/hadoop/excludes</value>  
+#+end_src
+2. 配置完后刷新节点
+#+begin_src shell
+HADOOP_HOME/bin/hadoop dfsadmin  -refreshNodes
+#+end_src
+3. 查看各节点状态
+#+begin_src shell
+HADOOP_HOME/bin/hadoop dfsadmin -report  
+#+end_src
+#+begin_src
+进度可在HDFS的50070可视化界面的Decommissioning处查看
+Under replicated blocks	： 有备份的blocks
+Blocks with no live replicas	： 没有存活备份的blocks(存备份的datanode下线了)
+Under Replicated Blocks In files under construction   ： 备份数不够的blocks
+#+end_src
+5.另外有暴力的方式：
+直接停datanode，hadoop的balance机制会自动将备份数不足3份（可配置）的blocks重新备份，注意这个方式只可以一次停一台机器，不然可能会出现missing blocks。
+*** 2. 修盘
+*** 3. 挂载
+*** 4. 格式化文件系统
+*** 
+
+* todo
+fs#rename 语义
+
+

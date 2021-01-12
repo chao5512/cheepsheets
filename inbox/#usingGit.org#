@@ -69,7 +69,26 @@ merge目的branch
       git merge upstream/master
    3. commit to github
       git push origin master
-   
+   4. about tag
+      git log
+      git tag <name> a47b3d36e
+      git push origin <name>
+      git tag
+      git tag -d <name>
+      git push origin :<name>
+
+
+
+
+
+
+
+
+** TODO to learn.
+1. https://opensource.guide/
+2. https://lab.github.com/
+3. https://help.github.com/articles/creating-a-commit-with-multiple-authors
+
 * 表严肃
 checkout id前七位 穿越到指定后悔药
 git log -p[ache]
@@ -171,10 +190,7 @@ Git 自带一个 git config 的工具来帮助设置控制 Git 外观和行为�
 * 使用场景
 ** 不小心提交了不该提交的文件到暂存区，而且这个文件本地还要用
 #+BEGIN_SRC sh
-  # 单个文件
   git rm --cached README
-  # 整个文件夹
-  git rm -r --cached .idea
 #+END_SRC
 ** 有时候我们提交完了才发现漏掉了几个文件没有添加，或者提交信息写错了。 此时，可以运行带有 --amend 选项的提交命令来重新提交
 #+BEGIN_SRC sh
@@ -182,10 +198,7 @@ Git 自带一个 git config 的工具来帮助设置控制 Git 外观和行为�
 #+END_SRC
 最终我们只会得到最后一次的提交message
 ** TODO 修整gitlog
-** 更改上游
-#+begin_src shell
-  git remote set-url
-#+end_src
+** 
 * branch 
 git branch本质上是指向提交对象的可变指针
 ** 创建分支
@@ -193,11 +206,6 @@ git branch本质上是指向提交对象的可变指针
 #+BEGIN_SRC sh
   git branch test
 #+END_SRC
-** 推送新分支到远程仓库
-#+begin_src sh
-  ＃远程仓库为origin 推送本地分支c-read 到远程c-read
-  git push orign c-read:c-read
-#+end_src
 ** 简单查看分支指向的提交对象
 只能在当前分支可见的提交对象上看到各个分支，如果某个分支的提交对象不在当前分支可见，就看不见。可以加--all来全部显示
 #+BEGIN_SRC sh
@@ -227,35 +235,6 @@ git pull = git fetch + git merge
   # git rebase <basebranch> <topicbranch>
   git rebase b1 master
 #+END_SRC
-** merge
-
-
-* tag
-   #+begin_src shell
-     git log
-     # 创建一个tag
-     git tag <name> a47b3d36e
-     # 推送tag到remote
-     git push origin <name>
-     # 查看本地tag
-     git tag
-     # 删除一个tag
-     git tag -d <name>
-
-   #+end_src
-
-
-
-
-
-
-
-
-** TODO to learn.
-1. https://opensource.guide/
-2. https://lab.github.com/
-3. https://help.github.com/articles/creating-a-commit-with-multiple-authors
-
 * 底层
 ** use git as a kv database
 #+BEGIN_SRC sh
@@ -302,3 +281,4 @@ git pull = git fetch + git merge
 *** 2. 修改file1 并提交
 1. 生成一个新的blob对象，对应与修改后的内容
 2. 生成一个新的commit对象，相比与第一次提交，平凡的提交会有一个parent字段指向上一次的commit对象，合并提交对象应该会有两个parent
+3. 生成一个新的tree对象

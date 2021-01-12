@@ -1,0 +1,23 @@
+#+title: 各种树
+* R-trees
+[[https://www.cnblogs.com/arxive/p/8139109.html][Ref]] [[https://www.cnblogs.com/cmi-sh-love/p/kong-jian-shud-ju-suo-yinRTree-wan-quan-jie-xi-jiJa.html][Ref-2]]
+一种用于空间搜索的动态索引结构
+** 结构
+平衡树
+*** 叶节点
+存储真实数据的索引
+**** 节点内条目
+(I, tuple-identifer)
+1. tuple-identifer 找到数据的标识符
+2. I=(I0,I1...In-1) n为空间维度, 其中I0是在0维度上的一个闭区间
+*** 非叶节点(也对应于一个磁盘区域,与b树类似)
+(I, child-pointer)
+1. I, 这个范围包含他所有的子节点的覆盖范围
+2. child-pointer 子节点
+** 算法
+** 性能分析
+** 总结
+* B-tree
+* Quad tree
+* kd-tree
+* kdb-tree

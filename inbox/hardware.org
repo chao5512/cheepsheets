@@ -1,0 +1,37 @@
+#+title: 硬件常识
+* 机械硬盘的读写速度
+[[https://zhuanlan.zhihu.com/p/38847308][知乎]]
+1. 转速是主轴电机每分钟能够完成多少转,在存储密度相同的硬盘中,转速越快,读写越快
+2. 存储密度大的相对存储密度小的更有优势
+* CPU SIMD
+Single instruction, Multiple Data
+[[https://cloud.tencent.com/developer/article/1350938][讲硬件不错的系列文章]]
+** 检查当前cpu是否支持sse
+#+BEGIN_SRC sh
+grep -q sse4_2 /proc/cpuinfo && echo "SSE 4.2 supported" || echo "SSE 4.2 not supported"
+#+END_SRC
+** 总结
+cpu提供的指令级别的并行处理,多数应用都没有用上这一特性.可以在代码层面去利用sse来在指令级别将计算并行化
+* 磁盘
+1. [[https://www.cnblogs.com/kerrycode/p/12701772.html][参考]]
+2. [[https://www.cnblogs.com/sunsky303/p/11641728.html][参考]]
+** 扇区
+1. 扇区是磁盘的物理存储单位
+2. block是文件系统(比如格式化磁盘时指定的ext4)的最小存储单位
+3. 一个block可能由多个扇区构成
+4. 一个block只能存储一个文件的内容
+*** 查看扇区大小
+#+begin_src shell
+  fdisk -l
+
+#+end_src
+** 磁盘监控
+*** 指标
+1. iops io/秒,随机读写多时主要考察这个指标
+2. Throughtput MB/秒, 吞吐量, 顺序读写多时主要考察这个指标
+3. io平均大小, 吞吐量/io数, 大于32k(8个block)视为顺序读写为主,否则视为随机读写为主
+4. Utilization 磁盘利用率(忙闲程度),用于磁盘io的所占用的时间比例
+5. Serveice Time 一次io的用时
+6. Queue length io队列
+7. Wait time 在队列中排队的时间
+

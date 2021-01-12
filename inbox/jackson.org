@@ -1,0 +1,10 @@
+#+title: jackson
+* Mix in
+1. 结合@jsonUnwrapper 在不修改原bean的前提下，在json中展开原bean的引用对象
+2. 给原bean加注释
+* json type info
+[[https://www.jianshu.com/p/a21f1633d79c][Ref]]
+1. json用于处理多态的一种注解
+2. 配合json sub type info使用
+* @jsonCreator
+用来指定json反序列化时用到的初始化一个实例的方法

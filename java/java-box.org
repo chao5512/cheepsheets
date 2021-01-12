@@ -8,22 +8,46 @@
   + String类型的变量的赋值，如果使用字面量赋值，那么jvm会现在常量池中找这个字面量对应的String对象，存在则直接指向
   + 如果使用new方式赋值，会在堆上创建对象，并保证在常量池中也存该字面量对应的一个对象
 + StringBuilder 普通数组，实现了扩容策略，允许追加
-+ StringBuffer 与StringBuilder相同，当时append方法加了锁，是线程安全的
++ StringBuffer 线程安全的可变字符串序列,与StringBuilder相同，append方法加了class锁，是线程安全的
 ** intern
+用来显式的向字符串常量池中添加字符串
 + “xxx”.intern()，如果字符串池中已经有与xxx equal()的值得时候，直接返回字符串池中的对象，如果没有，则在池中创建一个
 * hash
 + hashcode 一个对象的标识，用来配合hash表使用
 + 常与equal一起重写
 * Integer
 + 如果想使用一个Integer的实例，相比于构造方法，应优先使用valueOf方法，因为valueOf方法缓存了-128~127之间的Integer实例
+* Long
+** parseLong 和 valueOf的区别
+1. parseLong将格式正确的字符串转换成10radix的long
+2. valueOf 第一步调用parseLong得到long，然后自动装箱成Long，这里用一个静态内部类LongCache缓存了-128 -- 127 的Long型a对象
+3. 有时候valueOf后面的自动装箱是多余的，使用的时候可以留心
 * 枚举
 + values()和valueOf()
 + 我们定义的枚举类型都是继承自java.lang.Enum类
 + 枚举类中的成员变量都是public static
 + 每个枚举的成员本质上就是枚举类型的一个实例，在编译时就确定下来的，运行时无法新添加了
 + [[https://blog.csdn.net/qq_21870555/article/details/82769721][使用枚举类型来代替你的常量们]]
+** 枚举类型的内置方法
+1. values() //将枚举量转换为枚举数组,方便遍历
+hdfs权限模型中大量使用values将权限枚举转换为数组,并通过数组下标与long permission对应
+
 * 反射
-+ 通过反射访问私有成员方法，应该用Method#setAccessible(true);
+** Class
+1. Class.getMethods（） 获取的时所有 *pulbic* 方法
+2. 通过反射访问私有成员方法，应该用instance.getClass().getDeclaredMethods和Method#setAccessible(true);
+*** getInterfaces
+由一个实例获得由该类实现的所有的接口
+*** public <A extends Annotation> A getAnnotation(Class<A> annotationClass)
+获取一个类的指定注解实例
+*** getName
+#+begin_src java
+  String.class.getName();
+  //returns "java.lang.String"
+  byte.class.getName(); //returns "byte"
+  (new Object[3]).getClass().getName();//returns "[Ljava.lang.Object;"
+  (new int[3][4][5][6][7][8][9]).getClass().getName(); //returns "[[[[[[[I"
+#+end_src
 * Annotation
 帮助尽早发现bug
 
@@ -113,37 +137,124 @@
 ** Error
 内存溢出属于Error，所以只捕获Exception是捕获不到的
 * 深拷贝和浅拷贝
-1. 这里的拷贝是对对象的拷贝，所以就设计对象本身和对象引用的对象
+1. 这里的拷贝是对对象的拷贝，所以就涉及对象本身和对象引用的对象
    1. 深拷贝，对象本身和所有引用的对象都复制
    2. 浅拷贝，只复制对象本身
 2. 继承自Object.clone的复制都是浅拷贝
-* 内部类
-定义在内部类
+* 嵌套类
+
+** 使用嵌套类的好处
+1. 更好的组织类关系,当一个类a只会在类b中使用,那么类a应该作为类b的嵌套类
+2. 在不破坏封装性的前提下访问,一个封装类无法直接访问其他封装类的私有属性,但如果作为它的内部类,那就可以直接访问私有属性了
+3. 使得代码更易读来方便维护
+
 ** 分类
-1. 静态内部类，只能访问外部类的静态方法和静态属性
-2. 成员内部类，创建方式，new 外部类 .new 内部类;
-3. 局部内部类，定义在方法中的，只能访问方法中的final类型的变量
-4. 匿名内部类，
-** inbox
-1. 在内部类中访问外围类的属性，Outclass.this.属性
+*** 静态嵌套类
+作为外部类的类成员使用,只能方位外部类的类成员(静态方法和静态属性)
+#+begin_src java
+  OuterClass.StaticNestedClass nestedObject =
+       new OuterClass.StaticNestedClass();
+
+#+end_src
+*** 内部类
+作为外部类实例的成员使用
+#+begin_src java
+  // 要使用内部类,需要现货的外部类的实例
+  OuterClass outerObject = new OuterClass();
+  OuterClass.InnerClass innerObject = outerObject.new InnerClass();
+
+#+end_src
+**** 分类
+1. 局部内部类，定义在方法中的，只能访问方法中的final类型的变量
+2. 匿名内部类，
+**** shadowing
+如何在内部类实例对象a中访问a所在的外部类实例对象b中与a中声明相同的变量
+#+begin_src java
+  public class ShadowTest {
+      // 注意这个变量名与内部类实例的变量名相同
+      public int x = 0;
+
+      class FirstLevel {
+          // 注意这个变量名与外部类实例的变量名相同
+          public int x = 1;
+
+          void methodInFirstLevel(int x) {
+              System.out.println("x = " + x);
+              // 当前的对象的x属性
+              System.out.println("this.x = " + this.x);
+              // 当前对象所在的外部类实例的x属性
+              System.out.println("ShadowTest.this.x = " + ShadowTest.this.x);
+          }
+      }
+
+      public static void main(String... args) {
+          ShadowTest st = new ShadowTest();
+          ShadowTest.FirstLevel fl = st.new FirstLevel();
+          fl.methodInFirstLevel(23);
+      }
+  }
+
+#+end_src
+**** 匿名内部类的参数引用为什么是final？
+[[https://blog.nekolr.com/2018/05/29/%25E4%25B8%25BA%25E4%25BD%2595%25E5%258C%25BF%25E5%2590%258D%25E5%2586%2585%25E9%2583%25A8%25E7%25B1%25BB%25E7%259A%2584%25E5%258F%2582%25E6%2595%25B0%25E5%25BC%2595%25E7%2594%25A8%25E8%25A6%2581%25E7%2594%25A8%2520final%2520%25E4%25BF%25AE%25E9%25A5%25B0/][Ref]]
+1. java的参数传递是值传递，也就是参数在接到的时候就是原值的一个副本。引用传递也是传递的引用的副本，指向同一个对象罢了
+2. 因为 Java 只实现了值捕获，所以匿名内部类中使用的自由变量是原来的自由变量值的一个副本（基本类型是值的副本，引用类型是引用地址值的副本），修改它们的值并不会影响外部环境中的自由变量，为了让使用者使用起来感觉和引用捕获一样，Java 干脆做了限制：在 JDK 8 以前，必须使用 final 修饰，在 JDK 8 以后，可以不用 final 修饰，但是变量必须是有效只读的，即 effectively final 的。这样大家一看是 final 的，就不会去修改它了，即便修改也会编译器报错。即使以后 Java 实现了引用捕获，也不会和已有的代码发生不兼容。
+
 * jdk1.8
 ** 包 
 + java.util.function
 
 ** lambda
+1. 对于只有一个函数的接口来说,匿名内部类也显得不够简洁和清晰.
+2. 如何将一个方法作为参数
+
+*** 内建接口
+一些通用的接口,不必在自己定义
+
+**** Predicate<T>
+断言 boolean test(T t)
+
+**** Consumer<T>
+消费 void accept(T t)
+
+**** Function<T, R>
+待返回值的 R accept(T t)
+
+*** 方法引用
+指向一个已经存在的方法
+1. ContainingClass::staticMethodName 引用一个静态方法
+2. containingObject::instanceMethodName 引用一个对象的实例方法
+3. ContainingType::methodName 引用一个类型的实例方法(啥意思?啥是一个类型)
+4. ClassName::new 引用一个构造方法
+
 *** 函数式接口
 + 整一个只有一个method的接口，用来“传method"
 + 在一个接口上加上注解@FunctionalInterface时，编译器帮我们检查该接口是否符合函数式接口
 + 一个满足函数式接口定义的接口，编译器也还是会把接口看做一个函数式接口
+**** lambda表达式和方法引用
+如果 lambda 表达式的目的仅是将一个形参传递给实例方法，那么可以将它替换为实例上的方法引用。如果传递表达式要传递给静态方法，可以将它替换为类上的方法引用。
+#+BEGIN_SRC java
+  // lambda
+  .map(e -> System.out.println(e))；
+   // 方法引用
+      .map(System::out)
+    
+#+END_SRC
 
+*** 级联lambda
+返回函数的函数即为级联lambda表达式
+*** 与闭包的比较
+[[https://developer.ibm.com/zh/articles/j-java8idioms10/][Ref]]k
 ** 接口中的默认方法
 ** joda-time
 + 不可变对象
 + 标准UTC时间:2014-11-04T09:22:54.876Z
 + 传输按上面的形式来传，没有歧义
-** 静态推导
+** 静态推导（类型推断）
+java8是java第一个支持类型推断的版本
 ** Optional
-针对空指针异常，即当你明确带访问的对象中是非null的，使用Optional避免无意义的空指针异常
+1. 针对空指针异常，即当你明确带访问的对象中是非null的，使用Optional避免无意义的空指针异常
+2. orElseGet(supplier) ,如果supplier提供了值作为备用值 
 ** Stream
 *** 概念
 1. 一个源+ Optional中间操作+终止操作
@@ -151,6 +262,10 @@
    1. lazy 求值
    2. 及早求值
 ** Functional interface
+*** 三条法则
+1. 一个函数接口只有一个抽象方法，任何满足单一抽象方法的接口都会被是做函数接口
+2. 在 Object 类中属于公共方法的抽象方法不会被视为单一抽象方法。
+3. 函数接口可以有默认方法和静态方法。
 *** 四种基本形式
 1. Function T到R的一元函数
 2. Consumer T到void的一元函数
@@ -169,6 +284,19 @@
 *** 参数To返回值前缀
 IntToDoubleFunction
 *** 如果所有参数到显示的指定类型，那么arity前缀是多余的
+*** 内置函数接口Functional
+**** Function
+1. 用于map()
+**** Predicate
+1. 用于filter()
+**** consumer
+1. 实现accept方法，消费接到的值
+2. 用于forEach
+**** supplier
+实现get方法，提供值。例如：用与给Optional提供值
+*** 自定义函数接口
+1. 使用 @FunctionalInterface 注释该接口，这是 Java 8 对自定义函数接口的约定。
+2. 确保该接口只有一个抽象方法。
 ** time
 1. time 包中参照ISO标准定义了一些时间相关的类,都是不可变、线程安全的
 2. 所有的date time都是由暴露创建接口的字段们组成，如果想要直接访问字段，查阅子包temporal中的
@@ -192,7 +320,7 @@ IntToDoubleFunction
 *** 附加的value类型
 **** OffsetTime 和OffsetDateTime主要用于网络传输和存数据库，因为相比Europe/Paris，+02:00 是更为简单的结构
 * ForkJoin框架
-**  ForkJoinPool
+** ForkJoinPool
 + 与其他Executor Service相比，ForkJoinPool的优势在于，pool中的线程除了处理提交上来的任务外，还会处理pool中其他线程产生的子任务。
 *** 适用于
 1. 有很多小任务
@@ -201,13 +329,6 @@ IntToDoubleFunction
 在构造中设置asyncMode为true，意味着pool适用于基于事件不用去join的task
 ** ForkJoinTask
 一个ForkJoinTask类似于线程，但是比线程更轻量，是一个轻量的Future
-* inbox
-+ 静态方法只能继承，不能重写。
-+ final修饰引用类型变量，则这个变量不能修改指针，但是指向的对象内部是可以改变的,修饰的数组长度可变么
-+ 静态代码块只能执行一次
-+ java.lang.包不需要导入
-+ 常量池，看一下老年代被取消后它跑哪去了
-+ instance方法判断是不是某类对象或者是不是实现了某个接口
 * java中的设计模式
 ** 单例模式
 ** 策略模式
@@ -223,6 +344,7 @@ IntToDoubleFunction
 *** 静态代理
 真实对象是实现存在的
 *** 动态代理
+[[https://www.zhihu.com/question/20794107][参考]]
 + 一个接口 ：invocationHandler
 + 一个类 : Proxy 动态代理类
 + 范式，使用Proxy.newProxyInstance(谁,干什么,handler(怎么干))来动态生成一个代理类，然后调用代理被托管的那个真实角色的方法，同静态方法。
@@ -234,6 +356,25 @@ IntToDoubleFunction
 2. concrete component -->FileInputStream
 3. decorator --> FilterInputStream
 4. concrete decorator --> BufferedInputStream
+* Collections
+** list
+*** 线程安全的list
+#+begin_src java
+  /**
+   ,* 本实例演示ArrayList升级为线程安全的List
+   ,*/
+  public class SyncArrayList {
+      public static void main(String[] args) {
+          List<Integer> list= Collections.synchronizedList(new ArrayList<>());
+          list.add(1);
+          System.out.println(list.get(0));
+      }
+  }
+#+end_src
+** map
+*** skip list
+1. search和insert的复杂度都是O(logn)
+*** ConcurrentSkipListMap
 * native
 java中怎么调用c++
 * 网络编程 
@@ -259,86 +400,407 @@ java中怎么调用c++
   Socket socket = new Socket( "localhost",port);
   socket.connect();
 #+END_SRC
+** 算法
+*** Nagle's algorithm 
+#<<nagle's algorithm>>
+
+** java socket
+*** ServerSocket
+*** SocketImplFactory
+SocketImpl工厂类
+*** SocketImpl
+*** SocketOptions
+1. TCP_NODELAY ： 禁用[[nagle's algorithm][nagle's algorithm]]
+
+** in action
+[[https://www.cnblogs.com/yiwangzhibujian/p/7107785.html][参考]]
+*** 如何做到echo，即如何让对端知道我发送完了，并接收对端消息？
+1. 约定结束符
+2. 先发送长度，在发送数据
+
 * io
-阻塞io
-** 核心是流
-*** 分类
-**** 按功能
+** 参考
+[[https://wiki.jikexueyuan.com/project/java-nio-zh/java-nio-buffer.html][参考]]
+[[https://www.cnkirito.moe/file-io-best-practise/][徐婧峰@ali]]
+** java中的io分类
+*** 1. io
+位于java.io, 普通io
+**** 核心是流
+***** 分类
+****** 按功能
 1. 输入流
 2. 输出流
-**** 按结构
+****** 按结构
 1. 字节流
    1. InputStream
    2. OutputStream
 2. 字符流
    1. Writer
    2. Reader
-**** 按继承关系
+****** 按继承关系
 1. 节点流：直接连设备
 2. 过滤流：另外一个流的包装，使用的是装饰模式
-*** 流是单向的
-** 使用步骤(面向流的编程)
+***** 流是单向的
+**** 使用步骤(面向流的编程)
 1. 打开一个流
 2. (optional:组合功能到一个流链)
 3. 循环从/向流中读/写数据
 4. 关闭流
-* nio
-非阻塞io
-** 核心
-1. Selector：一个线程根据事件来选择不同的Channel
-2. Channel
-   1. 只能通过Buffer来读写
-   2. 双向的（linux底层也是双向的）
-3. Buffer
-   1. 原生数据类型(除了Boolean)都有自己的Buffer
-** 通信过程
+*** 2. nio
+java.nio,不全都是非阻塞io，fileChanel就不可以非阻塞
+**** 核心
+1. Selector：只需要使用一个线程根据事件来选择不同的Channel
+2. 标准的IO编程接口是面向字节流和字符流的。而NIO是面向通道和缓冲区的，数据总是从通道中读到buffer缓冲区内，或者从buffer写入到通道中。
+   1. Channel
+      1. 只能通过Buffer来读写
+      2. 双向的（linux底层也是双向的）
+   2. Buffer
+      1. 原生数据类型(除了Boolean)都有自己的Buffer
+3. Java NIO使我们可以进行非阻塞IO操作。比如说，单线程中从通道读取数据到buffer，同时可以继续做别的事情，当数据读取到buffer中后，线程再继续处理数据。写数据也是一样的。
+**** 通信过程
 
 #+DOWNLOADED: https://img-blog.csdn.net/20141213161210309?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvcm9iaW5qd29uZw==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center @ 2019-12-04 17:59:48
 [[file:nio/2019-12-04_17-59-48_20141213161210309.png]]
 
-** Buffer源码
+**** Buffer
 + 是一个特殊原生类型的容器。
 + buffer不能断点续读
 + 不是线程安全的
 + byteBuffer可以存其他各种原生类型
-*** 重要属性
+***** 使用定式
+#+begin_src java
+  /*
+  1. 写入数据到buffer: buffer会记录写入数据的大小
+  2. buffer.flip(): 从写模式转换到读模式
+  3. 从buffer中读出数据
+  4. buffer.clear或者buffer.compact(): clear清空整个buffer.compact只清空已读数据,未读数据被移动到buffer的开始位置
+  ,*/
+  // 创建一个48字节的buffer
+  ByteBuffer buf = ByteBuffer.allocate(48);
+  // 创建一个1024个字符的buffer
+  // CharBuffer buf = CharBuffer.allocate(1024);
+
+  // 写入数据到buffer
+  // 1. 手动写
+  buf.put(127);
+  // 2. 冲一个channel中把数据读入buffer
+   int bytesRead = inChannel.read(buf); //read into buffer.
+
+  // 翻转 : 从写模式转换到读模式 limit = position; position = 0;
+  buf.flip();
+
+  // 从buffer中读出数据
+  // 1. 从buffer读数据写入channel
+  int bytesWritten = inchannel.write(buf);
+  // 2. 手动读
+  byte aByte = buf.get();
+
+  // 反复读取块数据,使用rewind将position置零,然后就可以反复读这块数据了
+  buf.rewind();
+
+  // 使用mark标记一个位置,然后使用reset把position置为标记的位置
+#+end_src
+***** 重要属性
+limit和position的具体含义取决于现在所处的模式(读/写)
 1. capacity ： buffer的容量
-2. limit ：读到哪，buffer中第一个不能被读写的位置
+2. limit ：
+   1. 读上限:读模式下buffer中第一个不能被读写的位置
+   2. 写上限:写模式下buffer的写上限
 3. position ： buffer中下次用于读写的位置
-*** slice方法
+***** slice方法
 返回一个buffer的子序列为新的buffer，底层共享同一份数组，但是有4个独立的标志位
-*** DirectBuffer
+***** DirectBuffer
 + 使用Unsafe来分配内存，读写内存。每个DirectBuffer有一个自己的回收器DeAllocator
 + Buffer中有一个表示堆外内存地址的long型address
 + 因为这个buffer是要和硬件打交道的，所以直接分配到操作系统内存中，省掉了一步从堆copy到系统内存。即零拷贝。更快
-*** MappedByteBuffer
+***** MappedByteBuffer
 + 映射文件的内存。这不是emacs的buffer？
 + 把文件的某一部分缓存到内存中，可以直接在内存中写，由操作系统决定怎么写回文件。
-*** 文件锁
+***** 文件锁
 fileLock
-*** scattering
+***** scattering
 比如，从文件中读到多个buffer。天然的适配解析具有一定格式的数据
-*** Gathering
+***** Gathering
 比如, 从多个buffer向一个文件写
-** Selector
-Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够知晓通道是否为诸如读写事件做好准备的组件。这样，一个单独的线程可以管理多个channel，从而管理多个网络连接
+***** ByteBuffer
+用来提供底层存储(数组)的一种视图,来方便读写内容,but how?
+****** 使用实例
+******* 两种创建方式
+1. wrap一个已经存在的byte[] 作为ByteBuffer
+2. allocate指定大小的ByteBuffer
+#+BEGIN_SRC java
+  // 写
+  byte[] data = new byte[4096];
+  long position = 1024L;
+  // 指定 position 写入 4kb 的数据
+  fileChannel.write(ByteBuffer.wrap(data), position);
+  // 从当前文件指针的位置写入 4kb 的数据
+  fileChannel.write(ByteBuffer.wrap(data));
 
-*** 概念
-+ registrations
-+ register 使用selector为channel注册
-+ cancel 方法在cancelled-key上同步
-+ selection 
-*** 三个key set
+  // 读
+  ByteBuffer buffer = ByteBuffer.allocate(4096);
+  long position = 1024L;
+  // 指定 position 读取 4kb 的数据
+  fileChannel.read(buffer,position)；
+  // 从当前文件指针的位置读取 4kb 的数据
+  fileChannel.read(buffer);
+#+END_SRC
+******* 按底层存储分类
+******** 1. 直接内存
+使用allocateDirecct或者map创建
+******** 2。非直接内存
+******* 如何转换成array
+自带array方法,但此方法放回的是底层存储的引用,所以如果想得到数组的副本,使用这作为上层,自己实现
+1. 使用duplicate
+2. 使用Arrays.copyOf()
+******* 基操
+1. clear : limit = capacity; position = 0; 初始化
+2. put :
+3. flip : limit = position; position = 0;
+4. get :
+5. rewind : position = 0; 读之后再读一遍
+
+
+****** 和byte array的区别
+1. Bytebuffer相较于ByteArray,他的hashcode()/equal()是有意义的,只要两个ByteBuffer在position和limit之间的byte[]值是相等的,ByteBuffer就是相等的
+2. 在获取子集场景下,ByteBuffer提供了一种零拷贝的方式,也就是只创建新的ByteBuffer实例而不是底层存储的拷贝.
+3. ByteBuffer拥有堆外实现
+4. ByteBuffer提供一些字节数组之上的附加状态,这使得通过ByteBuffer更容易进行相对位置IO操作
+5. 提供了各种原始类型的IO操作
+******* 总结
+相较于Byte Array, NIO更需要一种高效率(获取子集时零拷贝),可以更方便的使用相对位置进行Byte Array 读写操作的数据结构-ByteBuffer
+****** 关键属性
+1. capacity 不变
+2. limit 读写的边界
+3. position 读或写的起点.显然ByteBuffer只能处于读或写一种状态
+***** Netty ByteBuf
+网络传输的最小单位是byte
+****** 为什么不用nio中ByteBuffer
+1. 读写公用一个pos索引
+2. 不支持动态扩展
+****** 读写索引
+1. 读 readIndex
+2. 写 writeIndex
+****** CompositeByteBuf
+提供了零拷贝的组合ByteBuf的方法
+******* 
+**** Selector
+Selector(选择器)是Java NIO中能够检测一到多个NIO通道，并能够知晓某个通道准备好了某个时间。这样，一个单独的线程可以管理多个channel，从而做到一个线程来接收请求并分发
+
+***** 使用定式
+1. 创建并注册
+#+begin_src java
+  // 1. 创建一个selector
+  Selector selector = Selector.open();
+
+  // 2. 准备感兴趣的事件
+  int interst = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
+
+  // 3. 把对一个非阻塞的selectable channel感兴趣的事件注册到selector上
+  channel.configureBlocking(false);
+  SelectionKey key = channel.register(selector, interst);
+
+
+#+end_src
+2. 获得就绪的方法
+#+begin_src java
+  /** Selector的select方法
+   ,* 返回值是表示有多少个channel触发了注册的事件,应该是1
+   ,* 1. int select() 阻塞直到至少有一个时间准备好了
+   ,* 2. int select(long timeout) 阻塞但是带个时间限制
+   ,* 3. int selectNow() 不阻塞返回现在的状态
+  ,*/
+  while (running) {
+      try {
+          selector.select();
+          Iterator<SelectionKey> iter = selector.selectedKeys().iterator();
+            while (iter.hasNext()) {
+              key = iter.next();
+              iter.remove();
+              try {
+                if (key.isValid()) {
+                  if (key.isAcceptable())
+                    doAccept(key);
+                }
+              } catch (IOException e) {
+              }
+              key = null;
+            }
+      } catch(OutOfMemoryError e) {
+          // 1. 关闭链接
+          // 2. 停止循环
+      } catch(Exception e) {
+      }
+  } 
+#+end_src
+***** 概念
+注意上面的使用定式最后一步得到的是一个selectionkey,其有四种重要的属性
+1. Interst Set: 感兴趣的事件集合
+2. Ready Set: 准备好的事件
+3. channel + selector : 可以直接从selection key操作他们,这样看起来selection key相当于是channel和selector的一个绑定关系
+4. Attaching Object : 可附加对象
+***** 三个key set
 1. key set
 2. select-key set
-3. cancelled-key
-* 为什么系统不能直接访问java堆上的内容呢?
+   1. cancelled-key
+**** Channel
+***** channel和流
+1. 流是单向的,channel既可以读也可以写
+2. channel可以异步读写
+3. channel的读写总是对于buffer来做的
+***** 主流channel
+****** FileChannel
+******* 使用方式
+#+BEGIN_SRC java
+  FileChannel fileChannel = new RandomAccessFile(new File("db.data"), "rw").getChannel();
+#+END_SRC
+****** SocketChannel
+Tcp的数据读写
+****** ServerSocketChannel
+监听TCP链接请求,为每个请求创建一个SocketChannel
+****** DatagramChannel
+用于UDP的读写
+****** SelctableChannel
+可以通过Selector实现多路复用的channel
+1. 为了实现多路复用,此类的实例必先实现register方法
+******* BlockingMode
+1. blocking mode下 当前线程要等待当前channel上的io完成(成功或者失败).
+2. non-blocking mode 当channel上的io不能立即完成时,将控制权返回给当前线程,可能会在将来的某个时刻再次考察io的结果,这可能造成某一刻会读出来比你预想的要小的数据
+3. 使用selector 的多路复用需要配合non-blocking mode使用
+**** FileLock
+相当于一个file中的一块region的lock
+*****  autoclose
+1. 申请这个lock的channel关闭
+2. jvm关闭
+3. 显式的release
+***** 可以独占可以共享
+****** 共享锁
+1. 允许多线程访问共享锁定的部分
+2. 不允许访问被独占锁定的部分
+****** 独占锁
+1. 不允许访问被独占锁定的部分
+****** 一些平台不支持共享锁
+自动转换为独占锁
+***** 用处
+可以用来锁定进程独占的工作目录
+hdfs的storage下可以有多个StorageDirectory目录,每个目录就是使用filelock来标示其属于那个datanode进程
+1. 进程启动的时候,检查配置的storageDir.
+2. 在每个dir中,创建in_use.lock,文件内容为jvmname,这个文件上加了FileLock,因此即使dn不能主动释放这个文件的锁,lock也会随着dn的退出而release
+
+
+
+*** 3. MMAP
+FileChinnel 已经很快了，mmap是怎么更快的
+
+**** 原理
+将文件映射到虚拟内存上，在需要的时候根据缺页加载的机制加载
+*** 为什么系统不能直接访问java堆上的内容呢?
 [[https://www.bilibili.com/video/av33707223?p=38][参考]]
 1. jvm上的对象在GC时可能会发生移动，操作系统访问内存的方式是固定的地址。这样在GC的时候，虽然jvm内对移动对象的访问有jvm控制以保证合法，但是JNI的方法不会因为GC而停下，这时内存出现错乱。
 2. 操作系统来控制硬件和内存之间的交互，如1所说，现在操作系统直接操作jvm的堆上对象可能会发生错误。那怎么解决呢？
 3. 要么让对象不动，那就得禁止GC。java没了GC！！！没得玩了
 4. 要么不让系统直接操作堆上内存。由jvm先安全的copy出一份到堆外内存来，然后系统来调度读写。这个过程中由jvm保证这块堆外内存的正确性。这基于内存拷贝非常快。一方面，jvm的检查一致性压力没那么大，一方面相比于与硬件的交互，这个copy动作非常快，所以性能也还可以
+** api
+*** OutputStream & InputStream
+**** [[https://blog.csdn.net/testcs_dn/article/details/78941546][JDK的OutputStream为什么方法write(int b)的入参类型是int呢？]]
+
+*** DataOutputStream & DataInputStream
+data out put stream 帮助你将java原始类型用适当的方式写入一个流中，然后你可以用 data input stream从该流中读出相应的类型
+*** BufferedOutputStream & BufferedInputStream
+*** Selector
+
+** in action
+*** 覆盖写文件和追加写
+#+begin_src java
+  // 覆盖
+  try {
+           BufferedWriter out = new BufferedWriter(new FileWriter("outfilename"));
+           out.write("aString");
+           out.close();
+  } catch (IOException e) {
+  }
+
+  // 追加
+  try {
+           BufferedWriter out = new BufferedWriter(new FileWriter("filename", true));
+           out.write("aString");
+           out.close();
+  } catch (IOException e) {
+  }
+#+end_src
+*** atomic move
+
+* UNSAFE
+** 用cas方式更新对象的字段
+#+begin_src java
+  private static final sun.misc.Unsafe UNSAFE;
+  private static final long valueOffset;
+  private static final long nextOffset;
+
+  static {
+      try {
+          UNSAFE = sun.misc.Unsafe.getUnsafe();
+          Class<?> k = Node.class;
+          valueOffset = UNSAFE.objectFieldOffset
+              (k.getDeclaredField("value"));
+          nextOffset = UNSAFE.objectFieldOffset
+              (k.getDeclaredField("next"));
+      } catch (Exception e) {
+          throw new Error(e);
+      }
+  }
+
+
+  boolean casNext(Node<K,V> cmp, Node<K,V> val) {
+      // 更新node.next字段,期望值cmp,替换为val
+      return UNSAFE.compareAndSwapObject(this, nextOffset, cmp, val);
+  }
+#+end_src
 * lang3
 ** toString
 [[https://blog.csdn.net/z69183787/article/details/76146728][参考]]
+* inbox
++ 静态方法只能继承，不能重写。
++ final修饰引用类型变量，则这个变量不能修改指针，但是指向的对象内部是可以改变的,修饰的数组长度可变么
++ 静态代码块只能执行一次
++ java.lang.包不需要导入
++ 常量池，看一下老年代被取消后它跑哪去了
++ instance方法判断是不是某类对象或者是不是实现了某个接口
+** cow 
+copy on write
+1. 写时复制，无锁读
+2. 适用场景，读多写少，且集合整体较小
+3. 优点：读时无锁，性能高
+4. 缺点: 写入性能差，iterater中看到的数据无法保证实时性，内存消耗翻倍
+** NavigatableMap
+1. 可以取近似key的值，导航至最接近给定目标的能力
+*** 
+** java 获取properties属性值的6种方法
+[[https://blog.csdn.net/a491857321/article/details/51512585][Ref]]
+** 定时
+*** quartz
+...
+* ThreadLocal
+** ThreadLocalRandom 
+线程隔离的随机数生成器
+*** usage
+#+begin_src java
+  ThreadLocalRandom
+      .current()
+      .nextX(...) (where X is Int, Long, etc)
+#+end_src
+
+* jodatime
+** concept
+*** instant
+instant由ReadableInstant接口表示,它的四种实现
+1. Instant: 一个不可变的UTC时区的时间,is intended for time zone and calendar neutral data transfer
+2. DateTime: 带有日历和时区的不可变实现
+3. MutableDateTime :带有日历和时区的可变实现
+4. DateMidnight : 
+*** Chronology 年表
+*** Partial
+* todo
+** parallelStream
+** joda time
 

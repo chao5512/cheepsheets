@@ -1,0 +1,20 @@
+#+title: ceph 
+* rados
+rados是ceph的存储基石
+** 架构
+*** Monitor
+1. 实现了Paxos算法,通过集群来保证Monitor的高可用
+2. 负责维护整个存储系统的配置和节点信息
+**** 系统的全局信息
+1. Monitor Map
+   1. 集群的fsid
+   2. 所有monitor的地址和端口
+   3. current epoch (现在的时代)
+2. Osd Map: 所有osd的状态
+3. MDS Map: 所有MDS的状态
+**** 对象存储
+**** 对象寻址过程
+寻址过程分两步
+1. 对象到pg的映射
+2. pg到osd的映射
+

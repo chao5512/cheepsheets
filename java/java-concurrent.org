@@ -48,7 +48,7 @@
   1. 使迭代算法并行化，加速。
   2. 测试中模拟高并发
 ** Exchanger
-+ 成对使用，多余两个则无法预测行为
++ 成对使用，多于两个则无法预测行为
 + 使用exchange方法来完成两个搭档线程交换数据
 + 可以用exchanger来完成双缓冲
 + 注意，其中一个错误退出，另一个可能会一直处于等待的状态
@@ -63,12 +63,12 @@
 + 缺点，写饥饿
 * Unsafe
 + 使用allocateInstance可以绕过某个对象的初始化
-+ 通过直接写内存（从某个偏移量开始，覆盖原值）的方式来修修改一个对象。
++ 通过直接写内存（从某个偏移量开始，覆盖原值）的方式来修改一个对象。
 + 通过Unsafe.defineClass可以加载类
 * 线程管理
 ** 线程池
 *** 线程的停止
-[[https://blog.csdn.net/u012168222/article/details/52790400][比较三种停止线程的方法]]
+[[https://blog.csdn.net/u012168222/article/details/52790400][比较三种停止线程的方法]
 * 并发设计模式
 ** 单例模式
 *** 步骤
@@ -207,7 +207,7 @@
 #+END_SRC
 *** 是否加final关键字
 + [[https://blog.csdn.net/qq_39986274/article/details/79215311][从释放资源角度讲]]
-+ [[https://blog.csdn.net/qq_37347341/article/details/77740215][从安全发布角度讲]]
++ [[https://blog.csdn.net/qq_37347341/article/details/77740215][从安全发布角度讲]
   
 ** 观察者模式
 主题发生改变的时候，通知观察者
@@ -251,8 +251,10 @@ waitset  线程间通信
 2. lock
 3. cas，使用AtomicXXX原子类来帮助完成
 4. unsafe
-* thread
-** doc
+* 抽象
+** 任务
+*** thread
+**** doc
 + jvm启动时候，会有一个线程去调用main()方法
 + 子线程的优先级默认等于父线程的优先级
 + 子线程只有在父线程是Daemon线程的时候，才是Daemon线程，daemon线程中启动的线程默认也是daemon线程，daemon方法需要在start之前调用
@@ -260,21 +262,92 @@ waitset  线程间通信
   + 调用了Runtime.exit()，并且the security manager允许了退出
   + 所有非daemon线程执行完毕(返回或者抛出异常)
 + daemon线程的应用，比如心跳线程，垃圾清理线程等等，随着你的应用线程的退出同时退出
-** state machine
+**** state machine
 #+DOWNLOADED: https://www.uml-diagrams.org/examples/state-machine-example-java-6-thread-states.png @ 2019-12-08 18:28:57
 [[file:%E7%BA%BF%E7%A8%8B%E7%8A%B6%E6%80%81/2019-12-08_18-28-55_state-machine-example-java-6-thread-states.png]]
-** api
-*** join
+**** api
+***** join
 用wait()和notify()实现的
-*** interrupt
+***** interrupt
 使用interrupt优雅的停止线程
-1. 设置一个自定义的标志位，volitile类型的，不适用interrupt的中断标志，是怕吞没标志位
+1. 设置一个自定义的标志位，volitile类型的，不使用interrupt的中断标志，是怕吞没标志位
 2. 每次运行业务代码之前，while检查一下标志位，该停则停
 3. 为了尽可能的中断阻塞，停止线程的时候除了更改标志位的值，还要发一次中断请求。
 4. 不响应中断的阻塞方法，有一招是在线程A中再创建一个Daemon线程。然后使用标志位去停止A，A作为应用线程停止了，那么A的Daemon线程，真正的业务逻辑线程就停止了
-* Runnable
-** doc
-除非你想改变Tread的基础行为，不然你不应该随便继承Thread类,也就是说，你只改变run方法的时候应该继承Runnable
+*** Runnable
+**** doc
+如果只是需要重写run方法，而不必改动thread类的其他方法，那么应该使用runnable
+*** Callable
+可以返回结果或者抛出异常的任务
+*** FutureTask
+1. 可取消的异步任务
+2. 确保任务只run一次
+** 任务结果
+*** Future
+1. 用来存储异步计算的结果
+**** 角色
+1. Future
+2. FutureTask
+3. FutureService
+**** methods
+1. get() //阻塞等待找回结果
+2. get(timeTowait) //阻塞一短时间来找回结果，到时没拿到抛出超时异常
+3. cancel()
+4. boolean cancel(boolean mayInterruptIfRunning)  //尝试取消任务
+   1) 对已经complet和已经cancel的任务调用cancel会失败
+   2) 如果task还未开始，那么它将不会被开始
+   3) 如果已经开始，根据参数来决定要不要尝试中断该task
+** 任务执行
+*** Executor
+接受任务并执行
+**** 用处
+1. 用来避免显式的创建线程
+2. 好处是将task定义和task执行的具体逻辑(包括线程调度)分开
+**** 不强制要求提交上来的任务是异步执行的
+#+BEGIN_SRC java
+  //最简单的Executor实现
+  // 相当于直接在caller`s thread中执行
+  class DirectExecutor implements Executor {
+      //提交上来的任务直接执行，可以不是异步的
+      public void execute(Runnable r) {
+       r.run();
+     }
+   }
+#+END_SRC
+**** 但更常见的是异步于调用者线程执行
+#+BEGIN_SRC java
+
+  class ThreadPerTaskExecutor implements Executor {
+      public void execute(Runnable r) {
+          new Thread(r).start();
+      }
+  }
+       
+#+END_SRC
+**** 子接口 ExecutorService
+提供了shutdown 管理和产出future结果的方法
+***** methods
+1. shutDownNow() //尽力终止，对不响应中断的任务不保证一定能终止
+   1) 返回还未开始执行的任务
+   2) 不等待已经执行的任务，如果需要等待用awaitTermination
+**** Excutors
+ExecutorService 的工厂类
+* Atomic
+** AtomicReference
+用于无锁更新对象引用
+#+begin_src java
+  AtomicReference reference = new AtomicReference<Object>();
+  Object o1 = new Object();
+  Object o2 = new Object();
+  reference.set(o1);
+  // 多线程更新 reference值
+  reference.compareAndSet(o1, o2);
+
+  // 结果
+  // 只有一个线程可以成功更新reference 为o2
+
+#+end_src
+
 * ThreadPoolExecutor
 1. 可配置为几种线程池的用来执行提交任务的ExecutorService
 2. 通常使用Executors 工厂来配置
@@ -301,45 +374,31 @@ waitset  线程间通信
 ** shutDownNow
 
 * ThreadLocal
-* Future
-1. 用来存储异步计算的结果
-** 角色
-1. Future
-2. FutureTask
-3. FutureService
-* Excutor
-用来将task和调度解耦，建议用Excutor来代替直接spwans a Thread
-** methods
-1. get() //阻塞等待找回结果
-2. get(timeTowait) //阻塞一短时间来找回结果，到时没拿到抛出超时异常
-3. cancel()
-4. boolean cancel(boolean mayInterruptIfRunning)  //尝试取消任务
-   1) 对已经complet和已经cancel的任务调用cancel会失败
-   2) 如果task还未开始，那么它将不会被开始
-   3) 如果已经开始，根据参数来决定要不要尝试中断该task
-* Executor
-提交任务的接口
-** 用处
-1. 用来避免显式的创建线程
-2. 好处是将task提交和task执行的具体逻辑(包括线程调度)分开
-** 不强制要求提交上来的任务是异步执行的
-#+BEGIN_SRC java
-  //最简单的Executor实现
-  // 相当于直接在caller`s thread中执行
-  class DirectExecutor implements Executor {
-      //提交上来的任务直接执行，可以不是异步的
-      public void execute(Runnable r) {
-       r.run();
+
+* Thread
+
+** 是否中断
+#+begin_src java
+  public boolean isInterrupted() {
+         return isInterrupted(false);
      }
-   }
-#+END_SRC
-** 更为典型的Executor实现是在以下两方面对task做出了限制
-1. 执行方式
-2. 执行实际
-** 子接口 ExecutorService
-提供了shutdown 管理和产出future结果的方法
-*** methods
-1. shutDownNow() //尽力终止，对不响应中断的任务不保证一定能终止
-   1) 返回还未开始执行的任务
-   2) 不等待已经执行的任务，如果需要等待用awaitTermination
+
+     /**
+      ,* 判断该线程是否被标记为中断
+      ,* 根据ClearInterrupted 来决定是否reset 中断标记
+      ,*/
+     private native boolean isInterrupted(boolean ClearInterrupted);
+#+end_src
+
+** entrySet和waitSet
+1. 所有期待获得锁的线程，在锁已经被其它线程拥有的时候，这些期待获得锁的线程就进入了Object Lock的entry set区域。
+2. 所有曾经获得过锁，但是由于其它必要条件不满足而需要wait的时候，线程就进入了Object Lock的wait set区域 。
+3. 在wait set区域的线程获得Notify/notifyAll通知的时候，随机的一个Thread（Notify）或者是全部的Thread（NotifyALL）从Object Lock的wait set区域进入了entry set中。
+4. 在当前拥有锁的线程释放掉锁的时候，处于该Object Lock的entryset区域的线程都会抢占该锁，但是只能有任意的一个Thread能取得该锁，而其他线程依然在entry set中等待下次来抢占到锁之后再执行。
+
+* inaction
+
+** ConcurrentModificationException
+迭代的时候对list有修改操作
+
 
