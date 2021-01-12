@@ -1,0 +1,3 @@
+skinparam monochrome reverse
+a->b
+b->a

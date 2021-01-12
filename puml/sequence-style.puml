@@ -1,0 +1,36 @@
+'时序图外观设置
+skinparam sequenceArrowThickness 1
+'边角圆滑
+skinparam roundcorner 0
+skinparam maxmessagesize 60
+skinparam backgroundColor #FFFFFF
+!define littleGreen #6CA43D
+!define Green #75AE43
+!define actorBlue #5B9BD5
+''这个作用将线条模糊和扭曲化,模拟手写
+skinparam handwritten false
+skinparam Note {
+    'FontStyle bold
+    BackgroundColor #BDBCBC
+    BorderColor #BDBCBC
+    BorderThickness 1
+    FontColor White
+    Shadowing false
+    TextAlignment left
+}
+skinparam sequence {
+	ArrowColor littleGreen
+	ActorBorderColor actorBlue
+	LifeLineBorderColor actorBlue
+	LifeLineBackgroundColor Green
+	SequenceLifeLineBackground Green
+	ParticipantBorderColor actorBlue
+	ParticipantBackgroundColor actorBlue
+	ParticipantFontName Impact
+	ParticipantFontSize 17
+	ParticipantFontColor #FFFFFF
+	ActorFontColor #FFFFFF
+	ActorFontSize 17
+	ActorFontName Aapex
+	autoactivate on
+}

@@ -1,0 +1,26 @@
+!include /Users/wangchao/IdeaProjects/plantuml-style-c4/core.puml
+title 大文件写入时序图
+participant Client as c
+participant RegionNode as rn
+participant RocksDB as nn
+participant DataNode as dn
+== 申请文件句柄阶段 ==
+c -> rn: 请求写入大文件/home/user1/case1/bfx
+activate c
+rn -> nn: exist 检查
+nn --> rn: 返回key，形如6bfs
+rn --> c: 返回key
+
+== 数据上传 ==
+
+c -> rn: 上传数据
+note left : 这是左边的一个note
+rn -> dn: 转交数据
+... 不超过 5 秒钟 ...
+dn --> rn: 状态返回
+
+rn --> c: 状态返回
+== 状态显示 ==
+
+c -> c: 给自己发消息
+deactivate c
