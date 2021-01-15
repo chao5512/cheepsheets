@@ -1,0 +1,29 @@
+#+title: hbase 新特性和优化 log
+* hbase 0.2.0
+** hbase-489 提供带时间戳的扫描方法
+** hbase-47 ttl
+** hbase-552 在这个版本，rowkey用byte[]代替Text
+** hbase-747 批量提交的简单版本
+在client为update数据排序分组
+* hbase 0.19.0
+** hbase-748 批量写入优化
+在客户端对提交的写入按rs分组，然后分发
+** hbase-961 表达式匹配删除多列
+** hbase-883 二级索引表
+只是为某张表建立索引表，客户端需要先请求索引表然后在访问原表
+** hbase-847 getrow多版本
+** hbase-1106 添加一个接口
+提供一种创建全局自动id的方案
+** hbase-1082 管理维护功能
++ 提供手动触发compaction和flush等接口
++ 在此版本，是先写内存，然后写hlog的
+** hbase-1090 table的CAS功能
+* hbase 0.19.1
+** hbase-803 value自增
+** hbase-1350 返回一张表的所有region的key-range
+* hbase 0.20.0
+** hbase-1130 前缀过滤器
+** TODO hbase-1186 lru-Cache
+- State "TODO"       from              [2019-11-17 日 21:20]
+** TODO hbase-61 新的Hfile的讨论
+- State "TODO"       from              [2019-11-17 日 21:26]

@@ -1,0 +1,41 @@
+#+title: hbase工具类
+* 引用池（Object pool）
+封装了弱引用和软引用，辅助GC完成内存清理。
+** 软引用： 
+只有在内存紧张的时候，GC时才会回收的
+*** IdReadWriteLock
+用id来标识的读写锁
++ 可以创建软引用类型的读写锁，也可以创建弱引用（默认）的读写锁
+**** soft
+1. bucketcache中的offsetLock
+   + bucket中的一个block的ReentrantReadWriteLock
+   + 加锁的目的是防止正在读的时候释放这个block
+   + 因为BucketCache是有限的，所以可以选用soft类型，只在必要时GC回收
+** 弱引用： 
+每次GC都会回收的
+*** keyLocker
+管理lock用的，每个lock用string来标识。note：acquire的时候就已经上锁了
++ 1. 用于从connection cache中获取用户连接时，对用户连接上锁
++ 2. 用于connection cache中的admin的创建
++ 3. 用于创建 RegionGroupingProvider
++ 4. 用于PeerProcedureHandlerImpl.replicationSourceManager做同步
++ 5. 用于获取CoprocessorClassLoader的时候
+** uml
+#+BEGIN_SRC plantuml :file ../resource/img/hbase-ObjectPool.png :cmdline -charset utf-8
+  @startuml
+  skinparam classAttributeIconSize 0
+  abstract class ObjectPool{
+          # ReferenceQueue<V> staleRefQueue
+          private final ObjectFactory<K, V> objectFactory
+          protected final ConcurrentMap<K, Reference<V>> referenceCache
+          private final Lock purgeLock
+  }
+  interface ObjectFactory<k,v>{
+  V createObject(K key)
+  }
+  ObjectPool +-- ObjectFactory
+  @enduml
+#+END_SRC
+* Connection cache
+用来存储一些Hconnection，有一个chore定期清理无用连接。用于thrift和restful的认证
++ admin：内有一个单例的管理员用户admin，双重检查的单例，并且单例中用的锁是弱引用的
