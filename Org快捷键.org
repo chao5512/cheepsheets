@@ -379,11 +379,12 @@ false 和ture
 
 * Lisp Interaction mode
 - M-TAB : 补全lisp表达式
-
 * org
-1. q:org 更新到9.3后无法是<s补全代码
+1
+. q:org 更新到9.3后无法是<s补全代码
 [[https://orgmode.org/Changes.html][changlog]]
 2. solution
 #+begin_src lisp
   (requrie 'org-tempos)
+  (add-to-list 'org-modules 'org-tempo)
 #+end_src
