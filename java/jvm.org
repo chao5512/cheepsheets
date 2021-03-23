@@ -805,3 +805,23 @@ GCViewer
 [[https://cloud.tencent.com/developer/article/1451049][干货]]
 [[https://www.ps.uni-saarland.de/courses/gc-ws01/slides/generational_gc.pdf][分代回收]]
 [[http://users.cecs.anu.edu.au/~steveb/pubs/papers/wb-ismm-2004.pdf][barries]]
+* NMT（native memory trace)
+直接内存排查,是在jvm代码中添加追踪点的方式实现，因此第三方native库的内存分配追踪不到
+** 开启nmt
+会有5%-10%的性能损耗
+
+   #+begin_src text
+     -XX:NativeMemoryTracking=[off | summary | detail]
+   #+end_src
+** 访问nmt
+使用jcmd访问nmt
+#+begin_src shell
+
+  jcmd <pid> VM.native_memory [summary | detail | baseline | summary.diff | detail.diff | shutdown] [scale= KB | MB | GB]
+
+  # baseline 创建一个内存快照 以用于后面的比较
+  # summary.diff 比较和上次快照的差异  打印总结
+  # detail.diff 比较和上次快照的差异 打印详细信息
+#+end_src
+
+

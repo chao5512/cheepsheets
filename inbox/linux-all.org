@@ -362,8 +362,15 @@ a: 使用vmname工具制定vm
   export _JAVA_AWT_WM_NONREPARENTING=1
 #+end_src
 ** dwm
+[[配置][https://blog.csdn.net/qq_36390239/article/details/112990746]]
 *** 自定义
 通过c语言头文件 config.h来自定义dwm，通过config.mk来定义make方式
+*** 启动脚本
+*** 重启
+    #+begin_src shell
+      killall dwm 
+    #+end_src
+
 ** 邮箱
 thunderbird
 ** shadowsocks
@@ -426,7 +433,15 @@ thunderbird
 3. 在root下 create_ap wlp4s0 enp3s0 wifi-name wifi-psw
 *** Failed to initialize lock error
 sudo rm /tmp/create_ap.all.lock
+** dwm+compmgr实现终端透明
+   1. compmgr要在dwm之前启动，所以在.xinitrc中exec startdwm前添加xcompmgr，但是报错cannot open display。
+   2. 放在startdwm之后呢，我在脚本中写的是一个死循环，执行不到后面的脚本
+   3. 解决方案：临时在start xcompmgr时启动多次，一直到dwm启动，则xcompmgr启动。
+** git 设置代理
+   git config --global http.https://github.com.proxy socks5://127.0.0.1:1080
 
+   #取消代理
+   git config --global --unset http.https://github.com.proxy)
 * vim
 ** 宏录制
 #+BEGIN_SRC sh
@@ -536,7 +551,24 @@ sync一个文件的制定范围到磁盘，
 3. 锁定一个文件，不让缓存将其换出
 4. 绘制文件系统缓存随时间的使用情况
 5. 还有3左右没看明白[[https://hoytech.com/vmtouch/][Ref]]
+* linux 进程到底占了多少内存
+** 可用内存 = free + buffer + cached
+内存是珍贵且高效的资源，能利用就利用，所以linux会把已经调用的lib放在内存中缓存起来.这样系统需要内存时，这部分缓存是可以再空出来以供使用的
+** 使用ps aux看到的rss总和大于物理内存。
+每个进程在计算rss的时候，会把连接到的共享库的内存也会算进来，当多个进程依赖同一个库时，这个库的占用就被重复计算，所以rss总和大于物理内存
+** pmap
+   #+begin_src shell
+     # pmap看内存分布 找到可疑的内存块
+     pmap -x ${pid} |sort -n -k3 > /tmp/${pid}.pmap
 
+     # 使用maps找到内存块的边界
+     grep '${可以内存块的其实index}' /proc/${pid}/maps
 
+     # 使用gdb dump出这个块
+     gdb --batch --pid 75 -ex "dump memory a.dump 0x7f2bceda1000 0x7f2bcef2b000"
 
-
+     # 查看可读字符，希望分辨出这个块是什么
+     strings -10 a.dump |less
+   #+end_src
+* test
+  <ssss
