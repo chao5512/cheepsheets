@@ -823,5 +823,22 @@ GCViewer
   # summary.diff 比较和上次快照的差异  打印总结
   # detail.diff 比较和上次快照的差异 打印详细信息
 #+end_src
+** nmt 报告详解
+| Category                 | Description                                                  |
+|--------------------------+--------------------------------------------------------------|
+| Java Heap                | 对象分配的地方                                               |
+| Class                    | 类的元信息                                                   |
+| Code                     | 生成的代码                                                   |
+| Compiler                 | 编译器生成代码的时候需要的内存                               |
+| Symbol                   | Symbols                                                      |
+| Memory Tracking          | NMT需要的内存                                                |
+| Pooled Free Chunks       | chunks in the arena chunk pool                               |
+| Shared space for classes | Memory mapped to class data sharing                          |
+| Thread                   | 线程使用的内存，包括数据结构、资源、handle area              |
+| Thread stack             | Thread stack                                                 |
+| Internal                 | 不在上面的分类中，类似command line parser, JVMTI, properties |
+| UnKnown                  | 不知道的区域                                                 |
+|                          |                                                              |
+
 
 
