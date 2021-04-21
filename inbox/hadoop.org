@@ -79,7 +79,7 @@ block id 由随机生成改为顺序生成
 1. 随机生成的id没有格式,不能携带更多信息,比如让给块池几位或者在id上附带block类型
 2. 随机生成的id不能够保证一定是唯一的,为什么不能保证是唯一的?在生成后检查是否已经存在,以此来保证block id唯一性,但当一个dn在长时间的offline后重新连入集群,那么它可能携带了大量的冲突的block id.
 
-**** 
+***** 
 
 *** hdfs-898
 block id 随机生成转顺序生成的motivation
@@ -366,6 +366,10 @@ protocol的名字,用在client和server沟通时.默认为类名.为什么要实
 
 **** ClientNamenodeProtocolServerSideTranslatorPB
 作用在服务端,实现了ClientNamenodeProtocolPB,
+* datanode
+** 启动时的磁盘检查
+[[https://www.cnblogs.com/bianqi/p/12183709.html][串行磁盘检查改并行]]
+
 * 工
 ** hdfs审计日志清洗入druid
 使用crontab每天离线做清洗,然后导入druid
