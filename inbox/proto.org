@@ -38,6 +38,10 @@ protobuffer 编译器会自动补全[--java_out]后中间目录
 
 ** message
 Message接口定义了检查、操作、读取或写入整个message的方法。
+***  filed number
+1. 1-15的字段编号需要一个字节来进行编码，16-2047需要2个字节，所以应该把频繁出现元素放在1-15内，还应该有意识的为将来可能出现的频繁元素预留1-15的编号
+2. 一旦定义的message投入了使用，那么我们 就不应该更改它的字段编号，
+
 * protoc 生成java文件
 ** protoc命令
 #+begin_src sh
@@ -110,4 +114,8 @@ Message接口定义了检查、操作、读取或写入整个message的方法。
     ...
   </plugin>
 #+end_src
+* grpc
+** 概念
+1. IDL （interface definition Language）
+2. protobuf 即作为grpc的IDL，又用作底层的数据交换格式
 

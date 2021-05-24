@@ -1,0 +1,67 @@
+#+title: ozone
+* create key
+** RpcClient
+1. 校验，非空检查
+2. 构造OmKeyArgs
+3. 随机一个request uuid
+4. 使用 OzoneManagerProtocol 打开一个OpenKeySession
+5. createOutputStream(session)
+
+* ReplicationManager
+
+** 维护一个container的replica正确的冗余
+只有container关闭的，我们才会对其replica进行维护
+*** 先整理container，能关闭则关闭，关闭操作就是本次处理该container的唯一操作
+1. scm上的container状态是open的，汇报上来的container处于这几种状态则关闭(更改scm上container的状态为CLOSING，向所有副本发送关闭命令)
+   - 副本不是open的
+   - 副本个数不对
+   - 副本分布不对
+2. scm上的container状态是CLOSING的，直接向所有副本发送关闭命令
+3. scm上的container状态是QUASI_CLOSED,并且汇报上来的一半以上的非同源副本都准备好了关闭
+*** 整理正在执行命令的副本的状态
+把完成的或超时的命令从inflight集合中去掉
+1. inflightRelication： 这是用来追踪副本增加命令的
+2. inflightDeletion：这是用来追踪副本删除命令的
+*** 开始检查副本，增删以保证正确冗余
+1. container状态至少为CLOSED，且副本状态一致，视为健康，不做处理
+2. 检查是否需要补充副本,两种状态需要补充
+   1. 不符合防止策略
+   2. 副本数少于冗余因子
+3. 检查是否需要删除副本，1种状态可能需要删除
+   1. 副本过剩
+
+*** 如何补充副本？
+分3部分
+**** 1. 选择模版副本列表
+状态为CLOSED和QUASI_CLOSED状态，且没有正在执行删除副本命令的副本所在dn，组成模版副本dn列表
+
+**** 2. 选择增加副本的dn节点
+排除已经持有该container和正在补充该container的dn
+
+**** 3. 向选出来的dn发送副本增加命令
+1. 只有在副本数量缺失，或者按1-2的补充计划后，副本的分布能够得到改善的时候，才会真正的发送命令
+2. 发送了副本补充命令后在需要使用inflightReplication追踪该命令
+
+*** 如何删除副本？
+
+**** 选择需要删除的副本
+1. 不能被删除的：每个同源(拥有相同的originID)的副本至少要保留一个
+2. 需要被删除的
+   1. 状态与container状态不一致的，如果此时副本数是过剩的，直接发送删除副本命令
+   2. 删除原则：副本过剩的时候，如果已经是不正确的副本分布或者删除一个replica并不能使原本正确的分布变得不正确，总之就是删除一个副本不会使分布变得更坏
+
+
+
+** container的状态转换
+*** 引起container的状态转换事件
+**** 1. CLOSE_CONTAINER事件
+***** 触发close的事件的情况如下
+- node failure
+- volume failure
+- volume out of space
+- node out of space
+***** close事件的主要逻辑
+1. 改变scm上的container状态为CLOSING
+2. 通知所有该container所在的dn转换该container为CLOSING
+
+

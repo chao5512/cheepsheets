@@ -803,4 +803,10 @@ instant由ReadableInstant接口表示,它的四种实现
 * todo
 ** parallelStream
 ** joda time
+* nio
+1. jdk1.4之前，基于java的socket通信采用的是同步阻塞模式，1.4增加了nio类库
+2. jdk1.7发布，对nio类库进行了升级
+** BIO
+1. ServerSocket负责bind ip地址，监听端口
+2. Socket负责发起链接操作
 
