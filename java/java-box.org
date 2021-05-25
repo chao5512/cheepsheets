@@ -731,6 +731,7 @@ data out put stream 帮助你将java原始类型用适当的方式写入一个�
 *** atomic move
 
 * UNSAFE
+unsafe提供了更为底层的、使用起来需要更为谨慎的操作入口，如直接访问内存资源、自主管理内存等
 ** 用cas方式更新对象的字段
 #+begin_src java
   private static final sun.misc.Unsafe UNSAFE;
@@ -756,6 +757,40 @@ data out put stream 帮助你将java原始类型用适当的方式写入一个�
       return UNSAFE.compareAndSwapObject(this, nextOffset, cmp, val);
   }
 #+end_src
+
+** 获取Unsafe实例
+
+* java安全模型
+[[https://tech101.cn/2019/08/15/AccessController%E7%9A%84doPrivileged%E6%96%B9%E6%B3%95%E7%9A%84%E4%BD%9C%E7%94%A8][参考-写的非常详细]]
+** java 安全模型演进
+1. java1.0 - 沙箱模型，本地代码受信，远程代码沙箱中运行，沙箱中的代码没有访问操作系统资源的权限
+2. java1.1 - 为了打破功能扩展的壁垒，为远程代码增加了安全策略
+3. java1.2 - 增加了代码签名机制，不管是local代码还是远程代码都要遵守安全策略
+4. now - 引入了域（domain)的概念，jvm将代码加载到不同的域中
+   1. 系统域负责与操作系统交互
+   2. 应用域对操作系统的访问需要交给系统域来代理
+** 基于域模型的java安全模型
+*** SecurityManager
+提供了权限检查的api
+#+begin_src java
+  // 获取安全管理器，如果安全管理器未安装，则返回null
+  SecurityManager manager = System.getSecurityManager();
+  if (manager == null) {
+    // 安装安全管理器
+    System.setSecurityManager(new SecurityManager());
+  }
+#+end_src
+使用securityManger可以检查当前线程对某个资源的某个访问的权限
+*** AccessController
+提供了一系列静态方法来进行权限检查（SecurityManger提供了权限检查的接口，但实际做事的是AccessController），特权访问
+1. 基于现在生效的安全策略，来决定是否允许对重要的系统资源的访问
+2. 标记一段caller为“privileged” 的，这对后续的决策有影响
+3. 获取一个当前调用的上下文的snapshot，这样后续的在其他上下文下的访问决策可以遵照这个上下文
+
+整个调用链上的所有caller都对资源R拥有权限P的时候，对应的检查才会通过
+**** 重要方法doPrivileged(PrivilegedExceptionAction<T> action)
+可以允许我们在自己的代码没有授权，而调用模块代码被授权的情况下进行受限资源的访问。
+
 * lang3
 ** toString
 [[https://blog.csdn.net/z69183787/article/details/76146728][参考]]
