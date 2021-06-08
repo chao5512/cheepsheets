@@ -1,1 +1,95 @@
 #+title: zookeeper
+* 编译并导入idea
+[[https://www.cnblogs.com/bingco/p/14478337.html][导入idea过程]]
+
+#+begin_src xml
+  <dependency>
+      <groupId>com.codahale.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+      <version>3.0.0</version>
+  </dependency>
+  <!-- https://mvnrepository.com/artifact/com.codahale.metrics/metrics-graphite -->
+  <dependency>
+      <groupId>com.codahale.metrics</groupId>
+      <artifactId>metrics-graphite</artifactId>
+      <version>3.0.0</version>
+  </dependency>
+#+end_src
+* 主从结构的关键
+1. 失效主节点的状态恢复
+2. 如何避免脑裂或避免脑裂带来的影响
+* 元数据存储
+1. 快照功能
+* transaction 日志
+zookeeper从3.6以后
+- 可以使用命令读取transaction log
+#+begin_src bash
+  bin/zkTxnLogToolkit.sh --dump /datalog/version-2/log.f3aa6 
+#+end_src
+- 查看快照
+#+begin_src bash
+  ./zkSnapShotToolkit.sh -d /data/zkdata/version-2/snapshot.fa01000186d
+#+end_src
+** muti操作
+zk会将muti操作写成一条txn log
+** 什么时候会做一个snapshot
+#+begin_src bash
+# 默认为100k
+-Dzookeeper.snapCount=100000
+
+#+end_src
+1. jvm启动参数指定的transaction条数
+2. 主切换完成后会触发一次snapshot
+
+* 内嵌控制台
+zookeeper 3.5.0后默认启动内嵌控制台，占用8080端口
+#+begin_src bash
+  # 禁用adminServer
+  zookeeper.admin.enableServer = false
+  # 修改端口
+  zookeeper.admin.serverPort
+#+end_src
+
+* 会话
+会话是client与zk集群保持链接的概念，注意不是某一台zk，如果client与一台zk服务器无法联通，会话会被转移到另一台服务器上
+
+** 会话的状态
+1. NOT_CONNECTED
+2. CONNECTING
+3. CONNECTED
+4. CLOSED
+
+** 如何协调客户端和服务端
+1. 客户端没法主动声明会话过期，只能主动关闭会话
+
+** 会话超时时间 t = session.timeout
+
+1. 服务端在超过t时间都未收到该会话对应的客户端请求，则会主动声明会话超时
+2. 客户端如果超过t/3时间未收到任何消息，则其会主动发送心跳信息
+3. 客户端如果超过2t/3时间还是未收到任何消息，则会主动寻找链接串中的其他zk服务器
+
+** 寻找其他服务器重建会话的时候如何选择？
+满足要求的zk服务器必须拥有比客户端知道的zxid要高的zxid
+
+** 客户端主动关闭会话
+zk.close
+
+* 使用zk实现一个锁
+1. 所有需要获取同一个锁的客户端试图创建同一个临时节点/lock
+2. 成功创建/lock的client拿到锁，其他client监听/lock
+3. 当持锁client主动释放该锁或者该client崩溃导致临时节点被删除时，其他节点观察到这一变化，并开始尝试穿件/lock以获得锁
+
+* 四字命令
+1. stat
+2. dump
+
+* 问题
+1. 临时节点可以拥有子节点么？
+2. zk有序节点的序保存在哪？
+3. zk Container是什么？
+4. zk的watcher是单次作用的，如果想要实现多次监听，需要每次触发监听后重新设置监听。那么在这个在设置监听完成前的变成事件还能触发监听么？
+5. 一个监听点如何观察到两个连续的变更
+6. znode版本好的作用？
+7. zk是怎么实现事务的？
+
+
