@@ -52,3 +52,26 @@ todo
 
 ./db_bench --benchmarks="readrandom" --use_existing_db --compression_type=none --statistics
 #+END_SRC
+* rocksdb 备份
+* rocksdb 读写缓存管理 Write Buffer Manager
+WriteBufferManager可以用来控制多列族和多个DB实例所共享的写缓存。在使用方式上分为两种
+1. 单独限制总的写缓存 WriteBufferManager(size)
+2. 在blockCache中计算Memtable消耗的写缓存，这样读写缓存可以限制在一个阈值之下,WriteBufferManager(size, cache)
+
+一个WriteBufferManager实例可以传给column families 或者整个DB
+** 第一种：限制总的写缓存
+创建WriteBufferManager时需要传入一个内存限制，rocksdb会尝试将总的写缓存限制在这个阈值之下
+
+在5.6之后，flush一个cf的触发条件有如下两种
+1. 如果所有的mutable memtable(正在插入数据的memtable)的size超过阈值的90%
+2. 如果总的内存超过限制，而mutable memtable size超过限制的50%，才会采取更为激进的flush
+
+5.6之前总内存消耗在arena区中的计算是实际使用的
+5.6之后总内存消耗在arena区中的计算是分配的，即使尚未使用
+** 第二种：在block cache 中计算写缓存（memtable占用的内存）
+如果要完整控制整个rocksdb的内存占用，建议WriteBufferManager(size, cache) 这种方式。
+同时打开cache_index_and_filter_blocks = true。
+这样，整个memtable, datablock, index&filter block都能被blockcache的容量限制
+
+从5.6开始，用户可以设置rocksdb在blockcache中计算memtables的内存消耗，如此不管写缓存总限制设置与否，都能够对rokcsdb整体内存做限制
+总的来说，block cache用于读的实际占用偏小，所以可以写缓存和index、filter都放进来
