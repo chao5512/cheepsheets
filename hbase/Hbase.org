@@ -403,6 +403,23 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 
 #+RESULTS:
 [[file:/Users/wangchao/iosdev/cheepsheets/resource/img/hbase-memstore-seq.png]]
+** HRegionServer
+*** 重要成员
+1. Map<String, HRegion> onlineRegions // 当前rs上的所有region
+2. Map<String, InetSocketAddress[]> regionFavoredNodesMap // 向hdfs写hfile的时候偏向写的datanode
+** Region
+1. region级别的锁只有一个作用，在region正服务于其他操作时，防止其close或split
+2. 每个行级操作在操作期间持有行锁和region读锁
+3. 当一个scanner在构建时，getScanner持有读锁
+4. 当scanner创建成功后，其持有读锁到scan结束
+*** 重要成员
+1. ConcurrentHashMap<HashedBytes, RowLockContext> lockedRows
+2. Map<byte[], HStore> stores //
+3. ReentrantReadWriteLock lock // 用于保证close
+*** 重要方法
+**** doMiniBatchMutate(BatchOperation<?> batchOp)
+1. 获取尽可能多的行锁
+
 ** inbox
 *** 读取流程
 1. 从zk拿到meta表位置
@@ -411,6 +428,9 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 4. RegionScanner
    1. StoreScanner(列族)最小堆
       1. StoreFileScanner + MemstoreScanner最小堆
+* mob存储
+moderate object storage
+为了减少大值对象在参与频繁的compaction和split带来的性能损耗，hbase为mob对象设计了独立的I/O path
 
 * test
 #+begin_src plantuml :file tryout.png
