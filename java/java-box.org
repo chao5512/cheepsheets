@@ -838,10 +838,36 @@ instant由ReadableInstant接口表示,它的四种实现
 * todo
 ** parallelStream
 ** joda time
-* nio
+* io
 1. jdk1.4之前，基于java的socket通信采用的是同步阻塞模式，1.4增加了nio类库
 2. jdk1.7发布，对nio类库进行了升级
 ** BIO
 1. ServerSocket负责bind ip地址，监听端口
 2. Socket负责发起链接操作
+** Stream
+
+*** Reader
+抽象类，提供字符流的访问功能，子类需要实现read和close方法
+**** InputStreamReader extends Reader
+包装一个字节流，得到一个字符流,可以配置字符集
+***** 常用模版
+#+begin_src java
+  // for top efficiency
+  BufferedReader in
+       = new BufferedReader(new InputStreamReader(System.in));
+#+end_src
+**** BufferedReader extends Reader
+用来包装一个字符流，目的是提高从字符流中的读取效率，可以配置buffer的大小
+***** 示例
+#+begin_src java
+  // TODO： 从文件读取字符
+  // 如果不使用BufferedReader,那么每次调用Reader#read()方法时，都会读取一次文件
+  // 如果使用了BufferedReader,那么一次调用可能会多读取一部分文件缓存在buffer中，再次调用Reader#read()时，可以直接从buffer中读，尽可能的减少文件访问
+
+  BufferedReader in
+       = new BufferedReader(new FileReader("foo.in"));
+
+#+end_src
+*** Writer
+抽象类，提供字符流的写入功能，子类需要实现write、flush和close方法
 
