@@ -75,3 +75,29 @@ WriteBufferManager可以用来控制多列族和多个DB实例所共享的写缓
 
 从5.6开始，用户可以设置rocksdb在blockcache中计算memtables的内存消耗，如此不管写缓存总限制设置与否，都能够对rokcsdb整体内存做限制
 总的来说，block cache用于读的实际占用偏小，所以可以写缓存和index、filter都放进来
+* 调优
+rocksdb可调参数非常繁多，且彼此之间相互影响
+** 案例
+1. 随着compaction的发生，rocksdb的写入变慢，反映到引用为写入的时候存在抖动。
+2. 查看日志没有发现写失速，compaction stats同样没有写失速的记录
+** 手段
+*** 牺牲一部分读
+Block Size 默认值为 4KB，文档中建议生产环境调整到 16 ~ 32 KB；如果采用机械硬盘（HDD）来存放 SST 文件，那么在内存容量够用的情况下，可以调整为 128 KB，这样单次读取的数据量可以多一些；
+而且 Block 变大后，相同的总数据量下，索引所占用的内存会减少。可以一起调大blockCache的大小，以保证缓存的block数量不会减少太多 
+** 参数
+[[https://xiking.win/2018/12/05/rocksdb-tuning/][参考]]
+rocksdb是lsm架构，后台有两种工作线程：flush & compaction。flush的优先级比compaction的优先级高，两种线程池都可配。
+*** max_background_flushes
+是后台memtable dump成sstable的并发线程数。默认是1，但是当使用多个column family时，内部会存在多个memtable，
+可能会同时发生flush，如果线程是1，在写入量大的情况下，可能会导致flush不及时，出现无法写入的情况。
+*** filter_policy
+这个就是每个sstable的bloom filter，使用bloom filter可以大幅减少不必要的磁盘IO。
+在bits_per_key为10的情况下，bloom filter错误率估计为1%，也就是存在如下情况：有1%的概率出现错误，
+key实际上不存在，但是在bloom filter查询的结果是存在的。这种情况导致会有1%的不必要的磁盘IO。
+*** block_cache
+可以配置大小的LRU cache，用来缓存未经过压缩的block。由于访问cache需要加锁访问，当大部分数据都在cache中时，
+多线程并发访问cache可能会出现锁竞争的瓶颈，所以LRU cache还有一个shard_bits参数，将LRU cache分片，
+其实就是对锁进行拆分，不同分片的cache不会出现竞争。默认shard_bits是6，那么cache的shard数目就是2^6=64。
+** io限速
+[[https://www.modb.pro/db/58514][rokcsdb io 限速参考]]
+
