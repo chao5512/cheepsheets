@@ -829,6 +829,7 @@ GCViewer
 | Java Heap                | 对象分配的地方                                               |
 | Class                    | 类的元信息                                                   |
 | Code                     | 生成的代码                                                   |
+| GC                       | GC用的数据，例如card table                                          |
 | Compiler                 | 编译器生成代码的时候需要的内存                               |
 | Symbol                   | Symbols                                                      |
 | Memory Tracking          | NMT需要的内存                                                |
@@ -840,5 +841,92 @@ GCViewer
 | UnKnown                  | 不知道的区域                                                 |
 |                          |                                                              |
 
+arena 动态分配内存的memory pool
+* 堆外内存占用高排查
+** 情景
+线上报警内存吃紧
+*** jvm参数设置
+    #+begin_src text
+      -XX:+ExitOnOutOfMemoryError
+      -XX:+ExplicitGCInvokesConcurrent
+      -XX:G1HeapRegionSize=33554432
+      -XX:G1MixedGCLiveThresholdPercent=50
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:HeapDumpPath=logs
+      -XX:InitialHeapSize=5368709120
+      -XX:InitiatingHeapOccupancyPercent=5
+      -XX:MaxHeapSize=5368709120
+      -XX:+PrintGC
+      -XX:+PrintGCDateStamps
+      -XX:+PrintGCDetails
+      -XX:+PrintGCTimeStamps
+      -XX:+UnlockExperimentalVMOptions
+      -XX:+UseCompressedClassPointers
+      -XX:+UseCompressedOops
+      -XX:+UseG1GC
+      -XX:+UseGCOverheadLimit
+    #+end_src
+这里设置的堆内存是5G，业务逻辑没有使用直接内存
+*** 实际内存占用
+    #+begin_src bash
+      pmap -x 13 |sort -n -k3 |tail -2
+
+      内存地址起始     申请的虚拟内存 实际占用  脏页
+      0000000680000000 5251072 4413520 4413456 rw---   [ anon ]
+      total kB         12833836 8825944 8814008
+    #+end_src
+堆内占用约等于4G，堆外占用约等于4G
+** 排查过程
+*** 怀疑堆内存在指向堆外内存的短生对象晋升到老年代偷生
+1. 排查gc日志，我们用的G1，发现确实没有触发过mixed GC，确实存在这种可能性
+2. 手动触发full gc （jmap -histo:live pid）,发现内存占用并没有降下来
+3. 总结：如果如1所述，那么full gc后堆外被指向的内存是有机会被回收的，但是在我们full gc 完长时间观察，发现内存进程占用并未降下来
+*** 使用linux core dump工具查看堆外内存大概是什么内容
+**** pmap
+1. 用来查看一个进程的内存占用
+2. -x 显示更详细的信息
+使用pmap -x ${pid}查看进程内存占用,发现大量的几十兆的内存块
+**** grep ${可疑内存的起始地址} /proc/${pid}/maps 
+内存地址形式[7fec2650e000-7fec26510000],ps：这里面的地址没有pmap前面的三个0
+**** gdb
+     #+begin_src bash
+       gdb --batch --pid ${pid} -ex "dump memory out.dump 0x7fec2650e000 0x7fec26510000"
 
 
+     #+end_src
+得到out.dump
+**** 查看可读字符，希望有什么线索
+     #+begin_src bash
+       # 打印out.dump 文件中长度超过10的可读字符
+       strings -10 out.dump
+     #+end_src
+发现其中有大量关于rocksdb的内容，包括我们写到rocskdb的kv和rocksdb自身的结构(过滤器，索引等)
+至此发现堆外内存占用高应该是与rocksdb有关
+** rocskdb配置
+1. max_background_flushes ： memtable flush的并发数
+2. max_background_compactions ： memtable compaction 或者sst compaction的并发数
+3. block_cache: 读缓存容量
+4. allow_os_buffer： sst文件是否使用系统缓存
+5. write_buffer_size： 单个write-buffer容量，差不多快满了要触发 flush
+6. max_write_buffer_number： 单个列族中的memtable上限
+7. min_write_buffer_number_to_merge： 配置为多个用来触发in-memory compaction
+8. level0_file_num_compaction_trigger : L0的sst文件上限，超了会触发compaction
+*** 多列族堆外内存泄露
+按如上配置，我们对rocksdb只进行单列族的内存限制，但是并未对列族数限制，内存随着列族的增加而增加，没法控制
+
+*** 写限速
+**** 原因
+1. 太多的memtable
+2. 太多L0 sst
+3. 太多的等待compaction的bytes
+*** 配置调整
+我们的问题是堆外占用过高，rocksdb占用4G左右
+1. 调小write-buffer 从256M调至64M
+2. 业务写多读少，减少读缓存，1G调至256M
+3. 单个列族的write-buffer数量为5，最多4个memtable配合一个immutable memtable
+4. 关闭in-memory compaction 读少所以不优化读放大
+5. L0 sst=8 调高或不调，调小会触发写限速
+6. 代码中增加write-buffer manager 限制总内存
+*** 内存估算
+rocksdb 占用内存 = block cache + write-buffer总内存
+按如上配置，rocskdb占用1.7G左右，平稳支撑40w/min的写入

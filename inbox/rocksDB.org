@@ -53,6 +53,7 @@ todo
 ./db_bench --benchmarks="readrandom" --use_existing_db --compression_type=none --statistics
 #+END_SRC
 * rocksdb 备份
+
 * rocksdb 读写缓存管理 Write Buffer Manager
 WriteBufferManager可以用来控制多列族和多个DB实例所共享的写缓存。在使用方式上分为两种
 1. 单独限制总的写缓存 WriteBufferManager(size)

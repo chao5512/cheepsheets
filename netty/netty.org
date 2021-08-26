@@ -18,6 +18,52 @@ EventLoop由一个线程驱动，其处理了一个channel的所有事件，并�
 2. 注意：channelRead方法不保证接收到的是一个对端发过来的一个完整的消息，即便这个msg很小，它也有可能被分成多块接收，调用多次channelRead
 *** SimpleChannelInboundHandler<I> extends ChannelInboundHandlerAdapter
 指定了msg类型为<I>的channelHandler，其可以在channelRead后自动release msg
+** Channel
+channel用于所有的io操作
+1. channel继承comparable接口，以表示每个channel都是独一无二的
+2. 每个channel中聚合了处理链路（ChannelPipeline）和ChannelConfig（支持热更新)
+3. channel是线程安全的，可以多线程同时向一个channel写数据
+** ChannelPipeline
+channelPipeline由应该作用在某个channel上的所有channelHandler装配而成，提供了可以动态调整ChannelHandler的接口
+1. pipeline在组装channelHandler的时候，可以为特定的channelHandler指定执行的线程池。作用就是这样这个handler上的事件可以不消耗workGroup
+** ChannelHandlerContext
+代表了ChannelHandler和ChannelPipeline之间的关联，主要用于本ChannelHandler与同一个channel上的其他ChannelHandler交互
+1. 通过ChannelConfig.setAutoRead(boolean autoRead)方法可以实现反应式系统的特性之一回压(back-pressure)
+* netty native transport
+netty除了支持使用java提供的Nio、Oio传输外，还支持依赖于具体平台(linux、macos、bsd)的Epoll传输，
+Epoll更加适配Netty现有的线程模型，具有更高的性能和更低的垃圾回收压力
+* netty的传输类型
+** NIO
+
+** Epoll
+** OIO 使用阻塞流
+** Local 在VM内部通过管道进行通信
+** Embedded 可以安装CHannelHandler，而又不经过网络，测试用
+* 零拷贝
+在使用NIO或者Epoll时才可用，可以实现高效地将数据从文件系统移动到网络端口，节省了将数据从内核空间复制到用户空间的消耗。
+但是其只能够传输文件的原始内容，也就是说加密或者压缩的数据，我们只能够将其处理后的数据移动而非原始数据
+* Reactor模式
+基本思想：I/O复用 + 线程池化
+** 传统的IO模型
+*** 特点
+1. 使用阻塞io模式获取数据
+2. 对每个链接的处理都需要一个线程来完成，这包括数据输入、业务处理、数据返回
+*** 缺点
+1. 并发数很大时，需要更多的线程，占用大量的系统资源
+2. 连接建立后，如果暂时没有数据可读，会阻塞在连接读上，浪费线程资源
+** 单线程Reactor模型
+*** 特点
+1. 单线程，所有事件都被一个线程处理，没有线程间的通信和竞争问题
+*** 缺点
+1. 性能上，单线程，无法发挥多核的优势
+2. 可靠性上，线程跑飞会造成整个模块不可用
+** 单Reactor多线程模型
+*** 特点
+1. 充分利用了多核的处理能力，将不同类型的channel事件（连接、读写）分配给不同线程池处理】
+*** 缺点
+单reactor可能在高并发下成为瓶颈
+** 多Reactor多线程模型
+TODO
 
 * netty编程范式
 1. 一个帮助启动netty服务的启动器ServerBootstrap
