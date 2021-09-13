@@ -251,6 +251,9 @@ waitset  线程间通信
 2. lock
 3. cas，使用AtomicXXX原子类来帮助完成
 4. unsafe
+** 用户线程和守护线程
+1. jvm停止前，必须先停止所有的用户线程
+2. 子线程默认继承赴现场的守护属性，当然在父线程中启动子线程前可以对子线程的守护属性进行设置
 * 抽象
 ** 任务
 *** thread
@@ -330,8 +333,12 @@ waitset  线程间通信
 1. shutDownNow() //尽力终止，对不响应中断的任务不保证一定能终止
    1) 返回还未开始执行的任务
    2) 不等待已经执行的任务，如果需要等待用awaitTermination
-**** Excutors
+**** Executors
 ExecutorService 的工厂类
+* Guaua类库之并发模块
+** MoreExecutors
+1. 将ThreadExecutorPool转化为ExecutorService
+
 * Atomic
 ** AtomicReference
 用于无锁更新对象引用
@@ -396,9 +403,40 @@ ExecutorService 的工厂类
 3. 在wait set区域的线程获得Notify/notifyAll通知的时候，随机的一个Thread（Notify）或者是全部的Thread（NotifyALL）从Object Lock的wait set区域进入了entry set中。
 4. 在当前拥有锁的线程释放掉锁的时候，处于该Object Lock的entryset区域的线程都会抢占该锁，但是只能有任意的一个Thread能取得该锁，而其他线程依然在entry set中等待下次来抢占到锁之后再执行。
 
+** 线程状态
+Thread.State定义的线程状态包括
+1. NEW ： 刚刚创建尚未调用start，一个线程只能被启动一次
+2. RUNNABLE ：调用start后的状态,在jvm看来该线程是正在执行的。 READY + RUNNING.
+   1. READY : 正在等待其他资源，比如处理器
+   2. RUNNING：没有等待其他资源，run中的代码正在cpu中运行
+3. BLOCKED：处于该状态的线程并不占用cpu资源。正在等待一个monitor lock，希望进入临界区或者重新进入临界区
+4. WAITING : 当前线程等待其他线程完成特定的动作
+   1. 调用Object.wait()的线程等待其他线程执行Object.notify()或Object.notifyAll()
+   2. 调用Thread.join()等待特殊的线程执行完毕
+   3. LockSupport#park()和LockSupport#unpark(Thread)
+5. TIMED_WAITING: 带有时间的waiting，例如Thread.sleep(time)
+6. TERMINATED:正常结束或者由于异常而终止
+   
+*** 线程上下文
+1. 一个线程从RUNNABLE与BLOCKED、WAITING、TIMED_WAITING中的任意状态发生切换时就意味着上下文切换
+2. 上下文切换带来额外的开销，这包括线程上下文的开销、对线程进行调度的cpu时间开销以及cpu缓存内容失效的开销
+3. 使用perf命令可以监视java程序运行时的上下文切换情况
+
 * inaction
 
 ** ConcurrentModificationException
 迭代的时候对list有修改操作
+
+* 并发编程设计模式
+
+** 分类（按面向的问题）
+1. 不适用锁的情况下保证线程安全,3种起步
+2. 优雅地停止线程，两阶段终止
+3. 线程协作，2种起步
+4. 提高并发性，减少等待,3种起步
+5. 提高响应性，2种起步
+6. 减少资源消耗，串行线程封闭
+
+** 第一个模式：Immutable Object模式
 
 
