@@ -1,0 +1,30 @@
+#+title: 一些零碎的概念
+* CI/CD
+1. Continuous Integration (CI) 持续集成
+2. Continuous Delivery (CD) 持续交付
+3. Continuous Deployment (CD) 持续部署
+* 云原生
+云原生是一种构建和运行应用程序的方法，是一套技术体系和方法论.Native表示应用程序从设计之初即考虑到云的环境，原生为云而设计，在云上以最佳姿势运行，充分利用和发挥云平台的弹性+分布式优势
+** 特点
+1. 松耦合
+2. CI/CD
+3. 各种云之间应该能够无缝切换
+** 要点
+DevOps+持续交付+微服务+容器
+* DevOps
+在CI/CD的趋势下，开发部署和运维QA不能之间的沟通变得更为频繁和深入。DevOps是一套针对这几个部门间沟通与协作问题的流程和方法。
+* Prometheus 指标采集器 + Grafana监控页面和邮件报警
+* Dapper的一个开源实现Zipkin
+* ELK日志分析组件
+1. Elasticsearch：搜索引擎，同时也是日志的存储。
+2. Logstash：日志采集器，它接收日志输入，对日志进行一些预处理，然后输出到Elasticsearch。
+3. Kibana：UI组件，通过Elasticsearch的API查找数据并展示给用户。
+* 网关
+在调用者和被调用者中间加一层网关，每次调用时进行权限校验。另外，网关也可以作为一个提供服务接口文档的平台。
+* DRY原则
+DRY是 Don't repeat yourself 的缩写，意思是"不要重复自己"。
+* 抽象原则
+[[http://www.ruanyifeng.com/blog/2013/01/abstraction_principles.html][抽象原则]]
+* 领域驱动设计（Domain-Driven Design，简称DDD）
+划分服务的一种指导原则
+
