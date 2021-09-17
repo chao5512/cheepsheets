@@ -305,6 +305,11 @@ hdfs-2.6后,加入feature,根接口位于INode.Feature
 
 **** DirectoryWithQuotaFeature (org.apache.hadoop.hdfs.server.namenode)
 **** FileWithSnapshotFeature (org.apache.hadoop.hdfs.server.namenode.snapshot)
+** FileSystem
+
+*** DistributedFileSystem
+create的时候可以指定favored nodes。namenode可以根据这个favored nodes列表来选择dn存blocks，这些block不参与balance。
+在replication的时候可以从指定的favored nodes移动走
 ** RPC
 
 *** 通信模块
@@ -415,6 +420,16 @@ Under Replicated Blocks In files under construction   ： 备份数不够的bloc
 *** 3. 挂载
 *** 4. 格式化文件系统
 *** 
+* 安全模式
+hdfs进入安全模式后，只接受读取请求，不再接受写入、删除修改等变更请求，这是一种自我保护机制。namenode检测到任何异常，便会进入安全模式，知道问题解决
+** 进入安全模式的原因
+*** 1. block块上报的数量不够
+nn维护blockmap。dn上报block，当上报上来的block数量低于期望的上报率时。nn进入安全模式
+1. nn重启
+2. dn异常，未上报
+*** 2. 元数据不一致的情况
+*** 3. 日志中出现严重异常
+*** 4. 手动进入安全模式
 
 * todo
 fs#rename 语义
