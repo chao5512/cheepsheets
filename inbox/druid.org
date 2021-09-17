@@ -1,27 +1,54 @@
 #+title: druid
-* 设计 
+* OLTP versa OLAP
+** Online transaction processing
+主要用于事务性的处理，需要支持频繁的增删该查
+** Online analytical processing
+主要提供查询、支持复杂分析、侧重决策支持
+* druid的数据结构
+** datasource结构
+druid在入库的时候对数据进行聚合，聚合从两个角度进行，某段时间内的某些维度。不开启rollup可关闭预聚合保留明细。druid不适合做明细查询
+1. 时间列
+2. 维度列
+3. 指标列
+** segment结构
+1. slice： segment按时间范围存储druid数据，这完成了横向切分数据
+2. dice： 在每个segment里，druid按列压缩存储数据，这完成了纵向切分数据
+   
+
+* 设计
+** 设计期望
 1. 多进程
 2. 易扩展
 3. 容灾能力，某一个进程的崩溃不会立刻影响其他节点
+** 设计思想
+既保证查询的高效性（写入时建立索引），又保证写入的高效性
 ** 架构
 *** 节点角色
 1. coordinator： 管理segement
-2. overload： 数据摄取的工作分配
-3. broker： 处理外部查询请求
+2. overload： 数据摄取的任务分配，提交任务、取消任务、查看任务状态、汇报状态
+3. broker： 处理外部查询请求，按segment转发请求到历史节点或实时节点，lru
 4. router： 可选节点，可以将请求路由到其他节点，运行web控制台
-5. historical： 存储可查询的数据
+5. historical： 提供不可变segment的加载和查询功能
 6. middleManager: 负责摄取数据
 *** 外部依赖
+**** kafka
+消息总线，供实时节点摄取数据用
+***** 提供如下功能
+1. 内存中的数据安全，real-time宕机后丢失的内存数据仍在kafka中可以找到
+2. 内存加磁盘中的数据安全，多个real-time可以同时摄取kafka中的事件，构成事件副本，当某个real-time完全不可用（内存丢了，磁盘坏了）
+
 **** deep storage
 1. 用作数据备份
 2. 用作数据传递的共享存储
 3. historical在响应查询的时候应该是不访问深度存储的，他应该在查询前就欲拉取segments到本地磁盘，待验证：不过懒加载模式下，应该是query时才去加载
 **** 元数据存储
 1. 存储segment使用信息和任务信息
+2. 规则
 **** zookeeper
 1. 服务发现
-2. 协调
+2. 协调，segment的加载和卸载指令
 3. leader选举
+
 *** 存储
 **** datasource
 1. 数据存储在datasource中，可以看作一张表，表中数据按时间分区
@@ -145,6 +172,8 @@ web 控制台由router进程维护
   sex,0,577,841
 #+END_SRC
 ****** 
+
+
 * 算法
 ** bitmap
 [[http://hbasefly.com/2018/06/19/timeseries-database-8/][hbaseFly]]
@@ -208,4 +237,88 @@ query逻辑去Query* 类看. 可以从QueryResouse.java下手
 * dump segments
 2. 存规则,关于segment怎么创建? 怎么销毁? 怎么保存副本?[
 [https://xixuebin.github.io/2019-04-01-092732-ch.html][使用DruidAPI dump Druid数据]]
+* druid中的zk
+** zk的用处
+1. 协调节点和Overlord节点选主
+2. 历史节点发布segement
+3. 协调节点分配管理（load、drop）历史节点上的segment
+4. Overlord和MiddleManager的任务管理
+** 路径
+- coordinator选主,overlord同理
+#+begin_src bash
+  [zk: localhost:2181(CONNECTED) 8] get /druid/cluster/coordinator/_COORDINATOR/_c_da02aa4f-2450-4616-923e-def24f6e0ba9-latch-0000000081
+
+
+  # http://10.240.3.161:8081
+
+#+end_src
+
+- 历史节点和实时节点的服务发现，此处节点为临时节点
+#+begin_src bash
+  [zk: localhost:2181(CONNECTED) 35] ls /druid/cluster/announcements
+
+  # [datanode01:8083, managernode01:8100, managernode01:8101, managernode01:8102, writenode01:8101, writenode02:8083, writenode02:8100, writenode02:8101, writenode02:8102]
+
+#+end_src
+
+- 历史节点加载的segment,此处历史节点为永久节点，其上加载的segment为临时节点
+#+begin_src bash
+[zk: localhost:2181(CONNECTED) 25] ls /druid/cluster/segments/datanode01:8083
+# _segment_identifier_
+#+end_src
+
+- segment分配
+#+begin_src bash
+  # 要求datanode01:8083去load或者drop的segment
+  [zk: localhost:2181(CONNECTED) 40] ls /druid/cluster/loadQueue/datanode01:8083/_identifier_segment
+
+#+end_src
+* Storage design 
+** Indexing and handoff
+indexing 是从数据创建segment， handoff是发布segment让历史节点提供查询
+1. 一个indexing task构建一个segment的时候，segment应当有其唯一标识
+   1. 在append模式下，唯一标示是通过overlord的 allocate 接口完成的
+   2. 在overwrite模式下，是通过在interval上加锁并创建带有新版本号的segments
+2. 如果indexing task是一个实时任务，则构建中的segment立刻可查，但是并未发布
+3. 写好了一个segment后，indexing task 在元数据存储上发布该segment，并推入deep storage
+4. 如果是实话任务，indexing task等待某个historical 节点加载segment并提供服务之后在删除本地的segment
+*** coordinator和historical node
+1. 协调节点周期的观察元数据中是否有新的segment被published
+2. 当协调节点发现了published并used的segment，但是unavailable。其选择一个historical 节点加载该segment
+3. 历史节点加载segment并提供服务
+4. 等待handoff的实时任务结束
+** Segment identifiers
+由4部分组成
+1. datasource name
+2. Time interval
+3. version number
+4. partition number
+** Segment versiong
+用来支持batch-mode overwriting。当高版本的segment全部加载完成后，查询才会被导向高版本的segment
+** Segment lifecycle
+segment的生命周期设计3个地方
+1. Metadata store ：segment写入metadata store的动作叫publish。used字段标示该segment是否可查
+2. Deep stoarage ： 在segment publish之前将该segment推入Deep storage
+3. 查询可用性 ： segment在历史节点或者实时节点上以供查询
+** Availability and consistency
+druid的摄取和查询在结构上分离，所以考察可用性和一致性的时候要分开看
+*** ingestion
+druid摄取是pull-based，提供事务保障。
+**** 对于从kafka这类流式摄取
+druid在publish segment的到元数据的同一个事务中同时存一个流offset。如果某个摄取任务失败，那么它已经摄取的部分数据将会被丢弃，
+druid开始一个新的摄取任务，这个摄取任务从最后一次成功提交的segment记录的offset继续摄取
+**** 基于hadoop的批量摄取
+所有的segment元信息在同一个事务中发布
+**** 本地批量摄取
+1. parallel mode: 在子任务完成后publish所有的segment到metastore
+2. simple mode： 所有的segment的元信息一起提交
+*** query
+broker负责在查询的时候来保证查询涉及的segments的一致性
+1. atomic replacement 每个time chunk单独的完成原子替换
+* 源码
+** AppenderatorDriverRealtimeIndexTask
+* 工作
+1. checkpoint
+2. compact
+3. 资源管理(内存、线程)
 
