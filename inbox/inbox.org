@@ -48,5 +48,6 @@ mean time to failure，预防大于治疗
 允许一定比例的大请求存在，当大请求数量超过我们的期望时，对后续的大请求进行限速。
 ** MTTR
 mean time to repair
-
+* SOA
+Service-Oriented Architecture 面向服务的架构
 

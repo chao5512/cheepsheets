@@ -419,6 +419,8 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 *** 重要方法
 **** doMiniBatchMutate(BatchOperation<?> batchOp)
 1. 获取尽可能多的行锁
+** Flush
+
 
 ** inbox
 *** 读取流程
@@ -428,6 +430,8 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 4. RegionScanner
    1. StoreScanner(列族)最小堆
       1. StoreFileScanner + MemstoreScanner最小堆
+* region 切分
+
 * mob存储
 moderate object storage
 为了减少大值对象在参与频繁的compaction和split带来的性能损耗，hbase为mob对象设计了独立的I/O path
@@ -440,3 +444,26 @@ moderate object storage
 
 #+RESULTS:
 [[file:tryout.png]]
+
+* hbase failover 与MTTR2
+某一个rs发生宕机后，hbase进入failover过程。目的是将region转移到其他rs上，并恢复宕机rs的memtable中的数据，然后提供region服务
+
+** 步骤
+1. split wal-log. 一个rs上的所有region将wal写入同一个wal文件，因此在region转移的时候，要将该region的wal从rs的wal中拆出来
+
+2. Assign region. 重新指派rs来load region
+
+3. replay log
+
+** MTTR2
+
+* hbase主备集群
+此种模式下的两个核心问题
+1. 数据复制
+2. 流量切换
+   
+** 数据复制
+
+* 受益良多
+[[https://dbaplus.cn/news-73-2859-1.html][ali-hbase-2019总结]]
+
