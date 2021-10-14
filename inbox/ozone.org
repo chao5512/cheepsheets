@@ -64,4 +64,280 @@
 1. 改变scm上的container状态为CLOSING
 2. 通知所有该container所在的dn转换该container为CLOSING
 
+* scrub
+负责数据的清理工作，当数据损坏时，及时的触发container-replication任务
+
+** 数据检查
+
+*** 元数据检查
+
+**** 必要准备
+1. container controller
+2. 可配的检查周期
+
+*** 数据检查
+按volume划分检查任务
+
+** 限流实现
+
+
+** 磁盘管理
+
+*** 磁盘检查
+
+*** 磁盘选择
+
+** container状态，不同于container-replica的状态
+
+* 副本均衡
+
+* 源码
+** 前置配置
+- 1. 可以在命令行或者启动脚本中配置ozone的配置文件
+#+begin_src sh
+[process of ozone] -conf xxx/ozone-default.xml
+#+end_src
+
+
+- 2. 在配置中规划好了所有进程的数据目录,可以降级到同一个目录下(方便配置,测试用)
+  #+begin_src xml
+    <property>
+        <name>ozone.metadata.dirs</name>
+        <value>rootdir/ozone/metaDir</value>
+        <tag>OZONE, OM, SCM, CONTAINER, STORAGE, REQUIRED</tag>
+        <description>
+          This setting is the fallback location for SCM, OM, Recon and DataNodes
+          to store their metadata. This setting may be used only in test/PoC
+          clusters to simplify configuration.
+
+          For production clusters or any time you care about performance, it is
+          recommended that ozone.om.db.dirs, ozone.scm.db.dirs and
+          dfs.container.ratis.datanode.storage.dir be configured separately.
+        </description>
+      </property>
+
+  #+end_src
+** SCM
+*** init
+在配置的scm.db.dirs中生成集群版本信息,生成scm节点的id信息
+#+begin_src shell
+  ozone scm --init
+
+  #SCM initialization succeeded. Current cluster id for sd=/rootdir/ozone/metaDir/scm;cid=CID-efcf1bf1-a78b-4d9d-a99d-d80ecb768602;layoutVersion=0
+
+  tree pathOfSCM
+
+  #scm
+  #└── current
+  #    └── VERSION
+
+  cat metaDir/scm/current/VERSION
+
+  #Thu Oct 14 17:36:38 CST 2021
+  nodeType=SCM
+  scmUuid=043d1151-14a4-4e76-a667-267a24e3b99f
+  clusterID=CID-efcf1bf1-a78b-4d9d-a99d-d80ecb768602
+  cTime=1634204198060
+  layoutVersion=0
+#+end_src
+
+*** ozone scm
+启动scm
+
+**** (optional)启动scm的web服务
+相关配置
+#+begin_src xml
+    <property>
+      <name>ozone.scm.http-address</name>
+      <value>0.0.0.0:9876</value>
+      <tag>OZONE, MANAGEMENT</tag>
+      <description>
+        The address and the base port where the SCM web ui will listen on.
+
+        If the port is 0 then the server will start on a free port.
+      </description>
+    </property>
+    <property>
+      <name>ozone.scm.http-bind-host</name>
+      <value>0.0.0.0</value>
+      <tag>OZONE, MANAGEMENT</tag>
+      <description>
+        The actual address the SCM web server will bind to. If this
+        optional address is set, it overrides only the hostname portion of
+        ozone.scm.http-address.
+      </description>
+    </property>
+    <property>
+      <name>ozone.scm.http.enabled</name>
+      <value>true</value>
+      <tag>OZONE, MANAGEMENT</tag>
+      <description>
+        Property to enable or disable SCM web ui.
+      </description>
+    </property>
+    <property>
+      <name>ozone.scm.https-address</name>
+      <value>0.0.0.0:9877</value>
+      <tag>OZONE, MANAGEMENT</tag>
+      <description>
+        The address and the base port where the SCM web UI will listen
+        on using HTTPS.
+
+        If the port is 0 then the server will start on a free port.
+      </description>
+    </property>
+    <property>
+      <name>ozone.scm.https-bind-host</name>
+      <value>0.0.0.0</value>
+      <tag>OZONE, MANAGEMENT</tag>
+      <description>
+        The actual address the SCM web server will bind to using HTTPS.
+        If this optional address is set, it overrides only the hostname portion of
+        ozone.scm.https-address.
+      </description>
+    </property>
+
+#+end_src
+
+***** TODO scm web 页面 可以获得的信息
+
+**** 启动后scm目录下的文件结构
+#+begin_src sh
+  metaDir
+  ├── db.checkpoints
+  ├── scm
+  │   └── current
+  │       └── VERSION
+  └── scm.db  //用rokcsdb来作为scm的持久化存储
+      ├── 000024.log
+      ├── CURRENT
+      ├── IDENTITY
+      ├── LOCK
+      ├── LOG
+      ├── LOG.old.1634205202869713
+      ├── LOG.old.1634205228566554
+      ├── LOG.old.1634205442027664
+      ├── LOG.old.1634205709142623
+      ├── MANIFEST-000023
+      ├── OPTIONS-000023
+      └── OPTIONS-000026
+
+#+end_src
+
+**** 启动不同的服务
+对不同的protocol,在不同的端口上启动不同的服务,在log中记录
+#+begin_src text
+	todo : 可以看这几个protocol面向的场景
+  INFO   StorageContainerLocationProtocol RPC server is listening at /0.0.0.0:9860
+  INFO   ScmBlockLocationProtocol RPC server is listening at /0.0.0.0:9863
+  INFO   ScmDatanodeProtocl RPC server is listening at /0.0.0.0:9861
+#+end_src
+
+*** ozone datanode
+
+**** 配置存储目录
+不配置会在/tmp目录下生成临时文件
+#+begin_src xml
+  <property>
+      <name>hdds.datanode.dir</name>
+      <value>/xxx/ozone/volumes</value>
+      <tag>OZONE, CONTAINER, STORAGE, MANAGEMENT</tag>
+      <description>Determines where on the local filesystem HDDS data will be
+        stored. Defaults to dfs.datanode.data.dir if not specified.
+        The directories should be tagged with corresponding storage types
+        ([SSD]/[DISK]/[ARCHIVE]/[RAM_DISK]) for storage policies. The default
+        storage type will be DISK if the directory does not have a storage type
+        tagged explicitly.
+      </description>
+  </property>
+
+#+end_src
+
+目录结构
+#+begin_src shell
+  tree path
+  #── volumes
+  #    ├── hdds
+  #    └── scmUsed
+
+
+  cat scmUsed
+
+  #8192 1634210195271% 
+#+end_src
+
+**** (optional) 启动datanode的web服务
+配置
+#+begin_src xml
+    <property>
+      <name>hdds.datanode.http-address</name>
+      <value>localhost:9882</value>
+      <tag>HDDS, MANAGEMENT</tag>
+      <description>
+        The address and the base port where the Datanode web ui will listen on.
+        If the port is 0 then the server will start on a free port.
+      </description>
+    </property>
+    <property>
+      <name>hdds.datanode.http-bind-host</name>
+      <value>localhost</value>
+      <tag>HDDS, MANAGEMENT</tag>
+      <description>
+        The actual address the Datanode web server will bind to. If this
+        optional address is set, it overrides only the hostname portion of
+        hdds.datanode.http-address.
+      </description>
+    </property>
+
+#+end_src
+
+***** jetty 依赖找不到
+ozone NoClassDefFoundError: org/eclipse/jetty/server/ConnectionFactory
+****** 原因
+#+begin_src xml
+  <!--注释掉一下几个scope为test的属性-->
+  <!-- 在 container-service的pom中-->
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-hdds-hadoop-dependency-test</artifactId>
+        <!--<scope>test</scope>-->
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-hdfs</artifactId>
+        <!--<scope>test</scope>-->
+        <type>test-jar</type>
+      </dependency>
+
+      <!--在最外层pom中-->
+      <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-hdds-hadoop-dependency-test</artifactId>
+          <version>${hdds.version}</version>
+          <!--<scope>test</scope>-->
+        </dependency>
+#+end_src
+**** 与scm交互
+使用 ScmDatanodeProtocl协议来与scm交互
+
+#+begin_src text
+  # 生成一个新的数据路径
+  └── volumes
+      ├── hdds
+      │   ├── 043d1151-14a4-4e76-a667-267a24e3b99f
+      │   └── VERSION
+      └── scmUsed
+
+  # 生成新的ratis组
+  ├── ratis
+  │   │   └── ae6096dd-84c9-4fae-8674-56c060fdc170
+  │   │       ├── current
+  │   │       │   ├── log_inprogress_0
+  │   │       │   ├── raft-meta
+  │   │       │   └── raft-meta.conf
+  │   │       ├── in_use.lock
+  │   │       └── sm
+
+
+#+end_src
 
