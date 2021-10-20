@@ -233,9 +233,9 @@
   INFO   ScmDatanodeProtocl RPC server is listening at /0.0.0.0:9861
 #+end_src
 
-*** ozone datanode
+** ozone datanode
 
-**** 配置存储目录
+*** 配置存储目录
 不配置会在/tmp目录下生成临时文件
 #+begin_src xml
   <property>
@@ -266,7 +266,85 @@
   #8192 1634210195271% 
 #+end_src
 
-**** (optional) 启动datanode的web服务
+*** container存储结构
+#+begin_src text
+  └── volumes
+      ├── hdds
+      │   ├── 043d1151-14a4-4e76-a667-267a24e3b99f
+      │   │   └── current
+      │   │       └── containerDir0
+      │   │           ├── 3
+      │   │           │   ├── chunks
+      │   │           │   │   ├── 107104110352138242.block
+      │   │           │   │   ├── 107104143830548485.block
+      │   │           │   │   ├── 107104264322678795.block
+      │   │           │   │   ├── 107104346305069070.block
+      │   │           │   │   ├── 107104351582093329.block
+      │   │           │   │   ├── 107104370581897236.block
+      │   │           │   │   └── 107104376491409431.block
+      │   │           │   └── metadata
+      │   │           │       ├── 3.container
+      │   │           │       └── 3-dn-container.db
+      │   │           │           ├── 000004.sst
+      │   │           │           ├── 000006.log
+      │   │           │           ├── CURRENT
+      │   │           │           ├── IDENTITY
+      │   │           │           ├── LOCK
+      │   │           │           ├── LOG
+      │   │           │           ├── LOG.old.1634282567964969
+      │   │           │           ├── MANIFEST-000005
+      │   │           │           ├── OPTIONS-000005
+      │   │           │           └── OPTIONS-000008
+#+end_src
+
+*** 使用rocksdb作为元数据存储,每个元数据一个库
+每个container的元数据存储在自己的rocksdb中
+
+**** 使用jmx获得每个container中rocksdb的统计信息
+1. 将ozone.metastore.rocksdb.statistics打开,这会带来5%-10%的性能损耗
+   #+begin_src xml
+     <property>
+         <name>ozone.metastore.rocksdb.statistics</name>
+         <value>ALL</value>
+         <tag>OZONE, OM, SCM, STORAGE, PERFORMANCE</tag>
+         <description>
+           The statistics level of the rocksdb store. If you use any value from
+           org.rocksdb.StatsLevel (eg. ALL or EXCEPT_DETAILED_TIMERS), the rocksdb
+           statistics will be exposed over JMX bean with the choosed setting. Set
+           it to OFF to not initialize rocksdb statistics at all. Please note that
+           collection of statistics could have 5-10% performance penalty.
+           Check the rocksdb documentation for more details.
+         </description>
+       </property>
+
+   #+end_src
+2. 在datanode启动的server端口上使用jmx命令
+   #+begin_src text
+     http://localhost:9882/jmx
+
+     # 获得如下信息
+     {
+         "name" : "Hadoop:service=Ozone,name=RocksDbStore,dbName=5-dn-container.db",
+         "modelerType" : "",
+         "BLOCK_CACHE_MISS" : 6,
+         "BLOCK_CACHE_HIT" : 29,
+         "BLOCK_CACHE_ADD" : 6,
+         "BLOCK_CACHE_ADD_FAILURES" : 0,
+         ....
+     },
+     {
+         "name" : "Hadoop:service=Ozone,name=RocksDbStore,dbName=4-dn-container.db",
+         "modelerType" : "",
+         "BLOCK_CACHE_MISS" : 6,
+         "BLOCK_CACHE_HIT" : 29,
+         "BLOCK_CACHE_ADD" : 6,
+         "BLOCK_CACHE_ADD_FAILURES" : 0,
+         "BLOCK_CACHE_INDEX_MISS" : 0,
+         ...
+     },
+     ....
+   #+end_src
+*** (optional) 启动datanode的web服务
 配置
 #+begin_src xml
     <property>
@@ -340,4 +418,68 @@ ozone NoClassDefFoundError: org/eclipse/jetty/server/ConnectionFactory
 
 
 #+end_src
+
+** ozone om
+
+*** init
+在配置中读取scm配置的ScmBlockLocationProtocol协议在scm上的服务,然后通过该协议问scm信息,包括集群id和scm id
+
+然后在配置的本地元数据目录下写下该信息
+#+begin_src text
+  │   ├── om
+  │   │   └── current
+  │   │       └── VERSION
+
+
+  # cat VERSION
+
+  #Fri Oct 15 10:11:21 CST 2021
+  nodeType=OM
+  scmUuid=043d1151-14a4-4e76-a667-267a24e3b99f
+  clusterID=CID-efcf1bf1-a78b-4d9d-a99d-d80ecb768602
+  cTime=1634263881350
+  omUuid=e8e5ca94-7f88-48e7-90ae-ee56493bdf86
+  layoutVersion=0
+
+#+end_src
+
+*** 启动om
+会在配置的om db目录下防止om rocksdb的数据
+
+**** om系统表,结构如下
+   * |----------------------------------------------------------------------|
+   * |  Column Family     |        VALUE                                    |
+   * |----------------------------------------------------------------------|
+   * | userTable          |     /user->UserVolumeInfo                       |
+   * |----------------------------------------------------------------------|
+   * | volumeTable        |     /volume->VolumeInfo                         |
+   * |----------------------------------------------------------------------|
+   * | bucketTable        |     /volume/bucket-> BucketInfo                 |
+   * |----------------------------------------------------------------------|
+   * | keyTable           | /volumeName/bucketName/keyName->KeyInfo         |
+   * |----------------------------------------------------------------------|
+   * | deletedTable       | /volumeName/bucketName/keyName->RepeatedKeyInfo |
+   * |----------------------------------------------------------------------|
+   * | openKey            | /volumeName/bucketName/keyName/id->KeyInfo      |
+   * |----------------------------------------------------------------------|
+   * | s3SecretTable      | s3g_access_key_id -> s3Secret                   |
+   * |----------------------------------------------------------------------|
+   * | dTokenTable        | s3g_access_key_id -> s3Secret                   |
+   * |----------------------------------------------------------------------|
+   * | prefixInfoTable    | prefix -> PrefixInfo                            |
+   * |----------------------------------------------------------------------|
+   * |  multipartInfoTable| /volumeName/bucketName/keyName/uploadId ->...   |
+   * |----------------------------------------------------------------------|
+   * |----------------------------------------------------------------------|
+   * |  transactionInfoTable | #TRANSACTIONINFO -> OMTransactionInfo        |
+   * |----------------------------------------------------------------------|
+
+** ozone 写入数据流程
+
+*** ozone-client与hdds-container-services的交互
+通过DatanodeClientProtocol.proto 这个协议,将数据组织成一个个chunk,封装为writeChunk(ContainerCommandRequestProto)
+将数据内容和crc一同发往指定dn的指定container的指定block
+
+**** 在datanode上如何将接收到的数据持久化存储起来的?
+
 
