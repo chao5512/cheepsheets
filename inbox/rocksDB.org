@@ -45,8 +45,8 @@ todo
 /usr/local/Cellar/rocksdb/6.6.4/bin
 #+END_SRC
 ** 在mac上编译rocksdb
-#+BEGIN_SRC sh
   git clone
+#+BEGIN_SRC sh
   make all
   ./db_bench fillseq --compression_type=none
 
@@ -101,4 +101,49 @@ key实际上不存在，但是在bloom filter查询的结果是存在的。这�
 其实就是对锁进行拆分，不同分片的cache不会出现竞争。默认shard_bits是6，那么cache的shard数目就是2^6=64。
 ** io限速
 [[https://www.modb.pro/db/58514][rokcsdb io 限速参考]]
+* 案例
+** rokcsdb ttl
+*** ttl db
+rocksDB提供ttl db的实现,大概就是用这个ttl db实例去如写入数据的时候会在写入的数据上标记入库时间,同时增加TtlCompactionFilter.
+这样当我们对db或者对cf设置了ttl后,sst文件在参与compaction的时候会被该TtlCompactionFilter检查并过滤掉过期条目,以达到删除过期数据
+的目的
+**** 缺陷
+1. 非精准过期,数据条目真正过期依赖于其参与compaction的时机
+2. 在数据被真正删除之前,即便是老于设置的ttl了还是可以查到
+**** 问题
+- 线上rocksdb版本 5.1.18
+- sr初始ttl为P100D(实际上我们查rokcsdb中的数据发现1年以前的数据依旧可查),后因rokcsdb磁盘占用过高,调整为P30D,希望rocksdb能够释放一些磁盘.
+***** 初始rocksdb中各层数据分布如下(测试环境模拟的,与这个有所不同,线上只有4层,数据90%堆在最底层)
+   #+begin_src text
+    1. ttl = P100D
+
+    ,** Compaction Stats [T_Server_TraceData] **
+    Level    Files   Size     Score Read(GB)  Rn(GB) Rnp1(GB) Write(GB) Wnew(GB) Moved(GB) W-Amp Rd(MB/s) Wr(MB/s) Comp(sec) CompMergeCPU(sec) Comp(cnt) Avg(sec) KeyIn KeyDrop
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      L0      1/0   40.84 MB   0.0      0.4     0.0      0.4       1.2      0.8       0.0   2.8      4.9     14.5     83.88             80.54        73    1.149   8076K     34
+      L1      1/0   61.14 MB   0.0      0.2     0.2      0.1       0.4      0.3       0.0   1.9     18.2     26.6     13.94             12.56         5    2.789   3903K     19
+      L2      1/0   61.43 MB   0.0      0.2     0.2      0.1       0.3      0.3       0.0   2.2     18.6     27.7     12.86             11.34         4    3.215   3810K     21
+      L3      1/0   97.95 MB   0.0      0.4     0.3      0.1       0.5      0.4       0.0   1.7     26.2     32.5     16.87             17.89         4    4.216   5734K     42
+      L4      6/0    1.02 GB   0.0      1.4     0.9      0.5       1.4      0.9       0.0   1.5     37.8     37.8     36.78             51.90         2   18.389     14M     40
+      L5     10/0    1.87 GB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   0.0      0.0      0.0      0.00              0.00         0    0.000       0      0
+      L6     32/0    7.66 GB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   0.0      0.0      0.0      0.00              0.00         0    0.000       0      0
+     Sum     52/0   10.80 GB   0.0      2.7     1.6      1.1       3.8      2.7       0.0   8.8     16.6     23.6    164.33            174.24        88    1.867     36M    156
+
+  #+end_src
+***** ttl调小后发现磁盘占用并没有下来
+1. 观察rocksdb日志(关键字为"compacted to" + "dropped"),发现compaction发生的很少,dropped掉的条目也很少,明显想要过期的数据并没有被删掉
+2. 检查rokcsdb配置发现  rocksdb.max.bytes.level.base 为2G, 在mutable_cf_options.max_bytes_for_level_multiplier默认为10的情况下,L4层的sst文件会在接近2T的时候触发compaction
+   所以怀疑L4层大量含有过期数据的sst文件并没有参与到compaction中,也就没法被过滤,导致磁盘没有被释放
+3. 所以调小 max.bytes.level.base为256M,希望L4层的数据有机会参与到compaction中
+4. 调小后,发现前3个leve的compaction频率上来了,但是磁盘占用并没有下来多少
+5. 检查日志(关键字"compacted to")后发现,Compaction Stats多了个L5,L4数据全都写入了L5(10分钟左右),但是compaction event却是trivial_move
+   怀疑L4层的sst直接转移到了L5.
+6. 翻看rokcsdb compaction的文档,发现rocksdb的level_compaction做合并的时候是选出当前层的几个文件和下一层中有overlap的文件做合并,
+   而因为我们大量的key是按时间写入的,对数据的操作访问也集中在写数据后很短的时间,所以对于过期的数据,其之间只存在很少的overlap,即大量的老sst还是没有机会参与到合并中
+***** 手动调用db.compactRange
+该函数会对每个文件都做一次compaction,但是缺点是会停掉本来的compaction线程,可能会造成write stall
+***** 6.6.0新特性
+6.6.0以后,rocksdb为了缓解沉底的sst基本参与不到compaction中的问题,引入了两个新的参数
+1. options.ttl 列族上的参数,让老sst在compaction线程不忙的时候有机会参与compaction
+2. options.periodic_compaction_seconds, 如果有compaction filter存在,则该参数保证一个sst在一个时间周期内参与compaction
 
