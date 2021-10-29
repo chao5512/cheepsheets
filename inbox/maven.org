@@ -302,6 +302,15 @@ todo 配置文件的生效顺序
             </plugin>
 
 #+END_SRC
+** 构建过程中可能用到的依赖放在build->extensions->extension下
+#+begin_src xml
+  <!-- 用于生成平台相关的属性 -->
+  <extension>
+                  <groupId>kr.motd.maven</groupId>
+                  <artifactId>os-maven-plugin</artifactId>
+                  <version>${os-maven-plugin.version}</version>
+              </extension>
+#+end_src
 * geting start
 maven提供清晰的构建套路，mvn可以方便的管理：
 ** builds
@@ -562,6 +571,55 @@ perform 步骤
                   </configuration>
               </plugin>
 #+end_src
+*** 可以使用execution+include为不同版本(2-3)的proto做不同的配置
+#+begin_src xml
+  <executions>
+                          <execution>
+                              <id>compile-protoc-3</id>
+                              <goals>
+                                  <goal>compile</goal>
+                                  <goal>test-compile</goal>
+                                  <goal>compile-custom</goal>
+                                  <goal>test-compile-custom</goal>
+                              </goals>
+                              <configuration>
+                                  <protocArtifact>
+                                      com.google.protobuf:protoc:${protobuf-compile.version}:exe:${os.detected.classifier}
+                                  </protocArtifact>
+                                  <protoSourceRoot>${basedir}/src/main/proto/</protoSourceRoot>
+                                  <includes>
+                                      <include>DatanodeClientProtocol.proto</include>
+                                  </includes>
+                                  <outputDirectory>target/generated-sources/java</outputDirectory>
+                                  <clearOutputDirectory>false</clearOutputDirectory>
+                                  <pluginId>grpc-java</pluginId>
+                                  <pluginArtifact>
+                                      io.grpc:protoc-gen-grpc-java:${grpc-compile.version}:exe:${os.detected.classifier}
+                                  </pluginArtifact>
+                              </configuration>
+                          </execution>
+                          <execution>
+                              <id>compile-protoc-2</id>
+                              <goals>
+                                  <goal>compile</goal>
+                                  <goal>test-compile</goal>
+                              </goals>
+                              <Configuration>
+                                  <protocArtifact>
+                                      com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
+                                  </protocArtifact>
+                                  <protoSourceRoot>${basedir}/src/main/proto/</protoSourceRoot>
+                                  <includes>
+                                      <include>hdds.proto</include>
+                                  </includes>
+                                  <outputDirectory>target/generated-sources/java</outputDirectory>
+                                  <clearOutputDirectory>false</clearOutputDirectory>
+                              </configuration>
+                          </execution>
+                      </executions>
+
+#+end_src
+
 * in action
 
 ** logback error - multipul bindings 
