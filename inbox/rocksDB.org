@@ -76,6 +76,51 @@ WriteBufferManager可以用来控制多列族和多个DB实例所共享的写缓
 
 从5.6开始，用户可以设置rocksdb在blockcache中计算memtables的内存消耗，如此不管写缓存总限制设置与否，都能够对rokcsdb整体内存做限制
 总的来说，block cache用于读的实际占用偏小，所以可以写缓存和index、filter都放进来
+* rocksdb Compaction
+** compaction_reason
+6.25.1版本有如下compaction reason
+1. "Unknown"
+2. "LevelL0FilesNum"
+3. "LevelMaxLevelSize";
+4. "UniversalSizeAmplification";
+5. "UniversalSizeRatio";
+6. "UniversalSortedRunNum";
+7. "FIFOMaxSize";
+8. "FIFOReduceNumFiles";
+9. "FIFOTtl";
+10. "ManualCompaction";
+11. "FilesMarkedForCompaction";
+12. "BottommostFiles";
+13. "Ttl";
+14. "Flush";
+15. "ExternalSstIngestion";
+16. "PeriodicCompaction";
+17. "ChangeTemperature";
+*** PeriodicCompaction
+** CompactionJob
+负责执行compaction,通常的步骤`Prepare()`->`Run()`->`Install(),可以使用subcompaction来并行编排任务
+** CompactionPicker
+如果NeedCompaction返回true,则调用PickCompaction()来选择要compaction的文件和输出的位置
+
+CompactRange()和CompactFile可以作为手动触发compaction的实现
+** compaction 触发时机
+1. memtable flush到l0后
+2. 手动触发compaction
+** compaction 分类
+*** 自动compaction
+*** 手动compaction
+当db接到一个manual-compaction请求后,就暂时不会编排新的自动compaction任务,现在这个行为可以通过CompactRangeOptions::exclusive_manual_compaction来
+** periodicCompactionSeconds和ComputeExpiredTtlFiles的区别
+*** ComputeExpiredTtlFiles
+1. 在columnFamilyOptions上设置ttl,则rocksdb在计算Compactionscore的时候会检查除最后一层外的所有文件
+2. 计算一个sst文件最开始被flush时的时间作为其访问时间,然后用这个时间取和ttl比
+*** ComputeFilesMarkedForPeriodicCompaction
+按下面的优先级来决定创建时间
+1. 使用sst文件的创建时间,首先使用文件创建时间.这样可以避免一个sst在参与每次的compaction,因为其参与一次compaction后构成一个新的sst,拥有更新的创建时间
+2. 使用sst文件被flush的时间,因为这个sst可能合并的结果,需要找一个源sst的时间,这里需要考虑6.6.0前flush的时候是否在FileMetaData中记录了这个时间
+3. 使用sst的修改时间
+4. 与上面的方法不同的是,这个方法会检查每一层,不会放掉最后一层
+
 * 调优
 rocksdb可调参数非常繁多，且彼此之间相互影响
 ** 案例
