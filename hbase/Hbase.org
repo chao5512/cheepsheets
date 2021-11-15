@@ -419,6 +419,18 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 *** 重要方法
 **** doMiniBatchMutate(BatchOperation<?> batchOp)
 1. 获取尽可能多的行锁
+** Cell
+HBase中的存储单位
+*** 构成
+   1) row
+   2) column family
+   3) column qualifier
+   4) timestamp
+   5) type （例如 put delete等）
+   6) MVCC version
+   7) value
+*** 
+
 ** Flush
 
 
@@ -430,6 +442,21 @@ hbase提供两种不同的cache来缓存从hdfs读上来的数据块
 4. RegionScanner
    1. StoreScanner(列族)最小堆
       1. StoreFileScanner + MemstoreScanner最小堆
+*** HFile
+存储着byte array形式的kv对
+**** footprint
+1. 用来读写一个压缩的block的开销(常数级)
+   1. 每一个compressed block需要一个编码/解码器
+   2. key 的缓存buffer
+   3. value的缓存buffer
+2. 正比于data block的hfile index
+**** 调优建议
+***** 适当的block size
+推荐大小文8k-1M
+1. 如果使用场景主要是扫描遍历操作,则使用大一点的block size
+2. 如果点查较多,则使用较小的block size.因为一个点查命中一个block后,block size越小,则解压的代价越小
+3. 但同时也要考虑,同样的数据量下,越小block size,会带来越多的block,也即越多的block index.
+
 * region 切分
 
 * mob存储
