@@ -116,7 +116,7 @@ CompactRange()和CompactFile可以作为手动触发compaction的实现
 2. 计算一个sst文件最开始被flush时的时间作为其访问时间,然后用这个时间取和ttl比
 *** ComputeFilesMarkedForPeriodicCompaction
 按下面的优先级来决定创建时间
-1. 使用sst文件的创建时间,首先使用文件创建时间.这样可以避免一个sst在参与每次的compaction,因为其参与一次compaction后构成一个新的sst,拥有更新的创建时间
+1. 使用sst文件的创建时间,首先使用文件创建时间.这样可以避免一个sst在参与每次的compaction,因为其参与一次compaction后构成一个新的sst,拥有更新的创建时间q
 2. 使用sst文件被flush的时间,因为这个sst可能合并的结果,需要找一个源sst的时间,这里需要考虑6.6.0前flush的时候是否在FileMetaData中记录了这个时间
 3. 使用sst的修改时间
 4. 与上面的方法不同的是,这个方法会检查每一层,不会放掉最后一层
@@ -147,7 +147,7 @@ key实际上不存在，但是在bloom filter查询的结果是存在的。这�
 ** io限速
 [[https://www.modb.pro/db/58514][rokcsdb io 限速参考]]
 * 案例
-** rokcsdb ttl
+** rocksdb ttl
 *** ttl db
 rocksDB提供ttl db的实现,大概就是用这个ttl db实例去如写入数据的时候会在写入的数据上标记入库时间,同时增加TtlCompactionFilter.
 这样当我们对db或者对cf设置了ttl后,sst文件在参与compaction的时候会被该TtlCompactionFilter检查并过滤掉过期条目,以达到删除过期数据
@@ -191,4 +191,8 @@ rocksDB提供ttl db的实现,大概就是用这个ttl db实例去如写入数据
 6.6.0以后,rocksdb为了缓解沉底的sst基本参与不到compaction中的问题,引入了两个新的参数
 1. options.ttl 列族上的参数,让老sst在compaction线程不忙的时候有机会参与compaction
 2. options.periodic_compaction_seconds, 如果有compaction filter存在,则该参数保证一个sst在一个时间周期内参与compaction
+** rocksdb 向dropped的cf里写入数据会导致该db实例报错
+Invalid column family specified in write batch
+rocksdb在使用时需要存储column family handler,如果没有做同步限制,则在多线程环境下,当一个线程drop掉了一个cf,另一个线程使用
+存储的column family handler来put的时候,会导致整个db实例报错
 
