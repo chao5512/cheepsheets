@@ -342,4 +342,7 @@ fast and side effect free
 * AOP
 ** Matcher
 ** MethodInterceptor
+* inbox
+** MultiBinder
+用来收集分散的binder,后续会将其作为一个整体提供出去
 

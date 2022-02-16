@@ -13,7 +13,12 @@ druid在入库的时候对数据进行聚合，聚合从两个角度进行，某
 ** segment结构
 1. slice： segment按时间范围存储druid数据，这完成了横向切分数据
 2. dice： 在每个segment里，druid按列压缩存储数据，这完成了纵向切分数据
-   
+*** segment相关定义
+**** DataSegment
+代表segment元数据
+**** Segment
+代表数据，可查
+
 
 * 设计
 ** 设计期望
@@ -68,111 +73,6 @@ segment是在middlemanager上创建的，在middlemanager上时，它是可变�
 1. segment刷入deep storage
 2. handoff: segment被托管给historical
 3. 写入segment相关信息到元数据，用来决定加载或写在segment
-****** Indexing过程
-******* 需要在构建所以前确定segment的标识符
-1. append模式,使用overload的allocate api来添加一个新的分区到一个已有的segments集合
-2. overwrite模式，新的版本号，新的segment集合
-******* 实时任务
-支持实时查询，但是并没有发布到深度存储
-******* index完成时
-可以发布同时向元数据存储写入一条该segment相关数据
-******* indexing完成后
-如果indexing是个实时任务，那么它将等待historical节点加载该segment。不是实时任务则直接退出index阶段
-******* 此时coordinator和historical的一面
-1. coordinator周期的拉取元数据中新发布的segment
-2. 发现新发布但是并未可用的segment，挑选一个historical并命令该historical节点加载segent并提供服务
-3. historical节点干活
-4. 这时如果index 任务还在等待handoff， 那么它可以退出了
-****** segment identifier
-datasource_intervalStart_intervalEnd_version_partitionNum
-1. datasource name
-2. Time interval，包含这个segment的chunk的时间段。对应对摄入任务的segmentGranularity，granularitySpec
-3. version number
-4. 分区号。ok now we can find any segment
-***** segment lifecycle
-****** 三个方面
-******* 元数据存储
-1. 向元数据存储写入一条segment记录的过程叫作pubulish
-2. 这些记录又一个标志位used，代表是否可查
-3. 实时摄取的segment会在被publish前就可以查询
-******* 深度存储
-segment一旦构造完成，立刻刷入深度存储中，然后写入meta存储
-******* 支持可查
-****** 查看segment
-You can inspect the state of currently active segments using the Druid SQL sys.segments table. It includes the following flags:
-
-is_published: True if segment metadata has been published to the metadata store and used is true.
-is_available: True if the segment is currently available for querying, either on a realtime task or Historical process.
-is_realtime: True if the segment is only available on realtime tasks. For datasources that use realtime ingestion, this will generally start off true and then become false as the segment is published and handed off.
-is_overshadowed: True if the segment is published (with used set to true) and is fully overshadowed by some other published segments. Generally this is a transient state, and segments in this state will soon have their used flag automatically set to false.
-**** segment的结构
-1. 列式存储结构
-2. ts列和metrics列
-3. 维度列
-   1. 值到id的对应关系字典
-   2. 位图，对于某个值，标识哪些行包含它 最坏情况下，空间复杂度位行数*当前列可能的取值。为了减轻存储负担  可以用roaring bitmap compression.
-   3. 将值替换位id的数据列表
-***** why
-In other words, queries that solely aggregate metrics based on filters do not need to touch the list of dimension values stored in (3)
-**** files about segment
-1. 00000.smoosh： 包含了所有列的文件和一个索引文件。放在一起以减少文件描述符的消耗
-2. factory.json
-3. meta.smoosh
-4. version.bin
-**** 列格式
-1. jackson序列化的列描述符
-2. 二进制的列值表
-*** metadata
-**** druid.metadata.storage.tables.segments表
-1. 存储所有的used segment
-2. coordinator使用这个表来决定可查询的segment
-3. 主要的功能列有两列，剩下的主要用于indexing
-   1. used： 标识segment是否应该可用
-   2. payload ：一个json串，存储这个segment的元数据
-**** rule table
-segment的分配规则
-**** config table
-配置表，运行时修改配置的入口
-**** Task-related tables
-用于overload和middlemanager来保存任务信息
-**** Audit table
-历史审计表
-*** lifeCycle
-用来管理需要start和stop的对象
-**** stages
-***** 1. init
-目前，这个阶段专门用于log4j初始化，因为几乎所有东西都需要日志记录，并且应该在最后关闭日志记录。任何一种bootstrapping对象，如果它提供了在几乎所有其他生命周期对象之前应该初始化的东西，那么它也可以属于这里(如果它在启动或停止期间不需要日志记录的话)。
-***** 2. normal 
-默认的，除了任何形式的服务器或服务声明之外，大多数对象在这个级别注册可能最有意义。
-***** 3. server
-这个生命周期阶段适用于所有的“服务器”对象，例如:org.apache.druid.server.initialization.jetty.JettyServerModule，但是任何类型的“服务器”，如果它希望大部分(或一些特定的)生命周期对象在它开始时被初始化，并且在它停止时仍然可用，那么它可以逻辑地生活在这个阶段
-***** 4. ANNOUNCEMENTS
-用来发布服务节点位置的对象属于这个阶段
-*** 注册方式
-*** router
-web 控制台由router进程维护
-*** storage
-[[https://blog.bcmeng.com/post/druid-storage.html][Ref]]
-**** segment存储
-***** segment的实际存储文件有3个
-****** 1. version.bin
-4byte的二进制文件记录了segment的内部版本号
-0000 0009 当前为v9
-****** 2. meta.smooth 
-一个列式存储文件
-#+BEGIN_SRC sh
-  #版本号,该文件所能存储的最大值(2G),smooth文件数
-  v1,2147483647,1
-  # 列名,文件名,起始偏移量,结束偏移量
-  __time,0,0,154
-  city,0,306,577
-  gmv,0,154,306
-  index.drd,0,841,956
-  metadata.drd,0,956,1175
-  sex,0,577,841
-#+END_SRC
-****** 
-
 
 * 算法
 ** bitmap
@@ -273,31 +173,41 @@ query逻辑去Query* 类看. 可以从QueryResouse.java下手
   [zk: localhost:2181(CONNECTED) 40] ls /druid/cluster/loadQueue/datanode01:8083/_identifier_segment
 
 #+end_src
-* Storage design 
+* Storage design
 ** Indexing and handoff
-indexing 是从数据创建segment， handoff是发布segment让历史节点提供查询
-1. 一个indexing task构建一个segment的时候，segment应当有其唯一标识
-   1. 在append模式下，唯一标示是通过overlord的 allocate 接口完成的
-   2. 在overwrite模式下，是通过在interval上加锁并创建带有新版本号的segments
-2. 如果indexing task是一个实时任务，则构建中的segment立刻可查，但是并未发布
-3. 写好了一个segment后，indexing task 在元数据存储上发布该segment，并推入deep storage
-4. 如果是实话任务，indexing task等待某个historical 节点加载segment并提供服务之后在删除本地的segment
-*** coordinator和historical node
-1. 协调节点周期的观察元数据中是否有新的segment被published
-2. 当协调节点发现了published并used的segment，但是unavailable。其选择一个historical 节点加载该segment
-3. 历史节点加载segment并提供服务
-4. 等待handoff的实时任务结束
-** Segment identifiers
-由4部分组成
-1. datasource name
-2. Time interval
-3. version number
-4. partition number
+- indexing是将传入的数据组织成segment的机制
+- handoff是将segment发布并使历史节点提供数据服务的机制
+*** Indexing (任务执行节点)
+在开始build segment之前,需要先确定segment identifier.
+**** 如何获得identifier
+1. 对于append模式的任务:在OverLord上调用allocate api来添加一个新的分区到一个已有的segments集合
+2. 对于overwrite模式的任务:lock一个interval,并创建一个新的版本号和一个新的segment集合
+**** 可查性
+实时任务摄取的数据是实时可查的,只不过还没有发布
+**** index 任务完成后
+push到deep storage 并发布(在metastore中写一条元数据)segment.如果这个任务是realtime-task,则其支持查询
+指导有历史节点成功加载了这些segment,然后退出任务.其他任务则直接退出.
+*** 在Coordinator / Historical端
+1. coordinator周期的拉取metastore中的元数据,期待得到新发布的segment
+2. 当coordinator发现了segment that is published and used, but unavailable.coordinator选择
+   一个历史节点并命令该历史节点加载这个segment
+3. 历史节点load segment并开始提供该segment的数据服务
+4. 此时,如果indexing task正在等待handoff完成,那么它可以退出了
+** segment identifier
+identifier由4部分组成
+1. Datasource name
+2. Time Interval (在创建摄取任务时指定,参数为SegmentGranularity)
+3. Version Number(任务开始时的时间戳用作版本号)
+4. Partition Number
+*** 例子
+#+begin_src text
+  clarity-cloud0_2018-05-21T16:00:00.000Z_2018-05-21T17:00:00.000Z_2018-05-21T15:56:09.909Z_1
+#+end_src
 ** Segment versiong
 用来支持batch-mode overwriting。当高版本的segment全部加载完成后，查询才会被导向高版本的segment
 ** Segment lifecycle
-segment的生命周期设计3个地方
-1. Metadata store ：segment写入metadata store的动作叫publish。used字段标示该segment是否可查
+segment的生命周期涉及3个地方
+1. Metadata store ：segment写入metadata store的动作叫publishing。used(用作删除标记)字段标示该segment是否用于查询
 2. Deep stoarage ： 在segment publish之前将该segment推入Deep storage
 3. 查询可用性 ： segment在历史节点或者实时节点上以供查询
 ** Availability and consistency
@@ -315,10 +225,70 @@ druid开始一个新的摄取任务，这个摄取任务从最后一次成功提
 *** query
 broker负责在查询的时候来保证查询涉及的segments的一致性
 1. atomic replacement 每个time chunk单独的完成原子替换
+* Segment
+** schema change
+
+*** version变化
+1. 保证interval级的原子性
+
+*** 同一个datasource的不同schema
+缺少的维度会按默认值算,例如string类型为null
+
+** Sharding
+同一个datasource的同一个interval可能会有多个segment.可以在摄取的时候指定shardSpec来shard data.
+同一个interval的多个segment组成一个block.除了linear shardSpec,block表现为只有当block中的segments都load后才可查.
+
+*** ShardSpec
+1. none
+2. single
+3. linear
+4. numbered
+5. hashed
+6. numbered_overwrite
+7. building_numbered
+8. building_hashed
+9. building_single_dim
+10. bucket_hash
+11. bucket_single_dim
+* Task
+在druid中,task做的都是ingestion相关的工作
+1. 对于批量任务,是直接使用 Task Api提交任务到druid
+2. 对于流摄取任务,使用supervisor提交
+** Task Api
+在两个地方使用
+1. 在 **overlord**进程上使用Http Api可以提交任务、取消任务、查看任务状态等
+2. druid sql有一张只读的 **sys.tasks* 的表,里面有任务全量信息的子集
+
 * 源码
 ** AppenderatorDriverRealtimeIndexTask
+** FireDepartment
+FireDepartment由Firehose和Plumber组成
+*** 隐喻
+1. Firehose:实时数据流，提供realtime stream data
+2. Plumber:水管工，将来自Firehose的水流导向正确的sink，并保证sink不会溢出(需要对水流有控制能力)
+   
+
 * 工作
 1. checkpoint
 2. compact
 3. 资源管理(内存、线程)
+* 翻译
+** 去掉windowPeriod
+去掉windowPeriod的限制，可以接受任何时段的数据
+*** 难点
+1. 即便是在晚来数据特别小的时候，也要保持“segment大致大小相等”的特性，这依赖类似于compaction的进程
+2. Query-Consistency。在用户视角来看，insert是平滑的，compaction是原子的 **why need?**
+*** MVP Proposal: Expandable historical segment sets
+可扩展的历史segement集
+
+1. 
+** FirehoseFactories
+最初的设计是面向消息(一行一行的)的
+** InputSource
+是存储input data的存储系统的抽象,可能需要提供一个InputFormat来解释不同格式的input data
+*** 数据的格式
+1. csv
+2. json
+3. regex
+4. tsv
 

@@ -1,6 +1,6 @@
 #+title: ceph 
 * rados
-rados是ceph的存储基石
+rados是ceph的存储基石,由一堆osd和几个monitor构成
 ** 架构
 *** Monitor
 1. 实现了Paxos算法,通过集群来保证Monitor的高可用
@@ -17,4 +17,12 @@ rados是ceph的存储基石
 寻址过程分两步
 1. 对象到pg的映射
 2. pg到osd的映射
+** 概念
+*** Pool 
+pool是一个逻辑概念，实际表示一组约束条件，相当于命名空间
+*** PG(place group)
+** inbox
+1. linux 一切皆是文件， ceph 一切皆是对象                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+** blueStore
+
 

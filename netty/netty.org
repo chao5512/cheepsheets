@@ -78,6 +78,63 @@ TODO
 * netty HttpServer
 1. 要通过netty处理Http请求，要先进行编解码
 2. 对收到的request用解码器Decoder，对发送的响应用编码器Encoder，注意request也有编码器，response也有解码器。
+** HttpObjectCodec
+1. maxInitialLineLength 太长的初始行(todo 啥是初始行)会抛出TooLongFrameException
+2. maxHeaderSize 太长的header会抛出TooLongFrameException
+3. maxChunkSize 太长的content会被切分成多个content,如果在使用的时候想要一个完整content,netty有一个预置的实现: HttpObjectAggregator
+   
+* netty 堆外内存和线程模型
+** ChannelHandlerContext
+因为有Context的存在,所以一个ChannelHandler可以很容易的和pipeline以及其他ChannelHandler进行交互,这包括
+*** 1. Notify
+可以context的firexxx方法来对紧邻的handler做各种事件的通知
+*** 2. 动态修改pipeline
+context中可以获得当前context绑定到的pipeline,拿到pipeline后可以读pipeline进行动态修改
+*** 3. 可以保存ctx,以后随时拿出来用
+*** 4. 存储状态信息
+attr(AttributeKey) 可以允许存储一些handler相关、channel相关的上下文
+
+** ChannelPipeline
+每个channel都有自己的pipeline,channel创建的时候,pipeline就已经创建并且关联之
+*** Event flow
+数据从SocketChannel.Read(ByteBuffer)读过来,在有序的ChannnelInboundHandler中传播,一个入站事件在经过所有的ChannleInboundHandler后被丢弃
+出站事件在有序的ChannelOutboundHandler中传播,最后通过SocketChannel.write(ByteBuffer)写到socket
+
+#+begin_src text
+   ChannelPipeline p = ...;
+   p.addLast("1", new InboundHandlerA());
+   p.addLast("2", new InboundHandlerB());
+   p.addLast("3", new OutboundHandlerA());
+   p.addLast("4", new OutboundHandlerB());
+   p.addLast("5", new InboundOutboundHandlerX());
+
+
+  其中1和2实现了ChannelInboundHandler,3和4实现了ChannelOutboundHandler,5实现了两个
+  则
+  入站顺序为1,2,5
+  出站顺序为5,2,1
+#+end_src
+*** 配置pipeline
+可以在pipeline.addLast()的时候为handler指定group,这样可以为不同的handler分配不同的线程
+*** 线程安全
+可以随时修改pipeline中的handler 列表,因为pipeline是线程安全的
+** ChannelHandler
+拦截 处理 传播IO事件的handler
+*** 分类
+**** 两种
+1. 入站事件处理器 ChannelInboundHandler
+2. 出站时间戳护理期 ChannelOutboundHandler
+**** 相应的适配器
+1. 入站:ChannelInboundHandlerAdapter
+2. 出站:ChannelOutboundHandlerAdapter
+3. 出入站:ChannelDuplexHandler
+*** 状态管理
+
+** ByteBuf
+
+** PooledByteBufAllocator
+
+
 * bugs
 ** client收不到服务端响应
 - 现象

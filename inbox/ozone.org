@@ -233,6 +233,17 @@
   INFO   ScmDatanodeProtocl RPC server is listening at /0.0.0.0:9861
 #+end_src
 
+*** allocateBlock
+分配一个指定大小的block
+**** 逻辑概述
+1. 找到所有打开状态的pipeline
+2. 如果没有打开状态的pipeline,则创建一个
+3. 在打开的pipeline可用的container上分配一个block
+*** createPipeline
+1. 根据策略和需求选择一些datanode
+2. 可以在这里做一些预操作,例如构建ratisPipeline:向每个dn发送cmd,在dn之间构建起这个pipeline
+   1. 如果这里简单使用hdfs的pipeline,则可以直接返回dn列表构建起的pipeline即可
+
 ** ozone datanode
 
 *** 配置存储目录
@@ -270,7 +281,7 @@
 #+begin_src text
   └── volumes
       ├── hdds
-      │   ├── 043d1151-14a4-4e76-a667-267a24e3b99f
+      │   ├── 043d1151-14a4-4e76-a667-267a24e3b99f    //scm uuid
       │   │   └── current
       │   │       └── containerDir0
       │   │           ├── 3
@@ -418,7 +429,16 @@ ozone NoClassDefFoundError: org/eclipse/jetty/server/ConnectionFactory
 
 
 #+end_src
+*** 删掉了datanode.id文件后
+启动报错
+#+begin_src java
+  // VERSION 文件中记录的datanodeid和从datanode.id中读到的id不一致
+  throw new InconsistentStorageStateException("Mismatched " +
+            "DatanodeUUIDs. Version File : " + versionFile + " has datanodeUuid: "
+            + datanodeID + " and Datanode has datanodeUuid: " + datanodeUuid);
+#+end_src
 
+当删除了datanode.id后,datanode启动时找不到id文件,则使用UUID.randomUUID将此datanode作为一个新的数据节点启动
 ** ozone om
 
 *** init
@@ -474,6 +494,39 @@ ozone NoClassDefFoundError: org/eclipse/jetty/server/ConnectionFactory
    * |  transactionInfoTable | #TRANSACTIONINFO -> OMTransactionInfo        |
    * |----------------------------------------------------------------------|
 
+*** om 用于元数据管理的table
+   * OM DB stores metadata as KV pairs in different column families.
+   * <p>
+   * OM DB Schema:
+   * |----------------------------------------------------------------------|
+   * |  Column Family     |        VALUE                                    |
+   * |----------------------------------------------------------------------|
+   * | userTable          |     /user->UserVolumeInfo                       |
+   * |----------------------------------------------------------------------|
+   * | volumeTable        |     /volume->VolumeInfo                         |
+   * |----------------------------------------------------------------------|
+   * | bucketTable        |     /volume/bucket-> BucketInfo                 |
+   * |----------------------------------------------------------------------|
+   * | keyTable           | /volumeName/bucketName/keyName->KeyInfo         |
+   * |----------------------------------------------------------------------|
+   * | deletedTable       | /volumeName/bucketName/keyName->RepeatedKeyInfo |
+   * |----------------------------------------------------------------------|
+   * | openKey            | /volumeName/bucketName/keyName/id->KeyInfo      |
+   * |----------------------------------------------------------------------|
+   * | s3SecretTable      | s3g_access_key_id -> s3Secret                   |
+   * |----------------------------------------------------------------------|
+   * | dTokenTable        | s3g_access_key_id -> s3Secret                   |
+   * |----------------------------------------------------------------------|
+   * | prefixInfoTable    | prefix -> PrefixInfo                            |
+   * |----------------------------------------------------------------------|
+   * |  multipartInfoTable| /volumeName/bucketName/keyName/uploadId ->...   |
+   * |----------------------------------------------------------------------|
+   * |----------------------------------------------------------------------|
+   * |  transactionInfoTable | #TRANSACTIONINFO -> OMTransactionInfo        |
+   * |----------------------------------------------------------------------|
+   *
+ 
+
 ** ozone 写入数据流程
 
 *** ozone-client与hdds-container-services的交互
@@ -482,4 +535,331 @@ ozone NoClassDefFoundError: org/eclipse/jetty/server/ConnectionFactory
 
 **** 在datanode上如何将接收到的数据持久化存储起来的?
 
+*** 数据节点如何创建一个container
+
+1. 创建一个container需要数据节点之外的节点分配好container id和pipeline.
+2. 数据节点的container实现可以不一样,container中chunk的布局可以每个数据节点单独配置
+3. container的创建过程是排他的
+
+** ozone pipeline创建
+1. scm发送创建pipeline的命令给所有的dn后(只是发布了创建pipeline事件)
+2. scm添加该pipeline到pipeline表中,并缓存在内存中
+3. scm计算下是否有打开的pipeline是和本次创建的pipeline拥有相同的dn集合,这是不应该的,如果dn相同,则应该复用pipeline
+
+** ozone fs设计
+
+*** 分离式namespce
+
+**** 好处
+***** 减少namespce元数据
+多个path共用一个前缀,封底估算:在这样的场景下,文件名大概占32bytes,整个path占256bytes,一亿个文件就是
+全路径格式消耗:256G
+公用前缀消耗:32G
+节省了200多G,这对于可能需要做缓存的数据来说,提升非常大
+***** 可以将dir table全表缓存在内存中
+***** 对rename等操作来说,极大的减少了成本
+
+** ratis
+
+*** Common
+
+**** DataQueue
+相比与原生的queue的队列长度限制,DataQueue多了队列内元素占用空间的限制
+
+*** ServerApi
+
+**** LogAppender
+用来在leader上发送raftlog到followers
+
+**** RaftLog
+rtis提供两类raftlog
+1. MemoryRaftLog: 所有的raftlog都在内存中,应只用于test
+2. Segmented RaftLog: 存储在磁盘上
+
+***** SegmentedRaftLog
+1. log追加到磁盘上
+2. 按segments组织所有的Raftlog,每个segment尽可能8M左右
+3. 一个entry大于8M的情况下,这个segment只存这个entry
+4. 分为Closed segement 和 open segment
+
+5. 从open到closed的reson: 到达大小限制,log term更迭
+   
+6. closed segment不可追加但是可以切分
+7. 可以有多个closed segment,但只能有一个opensegment
+
+****** 实现细节
+设置一个io worker其包含一个task队列,所有想要追加的raftlog作为task添加至队列
+思考:入队速度大于出队速度怎么办?
+首先:入不了队就一直入,每一秒尝试一次,入队操作持有raftlock,背压上推
+
+* 集群搭建
+1.2.1后支持om HA,这里记录1.2.1的部署
+** 规划
+3台机器,3个om,3个scm,3个datanode
+** 配置
+#+begin_src xml
+  <configuration>
+      <property>
+          <name>ozone.om.address</name>
+          <value>localhost</value>
+          <tag>OM, REQUIRED</tag>
+          <description>
+        The address of the Ozone OM service. This allows clients to discover
+        the address of the OM.
+      </description>
+      </property>
+      <property>
+          <name>ozone.metadata.dirs</name>
+          <value>/data/br/data/ozone/meta</value>
+          <tag>OZONE, OM, SCM, CONTAINER, STORAGE, REQUIRED</tag>
+          <description>
+        This setting is the fallback location for SCM, OM, Recon and DataNodes
+        to store their metadata. This setting may be used only in test/PoC
+        clusters to simplify configuration.
+
+        For production clusters or any time you care about performance, it is
+        recommended that ozone.om.db.dirs, ozone.scm.db.dirs and
+        dfs.container.ratis.datanode.storage.dir be configured separately.
+      </description>
+      <!--这里配置datanode的ratis保存位置,不然会和scm的ratis冲突-->
+      </property>
+          <property>
+          <name>dfs.container.ratis.datanode.storage.dir</name>
+          <value>/data/br/data/ozone/meta/dnratis</value>
+      </property>
+      <property>
+          <name>ozone.scm.client.address</name>
+          <value>localhost</value>
+          <tag>OZONE, SCM, REQUIRED</tag>
+          <description>
+        The address of the Ozone SCM client service. This is a required setting.
+
+        It is a string in the host:port format. The port number is optional
+        and defaults to 9860.
+      </description>
+      </property>
+      <property>
+          <name>ozone.scm.names</name>
+          <value>localhost</value>
+          <tag>OZONE, REQUIRED</tag>
+          <description>
+        The value of this property is a set of DNS | DNS:PORT | IP
+        Address | IP:PORT. Written as a comma separated string. e.g. scm1,
+        scm2:8020, 7.7.7.7:7777.
+        This property allows datanodes to discover where SCM is, so that
+        datanodes can send heartbeat to SCM.
+      </description>
+      </property>
+
+  <property>
+     <name>ozone.scm.ratis.enable</name>
+     <value>true</value>
+  </property>
+  <property>
+     <name>ozone.scm.service.ids</name>
+     <value>cluster1</value>
+  </property>
+
+  <property>
+     <name>ozone.scm.nodes.cluster1</name>
+     <value>scm1,scm2,scm3</value>
+  </property>
+
+  <property>
+     <name>ozone.scm.address.cluster1.scm1</name>
+     <value>10.241.150.10</value>
+  </property>
+  <property>
+     <name>ozone.scm.address.cluster1.scm2</name>
+     <value>10.241.150.11</value>
+  </property>
+  <property>
+     <name>ozone.scm.address.cluster1.scm3</name>
+     <value>10.241.150.12</value>
+  </property>
+
+
+  <property>
+     <name>ozone.om.ratis.enable</name>
+     <value>true</value>
+  </property>
+  <property>
+    <name>ozone.om.service.ids</name>
+    <value>cluster1</value>
+  </property
+
+  <property>
+     <name>ozone.om.nodes.cluster1</name>
+     <value>om1,om2,om3</value>
+  </property>
+
+  <property>
+     <name>ozone.om.address.cluster1.om1</name>
+     <value>10.241.150.10</value>
+  </property>
+  <property>
+     <name>ozone.om.address.cluster1.om2</name>
+     <value>10.241.150.11</value>
+  </property>
+  <property>
+     <name>ozone.om.address.cluster1.om3</name>
+     <value>10.241.150.12</value>
+  </property>
+  <!--datanode volume 位置-->
+  <property>
+      <name>dfs.datanode.data.dir</name>
+      <value>file:///data/br/data/ozone/data</value>
+  </property>
+  </configuration>
+#+end_src
+** sh
+*** scm HA
+1. 在第一台机器上 ozone scm --init
+
+2. 在第一台机器上启动scm : ozone --daemon start scm
+   
+3. 在第二,第三台机器上 ozone scm --bootstrap 链接第一台scm,初始化本地一些必要的目录和结构
+
+4. 在第二,第三台机器上启动scm : ozone --daemon start scm
+**** 检查
+检查的主要任务是确认我们搭建的scm ha集群确实是在一个存活组里,而不是启动了3个scm
+1. 可以查看3个scm的httpserver(默认端口9876),观察Cluster id是否一致
+2. 可以去各个scm的元数据下,观察Cluster id是否一致
+*** OM HA
+1. 在第一台机器上 ozone om --init
+
+2. 在第一台机器上启动om, ozone --daemon start om
+
+3. 在第二,第三台机器上 ozone om --bootstrap 链接第一台om,并生成本地必要的元数据目录
+
+4. 在第二,第三台机器上启动om, ozone --daemon start om
+**** 检查
+查看服务角色
+#+begin_src sh
+  # 这个cluster1是配置中配置的
+  ./bin/ozone admin om getserviceroles -id=cluster1
+
+
+  #result
+  om3 : FOLLOWER (br-test-12)
+  om2 : FOLLOWER (br-test-11)
+  om1 : LEADER (br-test-10)
+#+end_src
+*** data node
+datanode需要注意元数据和volume中的Version信息
+1. 启动datanode ozone --daemon start datanode
+**** 检查
+可以在scm的HttpServer上看到 inserver状态的dn个数
+** 客户端配置
+*** 依赖
+这里不同版本的hadoop客户端用不同的ozone兼容依赖
+#+begin_src xml
+  <dependency>
+          <groupId>org.apache.ozone</groupId>
+          <artifactId>hdds-client</artifactId>
+          <version>1.2.1</version>
+      </dependency>
+
+      <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-client</artifactId>
+          <version>3.1.0</version>
+      </dependency>
+
+      <!-- https://mvnrepository.com/artifact/org.apache.ozone/ozone-filesystem-hadoop3 -->
+      <dependency>
+          <groupId>org.apache.ozone</groupId>
+          <artifactId>ozone-filesystem-hadoop3</artifactId>
+          <version>1.2.1</version>
+      </dependency>
+#+end_src
+*** resource
+复制core-site.xml 和 ozone-site.xml到resource中
+**** core-site.xml
+#+begin_src xml
+  <configuration>
+      <property>
+          <name>fs.ofs.impl</name>
+          <value>org.apache.hadoop.fs.ozone.RootedOzoneFileSystem</value>
+      </property>
+      <property>
+          <name>fs.defaultFS</name>
+          <value>ofs://cluster1/</value>
+      </property>
+  </configuration>
+#+end_src
+**** ozone-site.xml
+从ozone集群复制
+*** code
+#+begin_src java
+  public static void main(String[] args) {
+          try {
+              // 配置连接地址
+              Configuration conf = new Configuration();
+              OzoneConfiguration ozoneConfiguration = new OzoneConfiguration();
+              conf.addResource(ozoneConfiguration);
+
+              FileSystem fs = FileSystem.get(conf);
+              // 打开文件并读取输出
+              Path hello = new Path("/volume/bucket/HISTORY.md");
+              FSDataInputStream ins = fs.open(hello);
+              int ch = ins.read();
+              while (ch != -1) {
+                  System.out.print((char)ch);
+                  ch = ins.read();
+              }
+              System.out.println();
+          } catch (IOException ioe) {
+              ioe.printStackTrace();
+          }
+      }
+#+end_src
+** ozone fs cmd
+#+begin_src shell
+  # list
+  ozone fs -ls -R ofs://cluster1/
+#+end_src
+** 配置明细
+*** ratis相关
+**** dfs.container.ratis.log.appender.queue
+从leader向follower发送的raftlog的长度和大小的限制
+1. dfs.container.ratis.log.appender.queue.byte-limit = 32M 
+2. dfs.container.ratis.log.appender.queue.element-limit = 0 // (0表示队列长度不受限制)
+
+**** dfs.container.ratis.log.queue
+ratis log所有与io相关的操作都由固定的woker来做,io 操作被封装为task,排进这个队列(这种task在队列中排队的时间和执行时间可以被监控).由worker从队列中取任务做落盘追加.
+1. queue.byte-limit  = 64M
+2. dfs.container.ratis.log.queue.num-elements = 1024
+*** dfs相关
+**** dfs.container.ratis.enabled
+作用于om
+如果文件写入请求中没有指定副本类型和副本数,则此时该配置发挥作用.
+
+* 问题排查
+** 写入超时
+创建pipeline时,某个dn加入ratis group时失败,why?
+datanode 一直刷日志
+#+begin_src text
+  INFO org.apache.ratis.server.RaftServer$Division: 5f5c4efb-1055-4fbe-9175-4a9b426d31a6@group-A715AD653930-LeaderStateImpl send StartLeaderElectionRequest to follower:06fb1d2e-4b04-4d13-a027-fba46eb6f7f1 on term:4 because follower's priority:1 is higher than leader's:0 and follower's lastEntry index:2 catch up with leader's:2
+
+#+end_src
+* dfs 和 db
+dfs偏离线
+db偏实时
+** 现有db局限性
+1. 扩容
+2. 数据孤岛
+3. 实时和离线数据需要两部分资源
+** HTAP
+*** 标准
+1. 弹性扩容
+2. 业务无需妥协
+   1. sql
+   2. 分布式事务
+   3. 复杂查询
+3. 高可用
+4. 支持高性能实时分析(为什么列式analysis?最快)
+5. 实时olap分析不影响oltp
+* something
+[[https://monodraw.helftone.com/][mac uml]]
 

@@ -6,3 +6,18 @@
 
 * 更换源
 
+* 安装
+
+** 前置
+1. java8
+2. docker
+
+** archlinux 安装jenkins
+1. pacman -S jenkins
+2. systemctl start jenkins
+3. 配置文件在/etc/conf.d/jenkins 
+   1. 把java执行文件地址换成自己安装的
+   2. 添加java 参数 -Djava.awt.headless=true
+4. 安装字体 pacman -S tty-dejavu
+5. journalctl -u jenkins 查看jenkins日志
+

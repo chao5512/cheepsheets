@@ -333,6 +333,9 @@ waitset  线程间通信
 1. shutDownNow() //尽力终止，对不响应中断的任务不保证一定能终止
    1) 返回还未开始执行的任务
    2) 不等待已经执行的任务，如果需要等待用awaitTermination
+***** 子接口ScheduledExecutorService
+可以延迟执行cmd或者周期执行cmd
+
 **** Executors
 ExecutorService 的工厂类
 * Guaua类库之并发模块
@@ -439,4 +442,8 @@ Thread.State定义的线程状态包括
 
 ** 第一个模式：Immutable Object模式
 
+* 周期执行的任务
+
+** 设计思考
+1. 周期任务使用固定的线程池执行，这样它有可能在需要开始的时候抢不到执行线程池，即错过了开始时间，这种情况下要能够通知使用者。
 

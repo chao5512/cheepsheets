@@ -50,4 +50,20 @@ mean time to failure，预防大于治疗
 mean time to repair
 * SOA
 Service-Oriented Architecture 面向服务的架构
+* 大集群
+1. 分离模式没法做削峰填谷、充分利用资源
+2. 大集群是充分利用资源的前提，但也带来新的问题，如何做好隔离
+* 啥是shade包
+shade包就是不光所有的依赖都随main class打包，甚至还给每个依赖换了个包名，这样不会再跟其他使用者依赖冲突
+[[https://segmentfault.com/a/1190000039149043][uber-jar和shaded-jar]]
+* ACID
+Atomicity，Consistency，Isolation，Durability
+* Jersey
+** anything
+*** ContainerLifeCycleListener
+想要接受container life-cycle 通知,需要遵守这个接口定义,可以在container 启动\重新加载\shutdown时被通知
+*** ApplicationHandler
+container使用这个ApplicationHandler来处理ContainerRequest
+*** RequestScope
+
 

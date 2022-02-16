@@ -1,5 +1,5 @@
 #+title: jvm
-* hotspot由来
+* qhotspot由来
 JIT编译器在运行时创建方法使用文件，然后一步一步的优化每一个方法，有时候会主动的优化应用的行为。这些优化技术，比如积极的分支预测（optimistic branch prediction），如果不先分析应用就不能有效的使用。这样将频繁调用的部分提取出来，编译成本地代码，也就是在应用中构建某种热点（即HotSpot，这也是HotSpot JVM名字的由来）。使用
 * jvm类型
 以下两种是不同的虚拟机
@@ -930,3 +930,5 @@ arena 动态分配内存的memory pool
 *** 内存估算
 rocksdb 占用内存 = block cache + write-buffer总内存
 按如上配置，rocskdb占用1.7G左右，平稳支撑40w/min的写入
+* 堆外内存溢出
+堆外内存溢出的排查从找到引起内存问题的native user开始.可以从报错日志或者通过对潜在所有的native user进行trial来进行.

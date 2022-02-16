@@ -7,4 +7,12 @@
 2. HTTP/2不可用时，也会缓存connection来降低请求latency
 3. 透明压缩
 4. response缓存
+** Request
+* jersey
+** Container
+** Application
+持有一些resource访问入口的实例
+** ApplicationHandler
+见名知意
+* 
 
