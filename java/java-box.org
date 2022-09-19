@@ -148,6 +148,9 @@ hdfs权限模型中大量使用values将权限枚举转换为数组,并通过数
 ** 如何使用try-with-resource替代try-catch-finally？
 1. resource怎么定义？ 实现了AutoCloseable或Closeable的资源
 2. 使用try-with-resource后catch或finally块的执行顺序（相对于资源关闭）？ catch块和finally块均在资源关闭后执行
+
+* 泛型
+jdk5引入的新特性，使用泛型能增加代码的可读性和程序的稳定性
 * 深拷贝和浅拷贝
 1. 这里的拷贝是对对象的拷贝，所以就涉及对象本身和对象引用的对象
    1. 深拷贝，对象本身和所有引用的对象都复制
@@ -827,6 +830,9 @@ copy on write
 ** 定时
 *** quartz
 ...
+** SPI和API的区别
+1. SPI Service Provider Interface ：甲方定义接口，不同的乙方提供不同的实现
+2. API ：服务提供者（乙方）定义接口，使用者根据暴露出的接口（API）来使用服务
 * ThreadLocal
 ** ThreadLocalRandom 
 线程隔离的随机数生成器
