@@ -1,4 +1,4 @@
-#+title: java复习
+#+title: java-basic
 * javac
 1. -d 递归生成包指定的目录
 2. import导入一个包的时候，并不会把子包一并导入
