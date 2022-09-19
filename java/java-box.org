@@ -139,6 +139,15 @@ hdfs权限模型中大量使用values将权限枚举转换为数组,并通过数
 ** Error
 程序本身处理不了的，如内存不够\虚拟机错误等
 内存溢出属于Error，所以只捕获Exception是捕获不到的
+** try-catch-finally中的return顺序？
+如果try块中有return，返回的是try块中的值
+执行过程如下
+1. 将try中的return的值缓存至局部变量
+2. 执行finally块中的代码
+3. 执行完finally后，返回缓存的return值，如果finally中有return，则忽略try中的return
+** 如何使用try-with-resource替代try-catch-finally？
+1. resource怎么定义？ 实现了AutoCloseable或Closeable的资源
+2. 使用try-with-resource后catch或finally块的执行顺序（相对于资源关闭）？ catch块和finally块均在资源关闭后执行
 * 深拷贝和浅拷贝
 1. 这里的拷贝是对对象的拷贝，所以就涉及对象本身和对象引用的对象
    1. 深拷贝，对象本身和所有引用的对象都复制
