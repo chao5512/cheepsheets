@@ -130,11 +130,14 @@ hdfs权限模型中大量使用values将权限枚举转换为数组,并通过数
 ** 测试用工具类Optional
 
 * Throwable
-* Exception
-** 分类
-1. Checked exception
-2. Unchecked exception
+所有异常的祖先，可以分为Exception和Error
+** Exception
+程序本身可以处理的异常
+*** 分类
+1. Checked exception ：在编译期就需要给出处理方案（try-catch）的异常，不处理通不过编译
+2. Unchecked exception ：运行时异常，可以不给出处理方案
 ** Error
+程序本身处理不了的，如内存不够\虚拟机错误等
 内存溢出属于Error，所以只捕获Exception是捕获不到的
 * 深拷贝和浅拷贝
 1. 这里的拷贝是对对象的拷贝，所以就涉及对象本身和对象引用的对象
