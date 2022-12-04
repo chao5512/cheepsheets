@@ -1,0 +1,12 @@
+*  swift
+** swift 中的remainder运算符
+#+begin_src sh
+
+  var r = 9 % 4
+  var nr = 9 % -4
+  // r = 1 nr = 1
+
+  var r = -9 % 4
+  // r = -1
+
+#+end_src
