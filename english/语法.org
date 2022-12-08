@@ -41,4 +41,13 @@
 - that
 - whether
 - why、what、which、whom、how 等特殊疑问词
+* present simple
+** 使用助动词do dose 构成否定或疑问
+#+begin_src sh
+  // 他来自哪里
+  Where does(这里跟主语（单/复）一致) he come(这里不再需要保持一致，助动做过了) from?
+
+  // 你妹妹玩网球么
+  Does your sister play tennis?
+#+end_src
 
