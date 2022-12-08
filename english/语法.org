@@ -50,4 +50,19 @@
   // 你妹妹玩网球么
   Does your sister play tennis?
 #+end_src
+* present imple .vs. present continous
+** be always doing VS always do
+#+begin_src sh
+  // 我总是开车去上班（我每次都是开车去上班）
+  I always go to work by car.
+
+  // 我总丢东西(very often)
+  I am always losing things.
+
+  // 你天天玩你那破电脑
+  You are always playing computer.
+
+  // 他总是在抱怨
+  He is always complaining = He complains too much
+#+end_src
 
