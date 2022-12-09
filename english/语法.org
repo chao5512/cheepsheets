@@ -95,6 +95,8 @@
 | forget |         | forgotten |          |
 | apply  | applied |           |          |
 | fall   | fell    |           |          |
+| come   | came    | come      |          |
+| break  | broke   | broken    |          |
 * past simple VS past continous
 ** 错题
 - 我昨天散步时突然听到脚步声，有人在跟踪我，我很害怕，然后开始跑
@@ -163,4 +165,9 @@ Albert Einstein was the scientist who developed the theory of relativity.
 - 你以前住在北京，现在住在苏州
   How long have you been lived in Suzhou?
   How long did you live in Beijing? // 北京是过去的。1. 不是have you been lived。 2. 不是did you lived 助动词已经反应了时态了
+* past perfect
+past perfect ：一般由一个past simple 当做故事的一个起点，在这个起点之前完成的，对起点时刻有result的时候用pastperfect
+** 错题
+- I offered sue something to eat， but she wasn't hungry.
+  She had just had breakfast // 不是She just had breakfast，这里没有表示出已经吃完了
 
