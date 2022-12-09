@@ -75,23 +75,26 @@
 - 他生病了么？
   Is he ill？  
 * 特殊形式的分词
-|-------+--------+----------+----------|
-| 原型  | 过去式 | 过去分词 | 现在分词 |
-| sleep | slept  |          |          |
-| teach | taught |          |          |
-| sell  | sold   |          |          |
-| fell  | fell   |          |          |
-| hurt  | hurt   |          |          |
-| throw | threw  |          |          |
-| fly   | flew   |          |          |
-| hear  | heard  |          |          |
-| want  | wanted |          |          |
-| rid   | ridden |          |          |
-| write | wrote  | written  | writing  |
-| wait  |        |          | waiting  |
-| read  | read   |          |          |
-| ill   | ill    |          |          |
-| eat   | ate    | eaten    |          |
+|--------+---------+-----------+----------|
+| 原型   | 过去式  | 过去分词  | 现在分词 |
+| sleep  | slept   |           |          |
+| teach  | taught  |           |          |
+| sell   | sold    |           |          |
+| fell   | fell    |           |          |
+| hurt   | hurt    |           |          |
+| throw  | threw   |           |          |
+| fly    | flew    |           |          |
+| hear   | heard   |           |          |
+| want   | wanted  |           |          |
+| rid    | ridden  |           |          |
+| write  | wrote   | written   | writing  |
+| wait   |         |           | waiting  |
+| read   | read    |           |          |
+| ill    | ill     |           |          |
+| eat    | ate     | eaten     |          |
+| forget |         | forgotten |          |
+| apply  | applied |           |          |
+| fall   | fell    |           |          |
 * past simple VS past continous
 ** 错题
 - 我昨天散步时突然听到脚步声，有人在跟踪我，我很害怕，然后开始跑
@@ -136,3 +139,28 @@
 
 - 我不太认识Tom，我们只见过几次
   I don't know Tom well. We've only met a few times.
+* present perfect VS past simple
+** 错题
+- 你在哪出生
+  Where were you born？ // 不是 Where did you born.难道是did you been born = were you born?
+
+
+- 爱因斯坦是提出相对论的科学家
+Albert Einstein was the scientist who developed the theory of relativity.
+
+- It was = It has been
+  // 它原来放在那。
+  It was been there. // 不是It has been there
+
+
+- Mr Lee worked in a bank for 15 years. // 不是has been working
+
+
+- My grandfather died before I was born. // 不是was died
+  I never met him // 不是 I've never met him
+
+
+- 你以前住在北京，现在住在苏州
+  How long have you been lived in Suzhou?
+  How long did you live in Beijing? // 北京是过去的。1. 不是have you been lived。 2. 不是did you lived 助动词已经反应了时态了
+
