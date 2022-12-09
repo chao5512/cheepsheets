@@ -94,12 +94,15 @@
 ** 错题
 - 我昨天散步时突然听到脚步声，有人在跟踪我，我很害怕，然后开始跑
   I was walking along the street when suddenly I heard footsteps behind me. Sombody was following me. I was scared and I started to run
-* present perfect
+* present perfect VS present perfect continous
 1. 通常是recently的动作
 2. 通常对now产生了result
 ** difference between gone(to) and been(to)
 1. He has gone to China. // 已经出发去中国了，now在路上或者在中国
 2. He has been to China. // 已经去过了，now回来了
+** 使用haven't done somthing since/for来表示多久没做过没事
+- 上次见Tom还是星期一
+  I haven't seen Tom since Monday.
 ** 错题
 - 你见过最美的地方是？
   What's the most beautiful place you have ever visited?//注意语序：是you have不是have you
@@ -110,4 +113,19 @@
 
 - 你等很长时间了么
   Have you been waiting long // 不是waiting for long
-  
+
+
+- 她去年就结婚了
+  She has been married since last years // 这句没懂 不是marring
+
+
+- 你们结婚多久了？
+  How long have you been married？// 不是marring
+
+
+- 我戒掉cafe了，上次喝已经是一年以前了
+  I gave up drinking cafe. I haven't drank it for a year.
+
+
+- 我不太认识Tom，我们只见过几次
+  I don't know Tom well. We've only met a few times.
