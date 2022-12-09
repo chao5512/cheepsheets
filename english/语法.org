@@ -75,18 +75,21 @@
 - 他生病了么？
   Is he ill？  
 * 特殊形式的分词
-|-------+----------|
-| 原型  | 过去分词 |
-| sleep | slept    |
-| teach | taught   |
-| sell  | sold     |
-| fell  | fell     |
-| hurt  | hurt     |
-| throw | threw    |
-| fly   | flew     |
-| hear  | heard    |
-| want  | wanted   |
-| rid   | ridden |
+|-------+--------+----------+----------|
+| 原型  | 过去式 | 过去分词 | 现在分词 |
+| sleep | slept  |          |          |
+| teach | taught |          |          |
+| sell  | sold   |          |          |
+| fell  | fell   |          |          |
+| hurt  | hurt   |          |          |
+| throw | threw  |          |          |
+| fly   | flew   |          |          |
+| hear  | heard  |          |          |
+| want  | wanted |          |          |
+| rid   | ridden |          |          |
+| write | wrote  | written  | writing  |
+| wait  |        |          | waiting  |
+| read  | read   |          |          |
 * past simple VS past continous
 ** 错题
 - 我昨天散步时突然听到脚步声，有人在跟踪我，我很害怕，然后开始跑
@@ -104,3 +107,7 @@
 - 这是这段时间以来最好的假日
   It's the best holiday I have had for a long time  // 注意不是否定：I have had 不是 I haven't had
 
+
+- 你等很长时间了么
+  Have you been waiting long // 不是waiting for long
+  
