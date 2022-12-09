@@ -50,7 +50,7 @@
   // 你妹妹玩网球么
   Does your sister play tennis?
 #+end_src
-* present imple .vs. present continous
+* present simple .vs. present continous
 ** be always doing VS always do
 #+begin_src sh
   // 我总是开车去上班（我每次都是开车去上班）
@@ -65,4 +65,42 @@
   // 他总是在抱怨
   He is always complaining = He complains too much
 #+end_src
+** 错题
+- 这有人坐了么
+  Is anybody sitting here?
+
+- 我好饿
+  I am feeling hungry
+
+- 他生病了么？
+  Is he ill？  
+* 特殊形式的分词
+|-------+----------|
+| 原型  | 过去分词 |
+| sleep | slept    |
+| teach | taught   |
+| sell  | sold     |
+| fell  | fell     |
+| hurt  | hurt     |
+| throw | threw    |
+| fly   | flew     |
+| hear  | heard    |
+| want  | wanted   |
+| rid   | ridden |
+* past simple VS past continous
+** 错题
+- 我昨天散步时突然听到脚步声，有人在跟踪我，我很害怕，然后开始跑
+  I was walking along the street when suddenly I heard footsteps behind me. Sombody was following me. I was scared and I started to run
+* present perfect
+1. 通常是recently的动作
+2. 通常对now产生了result
+** difference between gone(to) and been(to)
+1. He has gone to China. // 已经出发去中国了，now在路上或者在中国
+2. He has been to China. // 已经去过了，now回来了
+** 错题
+- 你见过最美的地方是？
+  What's the most beautiful place you have ever visited?//注意语序：是you have不是have you
+
+- 这是这段时间以来最好的假日
+  It's the best holiday I have had for a long time  // 注意不是否定：I have had 不是 I haven't had
 
