@@ -90,6 +90,8 @@
 | write | wrote  | written  | writing  |
 | wait  |        |          | waiting  |
 | read  | read   |          |          |
+| ill   | ill    |          |          |
+| eat   | ate    | eaten    |          |
 * past simple VS past continous
 ** 错题
 - 我昨天散步时突然听到脚步声，有人在跟踪我，我很害怕，然后开始跑
@@ -103,6 +105,7 @@
 ** 使用haven't done somthing since/for来表示多久没做过没事
 - 上次见Tom还是星期一
   I haven't seen Tom since Monday.
+  I haven't seen Tom for few days.
 ** 错题
 - 你见过最美的地方是？
   What's the most beautiful place you have ever visited?//注意语序：是you have不是have you
@@ -121,6 +124,10 @@
 
 - 你们结婚多久了？
   How long have you been married？// 不是marring
+
+
+- 你们什么时候结婚的
+  When did you get married // 不是 When did you marry
 
 
 - 我戒掉cafe了，上次喝已经是一年以前了
