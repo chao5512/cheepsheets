@@ -170,4 +170,21 @@ past perfect ：一般由一个past simple 当做故事的一个起点，在这�
 ** 错题
 - I offered sue something to eat， but she wasn't hungry.
   She had just had breakfast // 不是She just had breakfast，这里没有表示出已经吃完了
+* past perfect continuous
+** 错题
+- 我昨天去我朋友家时，他们嘴里有食物
+  They were eating // 不是they had been eating，不是他们刚刚在吃
 
+
+- 我昨天去我朋友家时，他们嘴里没有食物，但是胃里全是食物
+  They had been eating // 吃是持续动作，类似rain
+* have VS have got
+** 错题
+- 我牙疼
+  'Are you feeling OK?' 'NO, +I'm having+ a toothache'
+  // I've got a toothache
+  // I have a toothache
+
+
+- 他几周前（不是最近了，不用present perfect）有了第二个孩子
+  He had a baby a few weeks ago. It's his second child.//这里是几周前，不是强调刚刚生完，不用完成时
